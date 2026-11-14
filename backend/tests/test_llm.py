@@ -114,3 +114,29 @@ async def test_token_budget(env, monkeypatch):
     monkeypatch.setattr(llm, "tokens_used", 5)
     with pytest.raises(llm.TokenBudgetExceeded):
         await llm.text_json("q", Toy)
+
+
+async def test_hung_call_times_out_and_retries(env, monkeypatch):
+    monkeypatch.setattr(llm, "CALL_TIMEOUT_S", 0.05)
+    n = {"c": 0}
+
+    async def slow_then_ok(model, prompt, images, schema):
+        n["c"] += 1
+        if n["c"] == 1:
+            await asyncio.sleep(5)
+        return '{"color":"g","count":1}', 1
+
+    import asyncio
+    monkeypatch.setattr(llm, "_generate", slow_then_ok)
+    assert (await llm.text_json("q", Toy)).color == "g" and n["c"] == 2
+
+
+async def test_client_error_is_not_retried(env, monkeypatch):
+    class NotFound(Exception):
+        code = 404
+
+    calls = []
+    monkeypatch.setattr(llm, "_generate", fake_generate([NotFound("no such model")], calls))
+    with pytest.raises(NotFound):
+        await llm.text_json("q", Toy)
+    assert len(calls) == 1

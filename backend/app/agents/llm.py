@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 MAX_IMAGE_SIDE = 1536
+CALL_TIMEOUT_S = 60.0  # per Gemini request; a hung call counts as a failed attempt
 RETRIES = 2  # transport retries after the first attempt
 BACKOFF_S = 1.0
 CACHE_NAMESPACE = "gemini"
@@ -96,12 +97,16 @@ async def _call_with_retries(model: str, prompt: str, images: list[bytes], schem
     for attempt in range(RETRIES + 1):
         try:
             async with _semaphore():
-                text, tokens = await _generate(model, prompt, images, schema)
+                text, tokens = await asyncio.wait_for(
+                    _generate(model, prompt, images, schema), CALL_TIMEOUT_S)
             tokens_used += tokens
             log.info("gemini model=%s tokens=%d total=%d", model, tokens, tokens_used)
             return text
         except Exception as e:  # noqa: BLE001 - transport/API errors
             last = e
+            code = getattr(e, "code", None)
+            if isinstance(code, int) and 400 <= code < 500 and code not in (408, 429):
+                raise  # bad model name / key / request: retrying cannot help
             if attempt < RETRIES:
                 await asyncio.sleep(BACKOFF_S * 2**attempt)
     assert last is not None
