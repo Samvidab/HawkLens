@@ -30,7 +30,15 @@ def recorder(monkeypatch):
     return calls
 
 
-def test_vertex_client_uses_project_and_location_with_adc(monkeypatch, recorder):
+def test_vertex_client_uses_the_vertex_api_key_first(monkeypatch, recorder):
+    fake_env(monkeypatch, GOOGLE_GENAI_USE_VERTEXAI="true", VERTEX_API_KEY="v-key", GOOGLE_CLOUD_PROJECT="my-proj",
+             GOOGLE_CLOUD_LOCATION="global", GEMINI_API_KEY="studio-key")
+    llm.make_client()
+    # exactly vertexai + api_key: the SDK rejects an api_key combined with project/location, and the AI Studio key is not used
+    assert recorder == [{"vertexai": True, "api_key": "v-key"}]
+
+
+def test_vertex_without_an_api_key_falls_back_to_adc(monkeypatch, recorder):
     fake_env(monkeypatch, GOOGLE_GENAI_USE_VERTEXAI="true", GOOGLE_CLOUD_PROJECT="my-proj", GOOGLE_CLOUD_LOCATION="global",
              GEMINI_API_KEY="should-not-be-used")
     llm.make_client()
@@ -38,17 +46,18 @@ def test_vertex_client_uses_project_and_location_with_adc(monkeypatch, recorder)
 
 
 @pytest.mark.parametrize("missing", ["GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION"])
-def test_vertex_needs_project_and_location(monkeypatch, recorder, missing):
+def test_vertex_needs_an_api_key_or_project_and_location(monkeypatch, recorder, missing):
     vals = {"GOOGLE_GENAI_USE_VERTEXAI": "true", "GOOGLE_CLOUD_PROJECT": "p", "GOOGLE_CLOUD_LOCATION": "global"}
     vals.pop(missing)
     fake_env(monkeypatch, **vals)
-    with pytest.raises(RuntimeError, match="GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION"):
+    with pytest.raises(RuntimeError, match="VERTEX_API_KEY, or GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION"):
         llm.make_client()
     assert recorder == []
 
 
 def test_api_key_client_when_vertex_is_off(monkeypatch, recorder):
-    fake_env(monkeypatch, GOOGLE_GENAI_USE_VERTEXAI="false", GOOGLE_CLOUD_PROJECT="p", GOOGLE_CLOUD_LOCATION="global")
+    fake_env(monkeypatch, GOOGLE_GENAI_USE_VERTEXAI="false", VERTEX_API_KEY="v-key", GOOGLE_CLOUD_PROJECT="p",
+             GOOGLE_CLOUD_LOCATION="global")  # flag off: the old api_key client, whatever Vertex settings exist
     monkeypatch.setenv("GEMINI_API_KEY", "k-123"); get_settings.cache_clear()
     llm.make_client()
     assert recorder == [{"api_key": "k-123"}]
@@ -94,7 +103,7 @@ async def test_402_is_out_of_credit_and_fails_fast(monkeypatch):
     assert "402" in str(e.value) and "GOOGLE_GENAI_USE_VERTEXAI" in str(e.value)
     assert isinstance(e.value, llm.QuotaExhausted) and isinstance(e.value.__cause__, Err)
     fake_env(monkeypatch, GOOGLE_GENAI_USE_VERTEXAI="true")
-    with pytest.raises(llm.OutOfCredit, match="Google Cloud project"):
+    with pytest.raises(llm.OutOfCredit, match="Google Cloud account"):
         await llm._call_with_retries("m", "p", [], Toy)
 
 

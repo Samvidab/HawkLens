@@ -129,15 +129,22 @@ def use_vertex() -> bool:
 
 
 def make_client():
-    """Vertex AI with Application Default Credentials when GOOGLE_GENAI_USE_VERTEXAI is true, else the AI Studio
-    api-key client. The Google SDK reads these variables only from the process environment, so they are read here
-    (process env, then backend/.env) and passed explicitly."""
+    """Which Gemini endpoint to use (the SDK reads these variables only from the process environment, so they
+    are read here: process env, then backend/.env, and passed explicitly):
+
+    GOOGLE_GENAI_USE_VERTEXAI=true  -> Vertex AI, billed to the Google Cloud account:
+        VERTEX_API_KEY set          -> genai.Client(vertexai=True, api_key=VERTEX_API_KEY)   (express mode)
+        otherwise                   -> Application Default Credentials with GOOGLE_CLOUD_PROJECT / _LOCATION
+    otherwise                       -> AI Studio api-key client (GEMINI_API_KEY; HTTP 402 = prepaid credit spent)
+    """
     from google import genai
 
     if use_vertex():
+        if key := env_value("VERTEX_API_KEY"):
+            return genai.Client(vertexai=True, api_key=key)
         project, location = env_value("GOOGLE_CLOUD_PROJECT"), env_value("GOOGLE_CLOUD_LOCATION")
         if not project or not location:
-            raise RuntimeError("Vertex AI needs GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION")
+            raise RuntimeError("Vertex AI needs VERTEX_API_KEY, or GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION")
         return genai.Client(vertexai=True, project=project, location=location)
     key = get_settings().gemini_api_key
     if not key:
@@ -181,7 +188,7 @@ async def _call_with_retries(model: str, prompt: str, images: list[bytes], schem
             code = getattr(e, "code", None)
             if code == 402:  # prepaid credit exhausted: nothing to wait for
                 raise OutOfCredit(
-                    "Gemini is out of credit (HTTP 402): check billing on the Google Cloud project" if use_vertex() else
+                    "Gemini is out of credit (HTTP 402): check billing on the Google Cloud account" if use_vertex() else
                     "Gemini API is out of credit (HTTP 402): top up the AI Studio balance, or set "
                     "GOOGLE_GENAI_USE_VERTEXAI=true to bill the Google Cloud project instead") from e
             if code == 429 and limited < RATE_LIMIT_RETRIES:  # rate limited: wait as told, don't count
