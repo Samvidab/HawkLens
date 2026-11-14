@@ -9,24 +9,19 @@ import SurveyComplete from './pages/SurveyComplete'
 import FinancingApproval from './pages/FinancingApproval'
 import FundingConfirmation from './pages/FundingConfirmation'
 import Documents from './pages/Documents'
+import SurveyEvidence from './pages/SurveyEvidence'
+import InvestmentMemo from './pages/InvestmentMemo'
+import RiskAndTarget from './pages/RiskAndTarget'
+import PlanPreferences from './pages/PlanPreferences'
+import DemoDocumentNotice from './pages/DemoDocumentNotice'
+import Assumptions from './pages/Assumptions'
+import FundingAccount from './pages/FundingAccount'
+import BuildingInsights from './pages/BuildingInsights'
+import BuildingExcluded from './pages/BuildingExcluded'
+import ExpandedPortfolioModel from './pages/ExpandedPortfolioModel'
+import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
+import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
-
-// Screens not yet built — each routes to a titled placeholder so the whole
-// prototype stays navigable. These get replaced screen by screen.
-const PENDING = [
-  { path: '/survey-evidence', title: 'Survey evidence', active: 'plan' },
-  { path: '/plan-preferences', title: 'Plan preferences', active: 'plan' },
-  { path: '/demo-document-notice', title: 'Demo document notice', active: 'documents' },
-  { path: '/expanded-survey-image', title: 'Expanded survey image', active: 'plan' },
-  { path: '/expanded-portfolio-model', title: 'Expanded portfolio model', active: 'portfolio' },
-  { path: '/investment-memo', title: 'Investment memo', active: 'plan' },
-  { path: '/assumptions', title: 'Assumptions and sources', active: 'plan' },
-  { path: '/funding-account', title: 'Funding account details', active: 'plan' },
-  { path: '/expanded-building-model', title: 'Expanded building model', active: 'portfolio' },
-  { path: '/risk-and-target', title: 'Risk and target', active: 'plan' },
-  { path: '/building-insights', title: 'Building insights', active: 'portfolio' },
-  { path: '/building-excluded', title: 'Building excluded', active: 'portfolio' },
-]
 
 export default function App() {
   return (
@@ -42,13 +37,18 @@ export default function App() {
           <Route path="/financing-approval" element={<FinancingApproval />} />
           <Route path="/funding-confirmation" element={<FundingConfirmation />} />
           <Route path="/documents" element={<Documents />} />
-          {PENDING.map((p) => (
-            <Route
-              key={p.path}
-              path={p.path}
-              element={<Placeholder title={p.title} active={p.active} />}
-            />
-          ))}
+          <Route path="/survey-evidence" element={<SurveyEvidence />} />
+          <Route path="/investment-memo" element={<InvestmentMemo />} />
+          <Route path="/risk-and-target" element={<RiskAndTarget />} />
+          <Route path="/plan-preferences" element={<PlanPreferences />} />
+          <Route path="/demo-document-notice" element={<DemoDocumentNotice />} />
+          <Route path="/assumptions" element={<Assumptions />} />
+          <Route path="/funding-account" element={<FundingAccount />} />
+          <Route path="/building-insights" element={<BuildingInsights />} />
+          <Route path="/building-excluded" element={<BuildingExcluded />} />
+          <Route path="/expanded-portfolio-model" element={<ExpandedPortfolioModel />} />
+          <Route path="/expanded-building-model" element={<ExpandedBuildingModel />} />
+          <Route path="/expanded-survey-image" element={<ExpandedSurveyImage />} />
           <Route path="*" element={<Placeholder title="Not found" />} />
         </Routes>
       </ToastProvider>
