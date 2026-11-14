@@ -5,7 +5,8 @@ import logo from '../assets/logo.png'
 const TABS = [
   { key: 'portfolio', label: 'Portfolio', to: '/', left: 283, width: 58 },
   { key: 'plan', label: 'Plan', to: '/plan', left: 389, width: 29 },
-  { key: 'documents', label: 'Documents', to: '/documents', left: 495, width: 76 },
+  { key: 'workspace', label: 'Workspace', to: '/workspace', left: 495, width: 74 },
+  { key: 'documents', label: 'Documents', to: '/documents', left: 617, width: 76 },
 ]
 
 export default function Navigation({ active = 'portfolio' }) {

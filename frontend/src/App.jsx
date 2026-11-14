@@ -23,6 +23,7 @@ import ExpandedPortfolioModel from './pages/ExpandedPortfolioModel'
 import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
+import Workspace from './pages/Workspace'
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Portfolio />} />
           <Route path="/plan" element={<PlanDetails />} />
+          <Route path="/workspace" element={<Workspace />} />
           <Route path="/building" element={<BuildingDetails />} />
           <Route path="/start-survey" element={<StartSurvey />} />
           <Route path="/survey-in-progress" element={<SurveyInProgress />} />

@@ -102,7 +102,7 @@ export default function SurveyComplete() {
 
       <button
         type="button"
-        onClick={() => navigate('/')}
+        onClick={() => navigate(live ? '/workspace' : '/')} // the composer's layout for this run
         className="absolute left-[944px] top-[637px] w-[440px] h-[46px] rounded-[6px] bg-brand text-white text-[13px] font-medium leading-[1.45] hover:brightness-110 active:brightness-95 transition"
       >
         Open workspace
