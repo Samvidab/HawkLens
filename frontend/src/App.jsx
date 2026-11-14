@@ -3,15 +3,18 @@ import { ToastProvider } from './lib/ui'
 import Portfolio from './pages/Portfolio'
 import PlanDetails from './pages/PlanDetails'
 import BuildingDetails from './pages/BuildingDetails'
+import StartSurvey from './pages/StartSurvey'
+import SurveyInProgress from './pages/SurveyInProgress'
+import SurveyComplete from './pages/SurveyComplete'
+import FinancingApproval from './pages/FinancingApproval'
+import FundingConfirmation from './pages/FundingConfirmation'
+import Documents from './pages/Documents'
 import Placeholder from './pages/Placeholder'
 
 // Screens not yet built — each routes to a titled placeholder so the whole
 // prototype stays navigable. These get replaced screen by screen.
 const PENDING = [
   { path: '/survey-evidence', title: 'Survey evidence', active: 'plan' },
-  { path: '/financing-approval', title: 'Financing approval', active: 'plan' },
-  { path: '/documents', title: 'Documents', active: 'documents' },
-  { path: '/funding-confirmation', title: 'Funding confirmation', active: 'plan' },
   { path: '/plan-preferences', title: 'Plan preferences', active: 'plan' },
   { path: '/demo-document-notice', title: 'Demo document notice', active: 'documents' },
   { path: '/expanded-survey-image', title: 'Expanded survey image', active: 'plan' },
@@ -22,9 +25,6 @@ const PENDING = [
   { path: '/expanded-building-model', title: 'Expanded building model', active: 'portfolio' },
   { path: '/risk-and-target', title: 'Risk and target', active: 'plan' },
   { path: '/building-insights', title: 'Building insights', active: 'portfolio' },
-  { path: '/start-survey', title: 'Start survey', active: 'portfolio' },
-  { path: '/survey-in-progress', title: 'Survey in progress', active: 'portfolio' },
-  { path: '/survey-complete', title: 'Survey complete', active: 'portfolio' },
   { path: '/building-excluded', title: 'Building excluded', active: 'portfolio' },
 ]
 
@@ -36,6 +36,12 @@ export default function App() {
           <Route path="/" element={<Portfolio />} />
           <Route path="/plan" element={<PlanDetails />} />
           <Route path="/building" element={<BuildingDetails />} />
+          <Route path="/start-survey" element={<StartSurvey />} />
+          <Route path="/survey-in-progress" element={<SurveyInProgress />} />
+          <Route path="/survey-complete" element={<SurveyComplete />} />
+          <Route path="/financing-approval" element={<FinancingApproval />} />
+          <Route path="/funding-confirmation" element={<FundingConfirmation />} />
+          <Route path="/documents" element={<Documents />} />
           {PENDING.map((p) => (
             <Route
               key={p.path}
