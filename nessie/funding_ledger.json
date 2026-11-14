@@ -1,0 +1,9 @@
+[
+    {
+        "transaction_id": "a89e8d4b-dbb0-4331-93ee-0f8f40289cc1",
+        "amount": 10000,
+        "date": "2026-11-14",
+        "status": "allocated",
+        "bank_transfer_completed": false
+    }
+]
