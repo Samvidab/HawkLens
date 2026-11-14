@@ -11,6 +11,9 @@ import logging
 import os
 from typing import Any, Protocol, TypeVar
 
+from dotenv import load_dotenv
+from google import genai
+
 from PIL import Image
 from pydantic import BaseModel, ValidationError
 
@@ -72,10 +75,18 @@ async def _generate(model: str, prompt: str, images: list[bytes], schema: type[B
     from google import genai
     from google.genai import types
 
-    key = get_settings().gemini_api_key
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    key = os.getenv("VERTEX_API_KEY")
     if not key:
-        raise RuntimeError("GEMINI_API_KEY is not set")
-    client = genai.Client(api_key=key)
+        raise RuntimeError("VERTEX_API_KEY is not set")
+
+    client = genai.Client(
+    vertexai=True,
+    api_key=key
+)
     parts: list[Any] = [types.Part.from_bytes(data=b, mime_type="image/jpeg") for b in images]
     parts.append(prompt)
     resp = await client.aio.models.generate_content(
