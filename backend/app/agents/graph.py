@@ -124,6 +124,9 @@ async def finalize_node(s: SurveyState) -> dict:
     if state.get("interior"):
         _interior().save(profile, state["interior"])
     store.save_claims(bid, state["claims"])
+    # Contract with widgets/resolver.py: verification.json = list[Claim] with final statuses.
+    write_json_atomic(store.building_dir(bid) / "verification.json",
+                      [c.model_dump(mode="json") for c in state["claims"]])
     write_json_atomic(store.building_dir(bid) / "feasibility.json", [u.model_dump(mode="json") for u in ups])
     return {"upgrades": ups, "claims": state["claims"], "aerial": state["aerial"]}
 

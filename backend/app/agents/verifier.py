@@ -10,7 +10,8 @@ Claims whose value is "unknown" have nothing to check → unverified.
 A verifier error (rate limit, bad JSON, missing verdict) never sends a claim back: the claim
 becomes unverified with a note, and an error event is emitted.
 reinspect(): each inspector re-answers only its sent-back claims (one call per inspector), given
-the verifier's questions; the graph then verifies again. verification.json keeps every round.
+the verifier's questions; the graph then verifies again. verification_log.json keeps every round;
+verification.json (written at finalize, read by the widget resolver) = list[Claim], final statuses.
 
 The verifier's score is an internal number; it is stored, never shown in feed text.
 """
@@ -150,7 +151,7 @@ async def check_group(state: dict, claims: list[Claim]) -> dict[str, ClaimVerdic
 
 
 def _log(building_id: str, rows: list[dict], fresh: bool) -> None:
-    p = store.building_dir(building_id) / "verification.json"
+    p = store.building_dir(building_id) / "verification_log.json"
     cur = json.loads(p.read_text()) if (p.exists() and not fresh) else []
     write_json_atomic(p, cur + rows)
 

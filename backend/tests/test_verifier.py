@@ -76,9 +76,14 @@ async def test_verifier_loop_outcomes(env):
     assert sum(e.kind == "observe" and e.message.startswith("re-check:") for e in ev) == 3
 
     d = tmp_path / "data" / "buildings" / "23551"
-    log = json.loads((d / "verification.json").read_text())
+    log = json.loads((d / "verification_log.json").read_text())
     assert [r["status"] for r in log if r["field"] == "roof.color"] == ["sent_back", "verified"]
     saved = {c["field"]: c["status"] for c in json.loads((d / "claims.json").read_text())}
+    # verification.json is the resolver's contract: list[Claim] with final statuses
+    from pydantic import TypeAdapter
+    from app.schemas.claims import Claim
+    final = TypeAdapter(list[Claim]).validate_json((d / "verification.json").read_text())
+    assert {c.field: c.status for c in final} == saved
     assert saved["roof.shading"] == "rejected"
     # solar depends on rejected/unverified claims → excluded from the optimizer
     ups = {u["type"]: u for u in json.loads((d / "feasibility.json").read_text())}
