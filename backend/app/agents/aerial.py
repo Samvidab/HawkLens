@@ -20,7 +20,7 @@ from shapely import wkt as shapely_wkt
 from app.adapters import geometry, vexcel
 from app.adapters.cache import write_json_atomic
 from app.adapters.types import ImageRef, Orientation
-from app.agents import llm
+from app.agents import llm, store
 from app.config import get_settings
 from app.events import emit
 from app.schemas.aerial import AerialFindings, FacadeFinding
@@ -92,8 +92,7 @@ class AerialObservation(BaseModel):
 
 # ---- files ----
 
-def building_dir(building_id: str) -> Path:
-    return Path(get_settings().data_dir) / "buildings" / building_id
+building_dir = store.building_dir
 
 
 def _clip01(x: float) -> float:
@@ -237,15 +236,27 @@ async def fetch_images(profile: BuildingProfile) -> list[ImageRef]:
     return images
 
 
-def _short(profile: BuildingProfile) -> str:
-    return profile.name
+class AerialResult(BaseModel):
+    images: list[ImageRef]
+    obs: AerialObservation
+    findings: AerialFindings
+    claims: list[Claim]
+
+    @property
+    def overhead(self) -> ImageRef:
+        return next(i for i in self.images if i.source == "vexcel_overhead")
 
 
-async def run(profile: BuildingProfile, run_id: str | None = None) -> tuple[AerialFindings, list[Claim]]:
-    bid = profile.building_id
-    ev = (lambda kind, msg, evidence=None: emit(run_id, AGENT, kind, msg, bid, evidence, building_name=profile.name)
-          ) if run_id else (lambda *a, **k: None)
+def _emitter(profile: BuildingProfile, run_id: str | None):
+    if not run_id:
+        return lambda *a, **k: None
+    return lambda kind, msg, evidence=None: emit(run_id, AGENT, kind, msg, profile.building_id, evidence,
+                                                 building_name=profile.name)
 
+
+async def inspect(profile: BuildingProfile, run_id: str | None = None) -> AerialResult:
+    """Fetch imagery, ask Gemini, build findings + claims, emit fetch/observe events. Writes nothing."""
+    ev = _emitter(profile, run_id)
     images = await fetch_images(profile)
     overhead = next(i for i in images if i.source == "vexcel_overhead")
     n_obl = sum(1 for i in images if i.source == "vexcel_oblique")
@@ -255,20 +266,28 @@ async def run(profile: BuildingProfile, run_id: str | None = None) -> tuple[Aeri
     try:
         obs = await llm.vision_json(prompt_for(profile, images), images, AerialObservation)
     except Exception as e:  # noqa: BLE001 - Gemini/validation failure → unknowns (TRD §10)
-        log.warning("aerial inspector failed for %s: %s", bid, e)
+        log.warning("aerial inspector failed for %s: %s", profile.building_id, e)
         ev("error", f"vision model failed ({type(e).__name__}); roof marked unknown")
         obs = unknown_observation()
 
     findings, claims = build_findings(profile, obs, images)
-
-    d = building_dir(bid)
-    write_json_atomic(d / "aerial.json", findings.model_dump(mode="json"))
-    write_json_atomic(d / "claims.json", [c.model_dump(mode="json") for c in claims])
-    write_json_atomic(d / "images.json", {i.image_id: i.model_dump(mode="json") for i in images})
-    draw_debug(profile, overhead, claims, d / "aerial_debug.png")
-
     solar = {True: "panels present", False: "no panels"}[findings.existing_solar] \
         if obs.existing_solar.value != "unknown" else "panels unknown"
     ev("observe", f"roof {findings.roof_type}, {findings.roof_color}, {solar}", overhead.image_id)
     ev("observe", f"usable roof {findings.usable_roof_fraction:.0%}, shading {obs.shading.value}", overhead.image_id)
-    return findings, claims
+    return AerialResult(images=images, obs=obs, findings=findings, claims=claims)
+
+
+def save(profile: BuildingProfile, res: AerialResult) -> None:
+    d = building_dir(profile.building_id)
+    write_json_atomic(d / "aerial.json", res.findings.model_dump(mode="json"))
+    store.add_images(profile.building_id, res.images)
+    draw_debug(profile, res.overhead, res.claims, d / "aerial_debug.png")
+
+
+async def run(profile: BuildingProfile, run_id: str | None = None) -> tuple[AerialFindings, list[Claim]]:
+    """inspect + save, including claims.json (used by survey_one.py)."""
+    res = await inspect(profile, run_id)
+    save(profile, res)
+    store.save_claims(profile.building_id, res.claims)
+    return res.findings, res.claims
