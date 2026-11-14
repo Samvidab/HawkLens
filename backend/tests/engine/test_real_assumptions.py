@@ -54,3 +54,18 @@ def test_remaining_placeholders_are_named_in_their_source():
         assert src != "PLACEHOLDER" or name == "building_estimates", f"{name} has no field-level source"
         if "PLACEHOLDER" in src and src != "PLACEHOLDER":
             assert "PLACEHOLDER: " in src, name
+
+
+
+def test_live_net_upfront_always_positive():
+    """Team rule on the real data: in every scenario, every upgrade costs something net."""
+    from app.engine.monte_carlo import simulate as mc_simulate
+    from app.engine.buildings import load_building
+    a = load_assumptions()
+    ups = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
+    bld = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
+    sim = mc_simulate(ups, bld, a)
+    assert (sim.upfront_usd > 0).all()
+    for t, b in a["upgrades"].items():
+        if b["avoided_replacement_cost_per_unit"] > 0:
+            assert b["premium_over_replacement"] and b["premium_over_replacement"] > 0, t

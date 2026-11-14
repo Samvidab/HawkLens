@@ -23,7 +23,7 @@ UPGRADE_KEYS = {
     "cost_unit", "unit_cost", "avoided_replacement_cost_per_unit", "savings_unit", "savings_mu", "savings_sd", "life_min", "life_max",
     "incentive_fraction", "incentive_p", "incentive_lag_years", "maint_frac_per_year", "source",
     "replacement_due_age_years", "incentive_usd_per_kwh_saved", "incentive_cap_frac_of_cost",
-    "incentive_min_kwh_saved",
+    "incentive_min_kwh_saved", "premium_over_replacement",
 }
 CITY_KEYS = {
     "electricity_rate_usd_per_kwh", "grid_kg_co2_per_kwh", "solar_kwh_per_kw_year", "export_rate_usd_per_kwh",
@@ -96,6 +96,12 @@ def test_assumptions_cover_every_type_and_city():
         assert age is None or (isinstance(age, int) and age > 0), t
         if block["avoided_replacement_cost_per_unit"] > 0:
             assert age is not None, f"{t}: has an avoided replacement cost but no replacement_due_age_years"
+            prem = block["premium_over_replacement"]
+            assert prem is not None and prem > 0, f"{t}: like-for-like cost needs a premium_over_replacement > 0"
+            assert block["unit_cost"] == pytest.approx(block["avoided_replacement_cost_per_unit"] * (1 + prem)), \
+                f"{t}: unit_cost must equal like-for-like x (1 + premium)"
+        else:
+            assert block["premium_over_replacement"] is None, t
     assert set(a["cities"]) == {"Houston"}   # Houston only; no LA values on purpose
     for c, block in a["cities"].items():
         assert set(block) == CITY_KEYS, c

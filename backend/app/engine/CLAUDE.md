@@ -89,6 +89,8 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 
 At most one upgrade per building per category. Savings basis per type is `savings_unit` in assumptions.json: `kwh_per_sqft_year` (cool roof, insulation: kWh = s × sqft treated), `fraction_of_building_kwh` (windows fixed; heat pump and LED scaled by coverage = size / floor area), `fraction_of_modeled_generation` (solar). Upfront cost C0 = max(unit_cost − avoided_replacement_cost_per_unit, 0) × size (incremental over like-for-like); the incentive uses the full unit_cost × size (capped at it); maintenance uses the net upfront cost when an avoided replacement applies, else the full cost. `price_inputs` raises `ValueError` if an upgrade's `size_unit` isn't its type's unit (`models.SIZE_UNIT_BY_TYPE`: solar kW, everything else sqft).
 
+Installed cost ≥ like-for-like (team rule): if `premium_over_replacement` is set, gross = like-for-like × (1 + premium) per scenario, so net when due = like-for-like × premium > 0. Without a premium, `price_inputs` rejects `unit_cost` < like-for-like. `SimulationResult.upfront_usd` holds per-scenario net upfront.
+
 Replacement-due rule: `avoided_replacement_cost_per_unit` is credited only if `global.analysis_year` − `year_built` ≥ `upgrades.<type>.replacement_due_age_years` (null or unknown year → no credit; key absent → legacy, always credit). `monte_carlo.replacement_due()`.
 
 Incentive if received (per scenario) = min(incentive_fraction × full cost + incentive_usd_per_kwh_saved × year-1 kWh saved [only if ≥ incentive_min_kwh_saved], incentive_cap_frac_of_cost × full cost). Missing fields default to 0 / 1.0 / 0, which is the old behavior.

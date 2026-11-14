@@ -209,12 +209,14 @@ def test_avoided_replacement_cost_hand_check(portfolio):
     assert x.maintenance_usd_per_year == pytest.approx(17_920)
 
 
-def test_upfront_never_below_zero(portfolio):
+def test_installed_cost_below_like_for_like_is_rejected(portfolio):
+    """Team rule: installed cost may never be below the like-for-like replacement cost."""
     upgrades, buildings, a = portfolio
     d = copy.deepcopy(a)
     d["upgrades"]["cool_roof"]["avoided_replacement_cost_per_unit"] = 5.0     # > unit_cost 2.0
     roof = next(u for u in upgrades if u.upgrade_id == "hou-001-cool_roof")
-    assert price_inputs(roof, buildings["hou-001"], d).upfront_usd == 0.0
+    with pytest.raises(ValueError, match="below its like-for-like replacement cost"):
+        price_inputs(roof, buildings["hou-001"], d)
 
 
 def test_avoided_cost_is_optional(portfolio):
@@ -491,3 +493,54 @@ def test_due_age_spread_makes_credit_probabilistic(portfolio):
     mixed = simulate([hp], buildings, d, n_scenarios=20_000).npv[0]
     share_due = float(np.isclose(mixed, always[0]).mean())
     assert share_due == pytest.approx(0.566, abs=0.02)
+
+
+
+# --- premium over like-for-like ---------------------------------------------------------------
+
+def _with_premium(a, t="heat_pump", premium=0.15, spread=None, due_age=None):
+    d = copy.deepcopy(a)
+    d["upgrades"][t]["premium_over_replacement"] = premium
+    if due_age is not None:
+        d["upgrades"][t]["replacement_due_age_years"] = due_age
+    if spread:
+        d["uncertainty"] = {f"upgrades.{t}.premium_over_replacement": spread}
+    return d
+
+
+def test_premium_hand_check_due_and_not_due(portfolio):
+    """hou-001 heat pump, 112,000 sqft, like-for-like $12/sqft (frozen file), premium 0.15:
+    installed = 12 x 1.15 = $13.80/sqft -> $1,545,600. Due (41 >= 40): net = 12 x 0.15 x 112,000
+    = $201,600. Not due (41 < 45): net = full $1,545,600."""
+    upgrades, buildings, a = portfolio
+    hp = _hp(upgrades)
+    due = price_inputs(hp, buildings["hou-001"], _with_premium(a, due_age=40))
+    assert due.gross_cost_usd == pytest.approx(1_545_600) and due.upfront_usd == pytest.approx(201_600)
+    not_due = price_inputs(hp, buildings["hou-001"], _with_premium(a, due_age=45))
+    assert not_due.upfront_usd == pytest.approx(1_545_600)
+
+
+@pytest.mark.parametrize("premium,bad", [(0.15, None), (0.0, "must be > 0"), (-0.1, "must be > 0")])
+def test_premium_must_be_positive(portfolio, premium, bad):
+    upgrades, buildings, a = portfolio
+    d = _with_premium(a, premium=premium)
+    if bad:
+        with pytest.raises(ValueError, match=bad):
+            price_inputs(_hp(upgrades), buildings["hou-001"], d)
+    else:
+        assert price_inputs(_hp(upgrades), buildings["hou-001"], d).upfront_usd > 0
+
+
+def test_net_upfront_always_positive_with_premium_spread(portfolio):
+    """±50% premium spread on all three like-for-like types, due everywhere: in every one of
+    20,000 scenarios every upgrade's net upfront is > 0 (premium multiplier floored above 0)."""
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["uncertainty"] = {}
+    for t in ("heat_pump", "window_upgrade", "cool_roof"):
+        d["upgrades"][t]["premium_over_replacement"] = 0.15
+        d["upgrades"][t]["replacement_due_age_years"] = 1
+        d["uncertainty"][f"upgrades.{t}.premium_over_replacement"] = 0.5
+        d["uncertainty"][f"upgrades.{t}.avoided_replacement_cost_per_unit"] = 0.3
+    sim = simulate(upgrades, buildings, d, n_scenarios=20_000)
+    assert (sim.upfront_usd > 0).all()

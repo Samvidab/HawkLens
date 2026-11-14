@@ -77,11 +77,12 @@
       "replacement_due_age_years": null,
       "incentive_usd_per_kwh_saved": 0.0,
       "incentive_cap_frac_of_cost": 1.0,
-      "incentive_min_kwh_saved": 0
+      "incentive_min_kwh_saved": 0,
+      "premium_over_replacement": null
     },
     "cool_roof": {
       "cost_unit": "usd_per_sqft",
-      "unit_cost": 2.75,
+      "unit_cost": 2.5875,
       "avoided_replacement_cost_per_unit": 2.25,
       "savings_unit": "kwh_per_sqft_year",
       "savings_mu": 1.5,
@@ -92,15 +93,16 @@
       "incentive_p": 0.5,
       "incentive_lag_years": 0,
       "maint_frac_per_year": 0.002,
-      "source": "unit_cost 2.75: ESTIMATE, kept prior value (houston.json @cb1722a row 6 cool roof is missing, no verified 2026 Houston commercial source, value from houston.json @1f763d7, spread \u00b130%); avoided_replacement_cost_per_unit 2.25, spread \u00b130%: no source URL (houston.json @cb1722a row 7 cool roof, ESTIMATE, analyst_assumption, checked 2026-11-14, Candidate benchmark value per research prompt rule 7.); savings_mu 1.5 kwh_per_sqft_year, savings_sd = \u00b130% / 2 = 0.225: no source URL (houston.json @cb1722a row 8 cool roof, ESTIMATE, analyst_assumption, checked 2026-11-14, Houston LBNL/ORNL candidate benchmark parameter); life_min/life_max 15-30 yr (her typical 20): https://www.nrel.gov/docs/fy24osti/86602.pdf (houston.json @cb1722a row 9 cool roof, sourced, published_data, checked 2026-11-14, NREL ComStock documentation / Building Envelope upgrade measure lifespan assumptions (IEAD / cool roof membrane)); maint_frac_per_year 0.002: ESTIMATE, kept prior value (houston.json @cb1722a row 10 cool roof is missing, spread \u00b130%); incentive 0 (fraction 0, $/kWh 0): team assumption: CenterPoint Energy C&I Standard Offer Program (houston.json @cb1722a row 11) gives only a cap (50% of installed cost) for cool roof, no $/kW or $/kWh amount, so it can't be converted to dollars; incentive_cap_frac_of_cost 0.5, incentive_p 0.5, incentive_lag_years 0: team assumption: same program terms, kept for when an amount is sourced; replacement_due_age_years 15, spread \u00b130%: team assumption: low end of her lifespan range (houston.json @cb1722a row 9), i.e. the existing item is treated as due once it has reached the shortest typical service life",
+      "source": "unit_cost 2.5875: derived = avoided_replacement_cost_per_unit 2.25 x (1 + premium_over_replacement 0.15), team rule: installed cost may never be below the like-for-like replacement cost (replaces the kept estimate 2.75); premium_over_replacement 0.15, spread \u00b150%: team assumption: an efficient model (heat pump RTU / low-E IGU / reflective membrane) typically costs 10-20% more than the conventional like-for-like replacement, so when replacement is due the owner pays only the premium; avoided_replacement_cost_per_unit 2.25, spread \u00b130%: no source URL (houston.json @cb1722a row 7 cool roof, ESTIMATE, analyst_assumption, checked 2026-11-14, Candidate benchmark value per research prompt rule 7.); savings_mu 1.5 kwh_per_sqft_year, savings_sd = \u00b130% / 2 = 0.225: no source URL (houston.json @cb1722a row 8 cool roof, ESTIMATE, analyst_assumption, checked 2026-11-14, Houston LBNL/ORNL candidate benchmark parameter); life_min/life_max 15-30 yr (her typical 20): https://www.nrel.gov/docs/fy24osti/86602.pdf (houston.json @cb1722a row 9 cool roof, sourced, published_data, checked 2026-11-14, NREL ComStock documentation / Building Envelope upgrade measure lifespan assumptions (IEAD / cool roof membrane)); maint_frac_per_year 0.002: ESTIMATE, kept prior value (houston.json @cb1722a row 10 cool roof is missing, spread \u00b130%); incentive 0 (fraction 0, $/kWh 0): team assumption: CenterPoint Energy C&I Standard Offer Program (houston.json @cb1722a row 11) gives only a cap (50% of installed cost) for cool roof, no $/kW or $/kWh amount, so it can't be converted to dollars; incentive_cap_frac_of_cost 0.5, incentive_p 0.5, incentive_lag_years 0: team assumption: same program terms, kept for when an amount is sourced; replacement_due_age_years 15, spread \u00b130%: team assumption: low end of her lifespan range (houston.json @cb1722a row 9), i.e. the existing item is treated as due once it has reached the shortest typical service life",
       "replacement_due_age_years": 15,
       "incentive_usd_per_kwh_saved": 0.0,
       "incentive_cap_frac_of_cost": 0.5,
-      "incentive_min_kwh_saved": 0
+      "incentive_min_kwh_saved": 0,
+      "premium_over_replacement": 0.15
     },
     "window_upgrade": {
       "cost_unit": "usd_per_sqft",
-      "unit_cost": 35.0,
+      "unit_cost": 57.5,
       "avoided_replacement_cost_per_unit": 50.0,
       "savings_unit": "fraction_of_building_kwh",
       "savings_mu": 0.08,
@@ -111,11 +113,12 @@
       "incentive_p": 0.5,
       "incentive_lag_years": 0,
       "maint_frac_per_year": 0.001,
-      "source": "unit_cost 35.0: ESTIMATE, kept prior value (houston.json @cb1722a row 6 windows is missing, no verified 2026 Houston commercial source, value from houston.json @1f763d7, spread \u00b130%); avoided_replacement_cost_per_unit 50.0 (her range 40.0-120.0, used as a fixed value): https://diamondwindows.com/feeds/blog/commercial-windows-pricing (houston.json @cb1722a row 7 windows, sourced, published_data, checked 2026-11-14, Commercial Storefront Windows Pricing 2026, Table: Entry price band ($50-$85/sq ft) to Thermal-Break Aluminum + IGU mid price band ($80-$120/sq ft)); savings_mu 0.08 fraction_of_building_kwh, savings_sd = \u00b130% / 2 = 0.012: no source URL (houston.json @cb1722a row 8 windows, ESTIMATE, analyst_assumption, checked 2026-11-14, Whole-building electricity savings fraction scenario); life_min/life_max 20-40 yr (her typical 30): https://www.nrel.gov/docs/fy24osti/86602.pdf (houston.json @cb1722a row 9 windows, sourced, published_data, checked 2026-11-14, NREL ComStock documentation / Commercial fenestration replacement lifespan assumptions); maint_frac_per_year 0.001: ESTIMATE, kept prior value (houston.json @cb1722a row 10 windows is missing, spread \u00b130%); incentive 0 (fraction 0, $/kWh 0): team assumption: CenterPoint Energy C&I Standard Offer Program (houston.json @cb1722a row 11) gives only a cap (50% of installed cost) for windows, no $/kW or $/kWh amount, so it can't be converted to dollars; incentive_cap_frac_of_cost 0.5, incentive_p 0.5, incentive_lag_years 0: team assumption: same program terms, kept for when an amount is sourced; replacement_due_age_years 20, spread \u00b130%: team assumption: low end of her lifespan range (houston.json @cb1722a row 9), i.e. the existing item is treated as due once it has reached the shortest typical service life",
+      "source": "unit_cost 57.5: derived = avoided_replacement_cost_per_unit 50.0 x (1 + premium_over_replacement 0.15), team rule: installed cost may never be below the like-for-like replacement cost (replaces the kept estimate 35.0); premium_over_replacement 0.15, spread \u00b150%: team assumption: an efficient model (heat pump RTU / low-E IGU / reflective membrane) typically costs 10-20% more than the conventional like-for-like replacement, so when replacement is due the owner pays only the premium; avoided_replacement_cost_per_unit 50.0 (her range 40.0-120.0, used as a fixed value): https://diamondwindows.com/feeds/blog/commercial-windows-pricing (houston.json @cb1722a row 7 windows, sourced, published_data, checked 2026-11-14, Commercial Storefront Windows Pricing 2026, Table: Entry price band ($50-$85/sq ft) to Thermal-Break Aluminum + IGU mid price band ($80-$120/sq ft)); savings_mu 0.08 fraction_of_building_kwh, savings_sd = \u00b130% / 2 = 0.012: no source URL (houston.json @cb1722a row 8 windows, ESTIMATE, analyst_assumption, checked 2026-11-14, Whole-building electricity savings fraction scenario); life_min/life_max 20-40 yr (her typical 30): https://www.nrel.gov/docs/fy24osti/86602.pdf (houston.json @cb1722a row 9 windows, sourced, published_data, checked 2026-11-14, NREL ComStock documentation / Commercial fenestration replacement lifespan assumptions); maint_frac_per_year 0.001: ESTIMATE, kept prior value (houston.json @cb1722a row 10 windows is missing, spread \u00b130%); incentive 0 (fraction 0, $/kWh 0): team assumption: CenterPoint Energy C&I Standard Offer Program (houston.json @cb1722a row 11) gives only a cap (50% of installed cost) for windows, no $/kW or $/kWh amount, so it can't be converted to dollars; incentive_cap_frac_of_cost 0.5, incentive_p 0.5, incentive_lag_years 0: team assumption: same program terms, kept for when an amount is sourced; replacement_due_age_years 20, spread \u00b130%: team assumption: low end of her lifespan range (houston.json @cb1722a row 9), i.e. the existing item is treated as due once it has reached the shortest typical service life",
       "replacement_due_age_years": 20,
       "incentive_usd_per_kwh_saved": 0.0,
       "incentive_cap_frac_of_cost": 0.5,
-      "incentive_min_kwh_saved": 0
+      "incentive_min_kwh_saved": 0,
+      "premium_over_replacement": 0.15
     },
     "insulation": {
       "cost_unit": "usd_per_sqft",
@@ -134,11 +137,12 @@
       "replacement_due_age_years": null,
       "incentive_usd_per_kwh_saved": 0.0,
       "incentive_cap_frac_of_cost": 0.5,
-      "incentive_min_kwh_saved": 0
+      "incentive_min_kwh_saved": 0,
+      "premium_over_replacement": null
     },
     "heat_pump": {
       "cost_unit": "usd_per_sqft",
-      "unit_cost": 18.0,
+      "unit_cost": 24.725,
       "avoided_replacement_cost_per_unit": 21.5,
       "savings_unit": "fraction_of_building_kwh",
       "savings_mu": 0.1,
@@ -149,11 +153,12 @@
       "incentive_p": 0.5,
       "incentive_lag_years": 0,
       "maint_frac_per_year": 0.015,
-      "source": "unit_cost 18.0: ESTIMATE, kept prior value (houston.json @cb1722a row 6 heat pump is missing, no verified 2026 Houston commercial source, value from houston.json @1f763d7, spread \u00b130%); avoided_replacement_cost_per_unit 21.5 (her range 15.0-28.0, used as a fixed value): https://terrapincg.com/news/commercial-hvac-cost-per-square-foot (houston.json @cb1722a row 7 heat pump, sourced, published_data, checked 2026-11-14, Terrapin Consulting Group 2026 Commercial HVAC Cost Per Square Foot report, Gulf Coast region packaged rooftop unit table); savings_mu 0.1 fraction_of_building_kwh (user decision: her 10% electricity-only value, her row text also mentions 0.18), savings_sd = \u00b130% / 2 = 0.015: no source URL (houston.json @cb1722a row 8 heat pump, ESTIMATE, analyst_assumption, checked 2026-11-14, Provisional whole-building electricity scenario (may include displaced gas / electrification load increase)); life_min/life_max 15-25 yr (her typical 20): https://www.nrel.gov/docs/fy24osti/86602.pdf (houston.json @cb1722a row 9 heat pump, sourced, published_data, checked 2026-11-14, NREL ComStock documentation / HVAC Heat Pump Rooftop Unit (HP-RTU) replacement lifespan assumptions); maint_frac_per_year 0.015: ESTIMATE, kept prior value (houston.json @cb1722a row 10 heat pump is missing, spread \u00b130%); incentive_usd_per_kwh_saved 0.06, spread \u00b130%: team assumption: CenterPoint Energy C&I Standard Offer Program (houston.json @cb1722a row 11) pays $0.060 per verified kWh saved, applied to each scenario's year-1 kWh saved; $175/kW summer peak demand component set to 0: team assumption: neither her file nor the model gives this upgrade's peak-kW reduction, so it can't be converted to dollars; incentive_cap_frac_of_cost 0.5: team assumption: SOP cap of 50% of total installed project cost (her row 11 for the same program); incentive_min_kwh_saved 100000: team assumption: SOP minimum of 15 kW or 100,000 kWh per site, applied per upgrade (conservative, the kW route can't be checked); incentive_fraction 0: team assumption: no tax credit (air-source heat pumps don't qualify for the 48 ITC, 179D unavailable after June 30 2026, her row 11); incentive_p 0.5, incentive_lag_years 0: team assumption: rebate paid after M&V, about at install, 50% chance the project is accepted and funded (a probability, not widened); replacement_due_age_years 15, spread \u00b130%: team assumption: low end of her lifespan range (houston.json @cb1722a row 9), i.e. the existing item is treated as due once it has reached the shortest typical service life",
+      "source": "unit_cost 24.725: derived = avoided_replacement_cost_per_unit 21.5 x (1 + premium_over_replacement 0.15), team rule: installed cost may never be below the like-for-like replacement cost (replaces the kept estimate 18.0); premium_over_replacement 0.15, spread \u00b150%: team assumption: an efficient model (heat pump RTU / low-E IGU / reflective membrane) typically costs 10-20% more than the conventional like-for-like replacement, so when replacement is due the owner pays only the premium; avoided_replacement_cost_per_unit 21.5 (her range 15.0-28.0, used as a fixed value): https://terrapincg.com/news/commercial-hvac-cost-per-square-foot (houston.json @cb1722a row 7 heat pump, sourced, published_data, checked 2026-11-14, Terrapin Consulting Group 2026 Commercial HVAC Cost Per Square Foot report, Gulf Coast region packaged rooftop unit table); savings_mu 0.1 fraction_of_building_kwh (user decision: her 10% electricity-only value, her row text also mentions 0.18), savings_sd = \u00b130% / 2 = 0.015: no source URL (houston.json @cb1722a row 8 heat pump, ESTIMATE, analyst_assumption, checked 2026-11-14, Provisional whole-building electricity scenario (may include displaced gas / electrification load increase)); life_min/life_max 15-25 yr (her typical 20): https://www.nrel.gov/docs/fy24osti/86602.pdf (houston.json @cb1722a row 9 heat pump, sourced, published_data, checked 2026-11-14, NREL ComStock documentation / HVAC Heat Pump Rooftop Unit (HP-RTU) replacement lifespan assumptions); maint_frac_per_year 0.015: ESTIMATE, kept prior value (houston.json @cb1722a row 10 heat pump is missing, spread \u00b130%); incentive_usd_per_kwh_saved 0.06, spread \u00b130%: team assumption: CenterPoint Energy C&I Standard Offer Program (houston.json @cb1722a row 11) pays $0.060 per verified kWh saved, applied to each scenario's year-1 kWh saved; $175/kW summer peak demand component set to 0: team assumption: neither her file nor the model gives this upgrade's peak-kW reduction, so it can't be converted to dollars; incentive_cap_frac_of_cost 0.5: team assumption: SOP cap of 50% of total installed project cost (her row 11 for the same program); incentive_min_kwh_saved 100000: team assumption: SOP minimum of 15 kW or 100,000 kWh per site, applied per upgrade (conservative, the kW route can't be checked); incentive_fraction 0: team assumption: no tax credit (air-source heat pumps don't qualify for the 48 ITC, 179D unavailable after June 30 2026, her row 11); incentive_p 0.5, incentive_lag_years 0: team assumption: rebate paid after M&V, about at install, 50% chance the project is accepted and funded (a probability, not widened); replacement_due_age_years 15, spread \u00b130%: team assumption: low end of her lifespan range (houston.json @cb1722a row 9), i.e. the existing item is treated as due once it has reached the shortest typical service life",
       "replacement_due_age_years": 15,
       "incentive_usd_per_kwh_saved": 0.06,
       "incentive_cap_frac_of_cost": 0.5,
-      "incentive_min_kwh_saved": 100000
+      "incentive_min_kwh_saved": 100000,
+      "premium_over_replacement": 0.15
     },
     "led_retrofit": {
       "cost_unit": "usd_per_sqft",
@@ -172,7 +177,8 @@
       "replacement_due_age_years": null,
       "incentive_usd_per_kwh_saved": 0.06,
       "incentive_cap_frac_of_cost": 0.5,
-      "incentive_min_kwh_saved": 100000
+      "incentive_min_kwh_saved": 100000,
+      "premium_over_replacement": null
     }
   },
   "uncertainty": {
@@ -185,14 +191,11 @@
     "cities.Houston.kwh_per_sqft_year.Multi-Family": 0.3,
     "cities.Houston.export_rate_usd_per_kwh": 0.3,
     "upgrades.rooftop_solar.unit_cost": 0.3,
-    "upgrades.cool_roof.unit_cost": 0.3,
     "upgrades.cool_roof.avoided_replacement_cost_per_unit": 0.3,
     "upgrades.cool_roof.maint_frac_per_year": 0.3,
-    "upgrades.window_upgrade.unit_cost": 0.3,
     "upgrades.window_upgrade.maint_frac_per_year": 0.3,
     "upgrades.insulation.unit_cost": 0.3,
     "upgrades.insulation.maint_frac_per_year": 0.3,
-    "upgrades.heat_pump.unit_cost": 0.3,
     "upgrades.heat_pump.maint_frac_per_year": 0.3,
     "upgrades.led_retrofit.unit_cost": 0.3,
     "upgrades.led_retrofit.maint_frac_per_year": 0.3,
@@ -203,6 +206,9 @@
     "upgrades.cool_roof.replacement_due_age_years": 0.3,
     "upgrades.window_upgrade.replacement_due_age_years": 0.3,
     "cities.Houston.electricity_rate_usd_per_kwh": 0.3,
-    "cities.Houston.kwh_per_sqft_year.Other": 0.3
+    "cities.Houston.kwh_per_sqft_year.Other": 0.3,
+    "upgrades.heat_pump.premium_over_replacement": 0.5,
+    "upgrades.window_upgrade.premium_over_replacement": 0.5,
+    "upgrades.cool_roof.premium_over_replacement": 0.5
   }
 }
