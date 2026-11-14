@@ -1,9 +1,0 @@
-{
-  "building_id": "hou-001", "costar_id": "FIXTURE-0001", "name": "Fixture Tower A",
-  "address": "100 Example St, Houston, TX", "city": "Houston", "lat": 29.7604, "lon": -95.3698,
-  "footprint_wkt": null, "footprint_source": "estimated",
-  "property_type": "Office", "building_class": "B", "year_built": 1985,
-  "stories": 8, "rba_sqft": 120000, "occupancy_pct": 0.82,
-  "matterport_model_id": "FIXTURE-MP-0001",
-  "source_fields": {"rba_sqft": "FIXTURE", "year_built": "FIXTURE"}
-}

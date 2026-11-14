@@ -1,9 +1,0 @@
-{
-  "building_id": "hou-002", "costar_id": "FIXTURE-0002", "name": "Fixture Retail Center",
-  "address": "200 Example Ave, Houston, TX", "city": "Houston", "lat": 29.7372, "lon": -95.4140,
-  "footprint_wkt": null, "footprint_source": "estimated",
-  "property_type": "Retail", "building_class": "C", "year_built": 2005,
-  "stories": 1, "rba_sqft": 45000, "occupancy_pct": 0.91,
-  "matterport_model_id": null,
-  "source_fields": {"rba_sqft": "FIXTURE", "year_built": "FIXTURE"}
-}
