@@ -34,6 +34,8 @@
 
 - T4.3 deploy prep (nothing deployed): CORS from `CORS_ORIGINS` (+ optional `CORS_ORIGIN_REGEX`; default = local dev ports) in main.py, tested incl. preflight and the SSE stream; `app/envutil.py` (env then backend/.env) shared by llm/finance/main; `scripts/run_server.sh [demo]` (single worker, binds 127.0.0.1 by default, `demo` = CACHE_MODE=read_only); `backend/.env.example` (names only); `backend/deploy/retroalpha.service` (systemd) and `deploy/Caddyfile` (HTTPS, SSE not buffered); `backend/DEPLOY.md` (Vultr steps: setup, secrets/data via scp/rsync, run, checks, update/rollback). Needs from a human at deploy time: the Vultr instance + who deploys, the frontend domain for CORS_ORIGINS and the API domain's DNS, the repo URL.
 
+- `scripts/smoke_test.py`: starts the app on a free port (synthetic portfolio, stub engine/Nessie, Gemini off) or tests a running server with `--url`; checks /health, /registry, /portfolio, the live SSE stream, POST /compose for every action type (goal, include_unverified, set_target/budget/risk, exclude/include building, toggle on/off, select_bar, open_building incl. back, target gap, approve with stale id -> 409, approve, repeat approve, 3 bad inputs -> 422), each layout against Layout + registry, the 3 s budget, GET /state, and live-vs-recorded events. Self-contained: 103/103 checks; against a separately started server (`run_server.sh`): 89/89. Wrapped by `tests/test_smoke_script.py`.
+
 ## In progress
 - hero MatterPak check: waiting for Lane A to extract it (no cache/media/mesh/ in this worktree or the main checkout yet)
 
