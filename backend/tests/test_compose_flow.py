@@ -69,8 +69,8 @@ def test_state_endpoint_and_events(client):
     st = c.get("/state/r1").json()
     assert st["run_id"] == "r1" and st["layout"]["situation"] == "portfolio_overview" and st["goal"]["target_pct"] == 10
     ev = [json.loads(l) for l in (d / "runs/r1/events.jsonl").read_text().splitlines()]
-    assert [(e["agent"], e["kind"]) for e in ev] == [("Pricing", "price"), ("Composer", "compose")]
-    assert "p(hit)" in ev[0]["message"]
+    assert [(e["agent"], e["kind"]) for e in ev] == [("Orchestrator", "plan"), ("Pricing", "price"), ("Composer", "compose")]
+    assert "p(hit)" in ev[1]["message"]
 
 
 def test_set_target_reprices_and_recomposes(client):
@@ -93,12 +93,10 @@ def test_bad_inputs(client):
     assert c.post("/compose", json={"run_id": "r1", "type": "chat", "payload": {}}).status_code == 422
 
 
-def test_compose_without_any_plan_drops_unready_widgets(client):
+def test_open_building_without_a_plan_still_composes(client):
     c, d = client
     r = c.post("/compose", json={"run_id": "r2", "type": "open_building", "payload": {"building_id": "b1"}})
     assert r.status_code == 200
     lay = r.json()
-    assert lay["widgets"][-1]["type"] == "activity_feed"  # never blank
-    tc = {w["type"]: w for w in lay["widgets"]}
-    assert tc["target_control"]["props"]["p_hit_target"] is None  # no plan yet: empty but present
-    assert tc["plan_table"]["props"]["rows"] == []
+    assert lay["situation"] == "building_detail" and lay["focus_building_id"] == "b1"
+    assert lay["widgets"][-1]["type"] == "activity_feed" and lay["widgets"][0]["type"] == "building_header"

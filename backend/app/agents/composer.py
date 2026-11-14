@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from pydantic import BaseModel
+
 from app import events
 from app.schemas.layout import Layout, Situation
 from app.storage import data_path, write_json
@@ -16,8 +18,9 @@ from app.widgets.templates import template_for
 
 
 def compose_v0(run_id: str, *, focus_building_id: str | None = None,
-               situation: Situation = "portfolio_overview") -> Layout:
-    ctx = ResolveContext.load(data_path(), run_id, focus_building_id=focus_building_id, situation=situation)
+               situation: Situation = "portfolio_overview", selected_upgrade_ids: list[str] | None = None) -> Layout:
+    ctx = ResolveContext.load(data_path(), run_id, focus_building_id=focus_building_id, situation=situation,
+                              selected_upgrade_ids=selected_upgrade_ids or [])
     kept = []
     for spec in template_for(situation):
         try:
@@ -31,8 +34,24 @@ def compose_v0(run_id: str, *, focus_building_id: str | None = None,
     return layout
 
 
-def save_state(run_id: str, layout: Layout, goal: dict | None, plan_id: str | None) -> dict:
-    state = {"run_id": run_id, "goal": goal, "plan_id": plan_id, "layout": layout.model_dump(mode="json"),
+def save_state(run_id: str, layout: Layout, goal: dict | None, plan_id: str | None, view: dict | None = None) -> dict:
+    state = {"run_id": run_id, "goal": goal, "plan_id": plan_id, "view": view or {},
+             "layout": layout.model_dump(mode="json"),
              "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     write_json(data_path("runs", run_id, "state.json"), state)
     return state
+
+
+class View(BaseModel):
+    """Per-run view state persisted in runs/<id>/state.json."""
+    focus_building_id: str | None = None
+    selected_upgrade_ids: list[str] = []
+    issues_shown: list[str] = []  # claim ids already surfaced as verification_issue
+
+
+async def compose(run_id: str, action_type: str, view: View) -> tuple[Layout, View]:
+    situation: Situation = ("approved" if action_type == "approve"
+                            else "building_detail" if view.focus_building_id else "portfolio_overview")
+    layout = compose_v0(run_id, focus_building_id=view.focus_building_id, situation=situation,
+                        selected_upgrade_ids=view.selected_upgrade_ids)
+    return layout, view
