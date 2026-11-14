@@ -19,7 +19,17 @@ class Settings(BaseSettings):
     # Toolkit keys (exact SDK/API usage discovered in T0.3)
     costar_api_key: str | None = None
     vexcel_api_key: str | None = None
-    matterport_api_key: str | None = None
+    matterport_api_key: str | None = None  # legacy; unused by the Matterport platform
+
+    # Matterport platform (HTTP basic auth: token id = user, secret = password)
+    mp_token_id: str | None = None
+    mp_token_secret: str | None = None
+    mp_api_url: str = "https://api.matterport.com/api/models/graph"
+    mp_max_retries: int = 5
+    mp_backoff_base_s: float = 0.5
+    mp_asset_types: str = "mesh,images"  # comma list; add "pointcloud" to include
+    mp_enable_webhooks: bool = False
+    mp_enable_gltf_viewer: bool = False
 
     # Modes
     cache_mode: Literal["off", "read_write", "read_only"] = "read_write"
