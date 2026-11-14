@@ -272,3 +272,11 @@ def test_min_p_hit_is_an_assumption(simulated):
     assert engine.optimize(25, 0, None, [])["min_p_hit"] == 0.5
     bad = engine.set_assumption("min_p_hit", 80)
     assert bad["ok"] is False and "probability" in bad["error"]
+
+
+
+def test_contract_simulate_rejects_wrong_size_unit(upgrades):
+    """A mis-sized upgrade from the agent fails loudly instead of being priced 60-100x wrong."""
+    bad = [u.model_copy(update={"size_unit": "fixtures"}) if u.type == "led_retrofit" else u for u in upgrades]
+    with pytest.raises(ValueError, match="led_retrofit must be sized in 'sqft'"):
+        engine.simulate(bad, {})

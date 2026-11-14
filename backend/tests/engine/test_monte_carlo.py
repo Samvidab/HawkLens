@@ -197,7 +197,8 @@ def test_avoided_replacement_cost_hand_check(portfolio):
     gross    = 112,000 x $20  = $2,240,000
     avoided  = 112,000 x $12  = $1,344,000
     upfront  = 2,240,000 - 1,344,000 = $896,000   (incremental over like-for-like)
-    incentive if received = 20% x gross = $448,000; maintenance = 2% x gross = $44,800/yr"""
+    incentive if received = 20% x gross = $448,000
+    maintenance = 2% x NET upfront = 2% x $896,000 = $17,920/yr (like-for-like would need upkeep too)"""
     upgrades, buildings, a = portfolio
     hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
     x = price_inputs(hp, buildings["hou-001"], a)
@@ -205,7 +206,7 @@ def test_avoided_replacement_cost_hand_check(portfolio):
     assert x.avoided_replacement_usd == pytest.approx(1_344_000)
     assert x.upfront_usd == pytest.approx(896_000)
     assert x.incentive_usd == pytest.approx(448_000)
-    assert x.maintenance_usd_per_year == pytest.approx(44_800)
+    assert x.maintenance_usd_per_year == pytest.approx(17_920)
 
 
 def test_upfront_never_below_zero(portfolio):
@@ -326,3 +327,29 @@ def test_incentive_on_full_cost_even_with_avoided_replacement(portfolio):
     hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
     x = price_inputs(hp, buildings["hou-001"], a)
     assert x.incentive_usd == pytest.approx(448_000) and x.upfront_usd == pytest.approx(896_000)
+
+
+
+# --- maintenance basis and size_unit validation ----------------------------------------------
+
+def test_maintenance_on_gross_when_no_avoided_replacement(portfolio):
+    """hou-001 solar: no avoided cost -> maintenance = 1% x gross 125.4 kW x $2,500 = $3,135/yr."""
+    upgrades, buildings, a = portfolio
+    solar = next(u for u in upgrades if u.upgrade_id == "hou-001-rooftop_solar")
+    x = price_inputs(solar, buildings["hou-001"], a)
+    assert x.upfront_usd == x.gross_cost_usd == pytest.approx(313_500)
+    assert x.maintenance_usd_per_year == pytest.approx(3_135)
+
+
+@pytest.mark.parametrize("uid,bad_unit", [
+    ("hou-001-led_retrofit", "fixtures"),     # LED counted in fixtures instead of floor sqft
+    ("hou-001-rooftop_solar", "sqft"),        # solar in sqft instead of kW
+    ("hou-001-heat_pump", "kW"),
+])
+def test_size_unit_mismatch_raises_clear_error(portfolio, uid, bad_unit):
+    upgrades, buildings, a = portfolio
+    u = next(x for x in upgrades if x.upgrade_id == uid).model_copy(update={"size_unit": bad_unit})
+    with pytest.raises(ValueError, match=rf"{uid}: .* must be sized in .* but size_unit is '{bad_unit}'"):
+        price_inputs(u, buildings["hou-001"], a)
+    with pytest.raises(ValueError, match="size_unit"):
+        simulate([u], buildings, a, n_scenarios=10)

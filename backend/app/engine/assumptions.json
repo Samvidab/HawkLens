@@ -8,7 +8,8 @@
     "kwh_per_sqft_year keys are benchmark types, not CoStar names. buildings.py maps CoStar property_type to them; unknown types use 'Other'.",
     "Full field definitions and example sources: ASSUMPTIONS.md.",
     "Houston only. The Goal schema still allows 'Los Angeles' (TRD), but there are no LA values, so the engine cannot price LA buildings.",
-    "Values mapped 2026-11-14 from origin/nessie_data:backend/data/simulation_assumptions/houston.json @1f763d7 (AI-researched by the data lane; 'estimated' rows have no source URL). Remaining PLACEHOLDER fields are named in each block's source."
+    "Values mapped 2026-11-14 from origin/nessie_data:backend/data/simulation_assumptions/houston.json @1f763d7 (AI-researched by the data lane; 'estimated' rows have no source URL). Remaining PLACEHOLDER fields are named in each block's source.",
+    "2026-11-14 follow-up: electricity rate set from houston.json row 1; baselines switched to electricity-only CBECS 2018 Table C22 (Office 13.6, Retail 13.7, Other 12.6) pending data-lane confirmation; Industrial/Multi-Family kept from houston.json, also pending confirmation."
   ],
   "global": {
     "n_scenarios": 10000,
@@ -43,18 +44,18 @@
   },
   "cities": {
     "Houston": {
-      "electricity_rate_usd_per_kwh": 0.12,
+      "electricity_rate_usd_per_kwh": 0.0866,
       "grid_kg_co2_per_kwh": 0.319,
       "solar_kwh_per_kw_year": 1580.0,
       "export_rate_usd_per_kwh": 0.085,
       "kwh_per_sqft_year": {
-        "Office": 16.9,
-        "Retail": 15.4,
+        "Office": 13.6,
+        "Retail": 13.7,
         "Industrial": 6.6,
         "Multi-Family": 12.0,
-        "Other": 14.0
+        "Other": 12.6
       },
-      "source": "grid_kg_co2_per_kwh (eGRID2024 ERCT 700.7 lb/MWh x 0.00045359 = 0.319): https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-guidance / https://carbonrecycling.co.uk/emission-factors/us/egrid-erct (houston.json @1f763d7 row 3, sourced); solar_kwh_per_kw_year (PVWatts, 77002, 20 deg tilt, 14% losses): https://pvwatts.nrel.gov / https://calcpanel.com/tools/pv-energy-production (houston.json @1f763d7 row 4, sourced); export_rate_usd_per_kwh (retail buyback plans, commercial eligibility varies): https://chariotenergy.com / https://nuwattenergy.com (houston.json @1f763d7 row 2, sourced); kwh_per_sqft_year.Office: https://portfoliomanager.energystar.gov/pdf/reference/US%20National%20Median%20Table.pdf / https://electricityplans.com (houston.json @1f763d7 row 5a, sourced); kwh_per_sqft_year.Retail: https://portfoliomanager.energystar.gov/pdf/reference/US%20National%20Median%20Table.pdf / https://electricityplans.com (houston.json @1f763d7 row 5b, sourced); kwh_per_sqft_year.Industrial: https://electricityplans.com / https://www.eia.gov/consumption/commercial/ (houston.json @1f763d7 row 5c, sourced); kwh_per_sqft_year.Multi-Family: https://www.eia.gov/consumption/residential/ / https://portfoliomanager.energystar.gov (houston.json @1f763d7 row 5d, sourced); PLACEHOLDER: electricity_rate_usd_per_kwh (houston.json row 1 is a single month, June 2026, not an annual average, kept by decision), kwh_per_sqft_year.Other (not in houston.json)"
+      "source": "electricity_rate_usd_per_kwh 0.0866: https://www.eia.gov/electricity/monthly/ / https://texascommercialplans.com (houston.json @1f763d7 row 1, sourced, EIA EPM Table 5.6.A Texas commercial, June 2026 single month used as a Houston proxy, not a 12-month average); kwh_per_sqft_year.Office 13.6, .Retail 13.7, .Other 12.6 (electricity only): https://www.eia.gov/consumption/commercial/data/2018/ce/pdf/c22.pdf (xls: https://www.eia.gov/consumption/commercial/data/2018/ce/xls/c22.xlsx), EIA 2018 CBECS Table C22, site electricity per square foot (kWh), national, rows 'Office', 'Retail (other than mall)', 'All buildings', NEEDS DATA-LANE CONFIRMATION (replaces her rows 5a/5b, which look like total site energy incl. gas); grid_kg_co2_per_kwh (eGRID2024 ERCT 700.7 lb/MWh x 0.00045359 = 0.319): https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-guidance / https://carbonrecycling.co.uk/emission-factors/us/egrid-erct (houston.json @1f763d7 row 3, sourced); solar_kwh_per_kw_year (PVWatts, 77002, 20 deg tilt, 14% losses): https://pvwatts.nrel.gov / https://calcpanel.com/tools/pv-energy-production (houston.json @1f763d7 row 4, sourced); export_rate_usd_per_kwh (retail buyback plans, commercial eligibility varies): https://chariotenergy.com / https://nuwattenergy.com (houston.json @1f763d7 row 2, sourced); kwh_per_sqft_year.Industrial 6.6 (her value kept, C22 has no industrial row, NEEDS DATA-LANE CONFIRMATION that it is electricity only): https://electricityplans.com / https://www.eia.gov/consumption/commercial/ (houston.json @1f763d7 row 5c, sourced); kwh_per_sqft_year.Multi-Family 12.0 (her value kept, C22 excludes residential, NEEDS DATA-LANE CONFIRMATION that it is electricity only): https://www.eia.gov/consumption/residential/ / https://portfoliomanager.energystar.gov (houston.json @1f763d7 row 5d, sourced)"
     }
   },
   "upgrades": {

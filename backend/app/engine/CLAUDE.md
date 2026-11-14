@@ -87,7 +87,7 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 | heat_pump | hvac | sqft (served area) | $/sqft |
 | led_retrofit | lighting | sqft (floor area, TRD §7) | $/sqft |
 
-At most one upgrade per building per category. Savings basis per type is `savings_unit` in assumptions.json: `kwh_per_sqft_year` (cool roof, insulation: kWh = s × sqft treated), `fraction_of_building_kwh` (windows fixed; heat pump and LED scaled by coverage = size / floor area), `fraction_of_modeled_generation` (solar). Upfront cost C0 = max(unit_cost − avoided_replacement_cost_per_unit, 0) × size (incremental over like-for-like); incentive and maintenance use the full unit_cost × size, and the incentive is capped at that full cost.
+At most one upgrade per building per category. Savings basis per type is `savings_unit` in assumptions.json: `kwh_per_sqft_year` (cool roof, insulation: kWh = s × sqft treated), `fraction_of_building_kwh` (windows fixed; heat pump and LED scaled by coverage = size / floor area), `fraction_of_modeled_generation` (solar). Upfront cost C0 = max(unit_cost − avoided_replacement_cost_per_unit, 0) × size (incremental over like-for-like); the incentive uses the full unit_cost × size (capped at it); maintenance uses the net upfront cost when an avoided replacement applies, else the full cost. `price_inputs` raises `ValueError` if an upgrade's `size_unit` isn't its type's unit (`models.SIZE_UNIT_BY_TYPE`: solar kW, everything else sqft).
 
 Caps, applied in every scenario before dollars and CO2:
 - Efficiency upgrades (everything except solar): kWh saved ≤ building baseline kWh × `global.max_savings_share` (placeholder 0.5). Excess is dropped.

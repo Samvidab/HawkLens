@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 
 from .buildings import BuildingFacts, baseline_kwh_per_year
-from .models import FeasibleUpgrade
+from .models import SIZE_UNIT_BY_TYPE, FeasibleUpgrade
 from .npv import npv as npv_fn
 
 # For "fraction_of_building_kwh" types: what the savings fraction is scaled by
@@ -47,7 +47,8 @@ class UpgradeInputs:
     upfront_usd: float              # C0 = max(gross - avoided, 0): incremental cost
     incentive_usd: float            # amount IF received = incentive_fraction x gross cost
     incentive_lag_years: int
-    maintenance_usd_per_year: float  # M at today's prices = maint_frac x gross cost
+    maintenance_usd_per_year: float  # M at today's prices = maint_frac x net upfront when an
+                                     # avoided replacement applies, else x gross (same thing then)
     coverage: float                 # 0-1; 1 unless the type scales by floor area
     kwh_basis_per_year: float       # what savings draw s multiplies to give kWh saved/yr
     kwh_cap_per_year: float         # efficiency: max kWh saved (baseline x max_savings_share)
@@ -63,6 +64,13 @@ def price_inputs(u: FeasibleUpgrade, b: BuildingFacts, a: dict[str, Any]) -> Upg
     if city is None:
         raise ValueError(f"no assumptions for city {b.city!r}; the engine is Houston only")
     t = a["upgrades"][u.type]
+    expected_unit = SIZE_UNIT_BY_TYPE[u.type]
+    if u.size_unit != expected_unit:
+        raise ValueError(
+            f"{u.upgrade_id}: {u.type} must be sized in {expected_unit!r} (priced in "
+            f"{t['cost_unit']}), but size_unit is {u.size_unit!r} (size_value {u.size_value}). "
+            f"Convert it before calling the engine; e.g. LED is sized by floor area in sqft, "
+            f"not by fixture count.")
 
     gross = t["unit_cost"] * u.size_value
     avoided = t.get("avoided_replacement_cost_per_unit", 0.0) * u.size_value
@@ -108,7 +116,9 @@ def price_inputs(u: FeasibleUpgrade, b: BuildingFacts, a: dict[str, Any]) -> Upg
         # On full cost (correct for tax credits), but never more than the full cost.
         incentive_usd=min(t["incentive_fraction"] * gross, gross),
         incentive_lag_years=t["incentive_lag_years"],
-        maintenance_usd_per_year=t["maint_frac_per_year"] * gross,
+        # Like-for-like: the conventional replacement needs upkeep too, so only the
+        # incremental (net) cost adds maintenance. Without an avoided cost, net == gross.
+        maintenance_usd_per_year=t["maint_frac_per_year"] * (upfront if avoided > 0 else gross),
         coverage=coverage,
         kwh_basis_per_year=kwh_basis,
         kwh_cap_per_year=kwh_cap,
