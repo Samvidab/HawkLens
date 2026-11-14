@@ -106,3 +106,10 @@ async def cached_bytes(
     data = await _call(fn)
     _atomic_write(path, data)
     return path
+
+
+def write_json_atomic(path: Path, obj: Any) -> Path:
+    """Write JSON to path atomically (temp file + rename), for data/ files (TRD §5)."""
+    path = Path(path)
+    _atomic_write(path, json.dumps(obj, indent=2, default=str).encode())
+    return path
