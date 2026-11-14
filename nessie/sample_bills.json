@@ -1,0 +1,146 @@
+[
+    {
+        "building_id": "sample_001",
+        "month": 1,
+        "utility": "electricity",
+        "amount": 12674.28
+    },
+    {
+        "building_id": "sample_001",
+        "month": 1,
+        "utility": "gas",
+        "amount": 2381.25
+    },
+    {
+        "building_id": "sample_001",
+        "month": 2,
+        "utility": "electricity",
+        "amount": 12218.79
+    },
+    {
+        "building_id": "sample_001",
+        "month": 2,
+        "utility": "gas",
+        "amount": 2430.8
+    },
+    {
+        "building_id": "sample_001",
+        "month": 3,
+        "utility": "electricity",
+        "amount": 12795.59
+    },
+    {
+        "building_id": "sample_001",
+        "month": 3,
+        "utility": "gas",
+        "amount": 2544.17
+    },
+    {
+        "building_id": "sample_001",
+        "month": 4,
+        "utility": "electricity",
+        "amount": 12990.22
+    },
+    {
+        "building_id": "sample_001",
+        "month": 4,
+        "utility": "gas",
+        "amount": 2396.73
+    },
+    {
+        "building_id": "sample_001",
+        "month": 5,
+        "utility": "electricity",
+        "amount": 12402.4
+    },
+    {
+        "building_id": "sample_001",
+        "month": 5,
+        "utility": "gas",
+        "amount": 2382.45
+    },
+    {
+        "building_id": "sample_001",
+        "month": 6,
+        "utility": "electricity",
+        "amount": 14577.96
+    },
+    {
+        "building_id": "sample_001",
+        "month": 6,
+        "utility": "gas",
+        "amount": 2501.34
+    },
+    {
+        "building_id": "sample_001",
+        "month": 7,
+        "utility": "electricity",
+        "amount": 14289.8
+    },
+    {
+        "building_id": "sample_001",
+        "month": 7,
+        "utility": "gas",
+        "amount": 2424.71
+    },
+    {
+        "building_id": "sample_001",
+        "month": 8,
+        "utility": "electricity",
+        "amount": 15224.83
+    },
+    {
+        "building_id": "sample_001",
+        "month": 8,
+        "utility": "gas",
+        "amount": 2511.24
+    },
+    {
+        "building_id": "sample_001",
+        "month": 9,
+        "utility": "electricity",
+        "amount": 14580.66
+    },
+    {
+        "building_id": "sample_001",
+        "month": 9,
+        "utility": "gas",
+        "amount": 2522.32
+    },
+    {
+        "building_id": "sample_001",
+        "month": 10,
+        "utility": "electricity",
+        "amount": 12886.79
+    },
+    {
+        "building_id": "sample_001",
+        "month": 10,
+        "utility": "gas",
+        "amount": 2376.62
+    },
+    {
+        "building_id": "sample_001",
+        "month": 11,
+        "utility": "electricity",
+        "amount": 12882.27
+    },
+    {
+        "building_id": "sample_001",
+        "month": 11,
+        "utility": "gas",
+        "amount": 2549.53
+    },
+    {
+        "building_id": "sample_001",
+        "month": 12,
+        "utility": "electricity",
+        "amount": 12300.31
+    },
+    {
+        "building_id": "sample_001",
+        "month": 12,
+        "utility": "gas",
+        "amount": 2413.87
+    }
+]
