@@ -23,6 +23,11 @@ Start from `backend/.env.example`. For judging use `CACHE_MODE=read_only` (a cac
 `NESSIE_MODE` as agreed with their owners. Set `CORS_ORIGINS=https://<your frontend domain>` (comma separated, no trailing slash;
 `CORS_ORIGIN_REGEX` for Vercel previews).
 
+**Gemini on Vertex AI:** `.env` has `GOOGLE_GENAI_USE_VERTEXAI=true`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION=global`. Locally this
+uses your `gcloud auth application-default login`. A server has no such login: create a service account with the *Vertex AI User* role, download its
+JSON key, `scp` it to the server (mode 600, outside the repo), and set `GOOGLE_APPLICATION_CREDENTIALS=/path/key.json` in `.env`. For a
+cache-only demo (`CACHE_MODE=read_only`) no credentials are needed at all.
+
 ## 3. Run
 ```bash
 cp /opt/retroalpha/backend/deploy/retroalpha.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now retroalpha
