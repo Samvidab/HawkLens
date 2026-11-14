@@ -14,6 +14,7 @@
     "n_scenarios_optimizer": 1000,
     "seed": 20261115,
     "discount_rate": 0.07,
+    "general_inflation": 0.025,
     "source": "PLACEHOLDER",
     "energy_price_growth": {"mu": 0.02, "sd": 0.015, "source": "PLACEHOLDER"},
     "carbon_price": {
@@ -41,7 +42,7 @@
       "cost_unit": "usd_per_kw", "unit_cost": 2500,
       "savings_mu": 0.95, "savings_sd": 0.08,
       "life_min": 20, "life_max": 30,
-      "incentive_fraction": 0.30, "incentive_p": 0.8,
+      "incentive_fraction": 0.30, "incentive_p": 0.8, "incentive_lag_years": 1,
       "maint_frac_per_year": 0.01,
       "source": "PLACEHOLDER"
     },
@@ -49,7 +50,7 @@
       "cost_unit": "usd_per_sqft", "unit_cost": 2.0,
       "savings_mu": 0.03, "savings_sd": 0.015,
       "life_min": 15, "life_max": 20,
-      "incentive_fraction": 0.10, "incentive_p": 0.3,
+      "incentive_fraction": 0.10, "incentive_p": 0.3, "incentive_lag_years": 0,
       "maint_frac_per_year": 0.005,
       "source": "PLACEHOLDER"
     },
@@ -57,7 +58,7 @@
       "cost_unit": "usd_per_sqft", "unit_cost": 60.0,
       "savings_mu": 0.05, "savings_sd": 0.02,
       "life_min": 25, "life_max": 35,
-      "incentive_fraction": 0.10, "incentive_p": 0.3,
+      "incentive_fraction": 0.10, "incentive_p": 0.3, "incentive_lag_years": 0,
       "maint_frac_per_year": 0.002,
       "source": "PLACEHOLDER"
     },
@@ -65,7 +66,7 @@
       "cost_unit": "usd_per_sqft", "unit_cost": 3.0,
       "savings_mu": 0.04, "savings_sd": 0.02,
       "life_min": 25, "life_max": 40,
-      "incentive_fraction": 0.10, "incentive_p": 0.4,
+      "incentive_fraction": 0.10, "incentive_p": 0.4, "incentive_lag_years": 0,
       "maint_frac_per_year": 0.0,
       "source": "PLACEHOLDER"
     },
@@ -73,7 +74,7 @@
       "cost_unit": "usd_per_sqft", "unit_cost": 20.0,
       "savings_mu": 0.15, "savings_sd": 0.05,
       "life_min": 15, "life_max": 20,
-      "incentive_fraction": 0.20, "incentive_p": 0.5,
+      "incentive_fraction": 0.20, "incentive_p": 0.5, "incentive_lag_years": 0,
       "maint_frac_per_year": 0.02,
       "source": "PLACEHOLDER"
     },
@@ -81,7 +82,7 @@
       "cost_unit": "usd_per_sqft", "unit_cost": 1.5,
       "savings_mu": 0.06, "savings_sd": 0.02,
       "life_min": 10, "life_max": 15,
-      "incentive_fraction": 0.10, "incentive_p": 0.6,
+      "incentive_fraction": 0.10, "incentive_p": 0.6, "incentive_lag_years": 0,
       "maint_frac_per_year": 0.0,
       "source": "PLACEHOLDER"
     }

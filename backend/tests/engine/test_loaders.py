@@ -20,7 +20,7 @@ ALL_TYPES = set(CATEGORY_BY_TYPE)
 
 UPGRADE_KEYS = {
     "cost_unit", "unit_cost", "savings_mu", "savings_sd", "life_min", "life_max",
-    "incentive_fraction", "incentive_p", "maint_frac_per_year", "source",
+    "incentive_fraction", "incentive_p", "incentive_lag_years", "maint_frac_per_year", "source",
 }
 CITY_KEYS = {
     "electricity_rate_usd_per_kwh", "grid_kg_co2_per_kwh", "solar_kwh_per_kw_year",
@@ -84,6 +84,7 @@ def test_assumptions_cover_every_type_and_city():
         assert block["life_min"] <= block["life_max"], t
         assert 0 <= block["incentive_p"] <= 1, t
         assert block["savings_sd"] >= 0, t
+        assert isinstance(block["incentive_lag_years"], int) and block["incentive_lag_years"] >= 0, t
     assert set(a["cities"]) == {"Houston"}   # Houston only; no LA values on purpose
     for c, block in a["cities"].items():
         assert set(block) == CITY_KEYS, c
@@ -95,6 +96,7 @@ def test_assumptions_globals_and_rates_are_decimals():
     assert isinstance(g["seed"], int)
     # "7 instead of 0.07" guard.
     assert 0 < g["discount_rate"] < 1
+    assert 0 <= g["general_inflation"] < 1
     assert {"mu", "sd", "source"} <= set(g["energy_price_growth"])
     assert {"p_fee_starts", "start_year_range", "price_range_per_tonne", "source"} <= set(g["carbon_price"])
 

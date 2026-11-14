@@ -83,22 +83,25 @@ The data/pitch owner fills in sourced values; every field's unit and definition 
 - Global: `n_scenarios` 10000, `n_scenarios_optimizer` 1000, `seed`, `discount_rate` 0.07 (overridden by `Goal.discount_rate`), `energy_price_growth` {mu, sd}, `carbon_price` {p_fee_starts, start_year_range, price_range_per_tonne}.
 - Building estimates: `floor_height_m` (for the envelope fallback).
 - Per city (Houston only): `electricity_rate_usd_per_kwh`, `grid_kg_co2_per_kwh`, `solar_kwh_per_kw_year`, benchmark `kwh_per_sqft_year` by benchmark type (incl. `"Other"`).
-- Per upgrade type: `cost_unit` (matches the size unit), `unit_cost`, `savings_mu`, `savings_sd`, `life_min`, `life_max`, `incentive_fraction`, `incentive_p`, `maint_frac_per_year`, `source`.
+- Per upgrade type: `cost_unit` (matches the size unit), `unit_cost`, `savings_mu`, `savings_sd`, `life_min`, `life_max`, `incentive_fraction`, `incentive_p`, `incentive_lag_years` (1 tax credit, 0 rebate), `maint_frac_per_year`, `source`.
+- Global also has `general_inflation` (grows maintenance).
 
 ## Math
 ### NPV per scenario (vectorized over K scenarios)
 ```
-NPV = -C0 + I + sum_{t=1..L} [ B*s*(1+g)^t + T*P_t - M ] / (1+r)^t
+NPV = -C0 + I/(1+r)^lag + sum_{t=1..L} [ B*s*(1+g)^t + T*P_t - M*(1+i)^t ] / (1+r)^t
 ```
-C0 upfront cost; I incentive (paid with probability incentive_p); B baseline annual energy spend (portion this upgrade affects); s savings fraction; g energy price growth; T annual tonnes avoided; P_t carbon price in year t (0 before a fee starts); M maintenance; r discount rate; L lifespan.
-- Energy-savings sum, closed form: `B*s*q*(1-q**L)/(1-q)` with `q=(1+g)/(1+r)`. If q == 1, use `B*s*L`.
+C0 upfront cost; I incentive (paid with probability incentive_p); lag `incentive_lag_years`; B baseline annual energy spend (portion this upgrade affects); s savings fraction; g energy price growth; T annual tonnes avoided; P_t carbon price in year t (0 before a fee starts); M maintenance at today's prices; i `general_inflation`; r discount rate; L lifespan.
+- Energy-savings sum, closed form: `B*s*q*(1-q**L)/(1-q)` with `q=(1+g)/(1+r)`. If q == 1, use `B*s*L`. Maintenance uses the same form with `q=(1+i)/(1+r)`.
 - t starts at 1, not 0.
+- Year 1 already includes one year of growth (`(1+g)^1`) on purpose: B is the trailing 12 months of bills, so year 1 (the next 12 months) is one year later.
 - Annual tonnes: `T = kwh_saved_per_year * grid_kg_co2_per_kwh / 1000`. Lifetime = T × L.
 
 ### Monte Carlo (`monte_carlo.py`)
 - `rng = np.random.default_rng(seed)`.
 - Energy price growth g: ONE array of K draws shared by all upgrades (this creates correlation). Never per upgrade.
 - Per upgrade: s ~ Normal(mu, sd) floored at 0; L ~ integer uniform [life_min, life_max]; incentive ~ Bernoulli(p); carbon fee start year and price per `carbon_price`.
+- Carbon fee start years count from year 1, the first year after install: start year 3 means the fee applies in years 3..L. Draw from `start_year_range` as whole years ≥ 1 and pass them straight to `npv.carbon_pv` / `npv(carbon_start_year=...)`. A start year > L earns nothing; don't clip it to L. Scenarios where the fee never starts pass price 0.
 - Keep per upgrade: `npv[K]`, `tonnes_per_year[K]`, `tonnes_lifetime[K]`.
 
 ### Risk (`risk.py`), alpha = 0.05
