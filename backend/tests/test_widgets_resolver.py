@@ -166,3 +166,22 @@ def test_unknown_type_and_missing_plan(data):
     assert resolve_layout(empty, "portfolio_overview").widgets
     with pytest.raises(ResolveError):
         resolve_layout(empty, "target_gap")
+
+
+def test_target_gap_card_prefers_the_engines_cheapest_extra(data):
+    plan = json.loads((data / "plans/current.json").read_text())
+    ctx0 = ResolveContext.load(data, "r1")
+    # key absent: fall back to the cheapest unselected abatement bars
+    assert [e["upgrade_id"] for e in widgets(resolve_layout(ctx0, "target_gap"))["target_gap_card"].props["cheapest_extra"]] == ["b1:window_upgrade"]
+    # engine reports its own list (extra keys are dropped; slot-aware, so it can differ from the bars)
+    plan["cheapest_extra"] = [{"upgrade_id": "b2:led_retrofit", "building_id": "b2", "type": "led_retrofit",
+                               "cost_per_tonne": -5.0, "tonnes_per_year": 200.0}]
+    write(data / "plans/current.json", plan)
+    got = widgets(resolve_layout(ResolveContext.load(data, "r1"), "target_gap"))["target_gap_card"]
+    assert got.props["cheapest_extra"] == [{"upgrade_id": "b2:led_retrofit", "cost_per_tonne": -5.0, "tonnes_per_year": 200.0}]
+    assert got.data_ref == "plans/current.json#/cheapest_extra"
+    # engine says nothing can add tonnes: show the shortfall with no suggestions rather than guessing
+    plan["cheapest_extra"] = []
+    write(data / "plans/current.json", plan)
+    got = widgets(resolve_layout(ResolveContext.load(data, "r1"), "target_gap"))["target_gap_card"]
+    assert got.props["cheapest_extra"] == [] and got.props["shortfall_tonnes"] == 300.0

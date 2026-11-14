@@ -327,8 +327,11 @@ def _target_gap_card(ctx: ResolveContext) -> tuple[str, dict]:
     needed, planned = p.get("tonnes_needed"), p.get("tonnes_per_year")
     if needed is None or planned is None:
         raise ResolveError("plan lacks tonnes_needed / tonnes_per_year")
-    extras = sorted((b for b in _bars(ctx) if not b["in_plan"]), key=lambda b: b["cost_per_tonne"])[:EXTRA_CUTS]
-    return "plans/current.json#/macc", dict(
+    if "cheapest_extra" in p:  # the engine's own list: only upgrades that would add tonnes (slot-aware); may be empty
+        extras = p["cheapest_extra"][:EXTRA_CUTS]
+    else:  # engines that do not report it: cheapest unselected abatement bars
+        extras = sorted((b for b in _bars(ctx) if not b["in_plan"]), key=lambda b: b["cost_per_tonne"])[:EXTRA_CUTS]
+    return "plans/current.json#/cheapest_extra", dict(
         shortfall_tonnes=max(needed - planned, 0.0),
         cheapest_extra=[{k: b[k] for k in ("upgrade_id", "cost_per_tonne", "tonnes_per_year")} for b in extras])
 

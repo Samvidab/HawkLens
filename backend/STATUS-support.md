@@ -65,8 +65,8 @@ VISION=`gemini-3.6-flash`, FAST=`gemini-3.5-flash-lite`. Three trials each (one 
 Earlier: gemini-3.8-flash gave 503 / hang; gemini-3.1-pro-preview 404.
 Latency is high and variable (vision 3-20 s per call); plan the demo from cache.
 
-## Engine contract drift for the quant teammate (checked 2026-11-14 against origin/quant-engine)
-**origin/quant-engine has no engine code yet** (only `app/engine/CLAUDE.md` + numpy/pulp in requirements.txt), so this compares their CLAUDE.md to TRD §8.1 and to how the agent side calls it. Re-run `python -m app.integrations.engine_client` once `app.engine` exists.
+## Engine contract drift for the quant teammate: first pass (docs only; superseded by the code check at the top of the next section)
+Written when origin/quant-engine had only `app/engine/CLAUDE.md`. Items 1-13 below still apply unless the code check says otherwise.
 1. **Names:** PRD FR-12 says `get_macc`; TRD and their CLAUDE.md say `macc`. We call `macc` (alias `get_macc` also accepted). Nothing to change if they export `macc`.
 2. **Extras we depend on** (not in TRD §8.1, but in their CLAUDE.md; please keep them): `simulate` -> `upfront_usd`, `tonnes_per_year` per upgrade (plan_table, Nessie bills use `upfront_usd`; without it finance refuses to book); `optimize` -> `status`, `p_loss`, `hist_bins`, `tonnes_needed`, and when infeasible `shortfall_tonnes`, `cheapest_extra` [{upgrade_id, cost_per_tonne, tonnes_per_year}]; `baseline(building_id)` -> `{annual_spend_usd, tonnes_per_year}`. Output shapes we check: hist_bins = [{x0,x1,count}] (30 bins).
 3. **target_pct scale:** their doc marks 0-100 as "unconfirmed". Agent side sends 0-100 (Goal.target_pct, slider 0-80, default 40). Please confirm.
@@ -80,3 +80,37 @@ Latency is high and variable (vision 3-20 s per call); plan the demo from cache.
 11. **Speed:** an owner action must finish < 3 s including `simulate`+`macc`+`optimize`+`baseline` per building; `simulate` is skipped when nothing changed, so `optimize` is the hot path (their target < 1 s for 10 buildings).
 12. **Their own inconsistency:** CLAUDE.md says `PULP_CBC_CMD` no longer exists and to use `COIN_CMD`, but the latest commit message says "solve with PULP_CBC_CMD". Whichever works, the CBC binary must exist on the Vultr box (see DEPLOY.md).
 13. **requirements.txt:** their branch adds `numpy==2.4.6` and `pulp[cbc]==3.3.2`; ours has other edits, expect a trivial merge conflict.
+
+
+## Quant engine code check for her (origin/quant-engine @ 742c68c, steps 1-5; checked 2026-11-14)
+Method: read the code, ran her 82 engine tests (all pass), then drove `optimizer.build_problem/solve` the way our pricing node would on her 3-building fixtures (13 upgrades, 10k scenarios). Read-only: nothing in her folder was touched.
+
+### MISSING (blocks `ENGINE_MODE=live`), most important first
+1. **No contract functions yet.** `app/engine/__init__.py` exports nothing. `simulate(upgrades, assumptions)`, `macc(exclusions)`, `optimize(target_pct, risk_lambda, budget_usd, exclusions)`, `set_assumption(key, value)` and `baseline(building_id)` do not exist as the TRD §8.1 / her CLAUDE.md contract (step 6). `python -m app.integrations.engine_client` reports all five as missing. Her lower-level pieces are fine and fast (simulate 10k x 13 upgrades 0.04 s, solve 0.04 s), they just need wrapping.
+2. **`risk_lambda` is ignored.** `build_problem()` and `solve()` take no `risk_lambda`; the objective is E[NPV] only (CVaR term is "step 7"). Until then the Risk slider changes nothing. (`plan_id` already accepts a `risk_lambda` argument but is called without it.)
+3. **`baseline(building_id)` does not exist.** There is `buildings.baseline_kwh_per_year()` / `baseline_tonnes_per_year(BuildingFacts, assumptions)`, but nothing returns `{annual_spend_usd, tonnes_per_year}`. `annual_spend_usd` is not computed anywhere (needs kWh x `cities.<city>.electricity_rate_usd_per_kwh`, which is in assumptions.json). The building_header widget shows it. The Nessie-bills baseline is a TODO in `buildings.py`.
+4. **Per-upgrade extras not exposed.** The agent side needs `upfront_usd` and `tonnes_per_year` per upgrade in `simulate()`'s output (plan_table rows, and finance refuses to book a bill without `upfront_usd`). Both exist internally (`sim.inputs[i].upfront_usd`, `sim.tonnes_per_year.mean(axis=1)`), they are just not in a contract dict yet.
+5. **Wrapper has to supply the target's denominator.** `build_problem` needs `baseline_tonnes_per_year` of the portfolio; `optimize()` must compute it from the buildings in the latest simulation (`state.current()`). Please confirm: an **excluded building still counts in the denominator** (target stays "X % of the whole selected portfolio", so excluding a building makes the target harder). The agent-side stub and UI assume this.
+6. **Name clash to avoid in step 6:** `app/engine/macc.py` (module) and a function `macc` in `__init__.py` share a name. After `import app.engine.macc` anywhere, `app.engine.macc` is the *module* (not callable) and our client sees no `macc` function. Bind the function last in `__init__` (`from .macc import macc as _macc` then `def macc(...)`), or export it under another module name.
+7. **`simulate(upgrades, assumptions)` argument meaning:** we pass `assumptions={"discount_rate": <Goal.discount_rate>}`. Please treat it as overrides merged over assumptions.json (not a full replacement) and make `discount_rate` one of them.
+
+### CONFIRMED PRESENT (what you asked about)
+| Check | Result |
+|---|---|
+| `target_pct` as the CO2 constraint | **Yes.** `tonnes_needed = target_pct/100 x baseline`; constraint `sum(E[tonnes/yr] x) >= tonnes_needed`; 0-100 scale enforced (`ValueError` outside). Matches what we send. PuLP == brute force in her tests. |
+| `budget_usd` | **Yes.** `sum(upfront x) <= budget_usd`, in both solvers. Probe: budget $500k, target 25 % -> `status: infeasible`, upfront $496k (<= budget), shortfall 235.7 t/yr, 3 `cheapest_extra`. |
+| `risk_lambda` (CVaR) | **No**, see missing #2. (`cvar5` of the chosen plan *is* reported.) |
+| `status` ok / infeasible | **Yes**, infeasible returns the max-tonnes plan (not an error). |
+| `p_hit_target` | **Yes**, share of scenarios with plan tonnes >= needed. (Probe: a plan that just meets the target in expectation reports 0.57, status ok.) |
+| `tonnes_needed` | **Yes.** |
+| `shortfall_tonnes` | **Yes**, 0.0 when feasible; probe 80 % target -> 522.75 t/yr. Computed from expected tonnes. |
+| `cheapest_extra` | **Yes**, `[]` when feasible; when infeasible up to 3 items `{upgrade_id, building_id, type, tonnes_per_year, cost_per_tonne}` (more keys than we need; fine), slot-aware (only upgrades that add tonnes). Our target_gap_card now prefers this list (falls back to our own cheapest unselected bars if the key is absent). |
+| other keys we use | `plan_id` (12 hex, deterministic, same inputs -> same id), `selected`, `exp_npv`, `cvar5`, `p_loss`, `total_upfront`, `tonnes_per_year`, `hist_bins` (30 bins `{x0,x1,count}`, counts sum to ~99 % of K by design) are all returned; all plain Python floats/lists (JSON-safe). |
+| `macc()` | Exists in `macc.py` (`{bars:[{upgrade_id, building_id, type, tonnes_per_year, cost_per_tonne}]}`, cheapest first, NaN-cost upgrades get no bar). Not yet exported. |
+
+### Things to be aware of (not blockers)
+- **Empty `cheapest_extra` when the target is out of reach even with everything:** the 80 % probe returned `[]` (the max-tonnes plan already uses every slot, nothing can add tonnes). Also upgrades that are merely *unverified* (not owner-excluded) are never suggested. The target-gap card then shows the shortfall with no suggestions. If you want the demo's "cheapest extra tonnes" moment to work without a budget, include unverified (`include_in_optimizer == False`, not excluded) upgrades in `cheapest_extra` (the owner can then press "include unverified"). Tell us if you add a flag for them.
+- An infeasible plan is the max-tonnes plan regardless of cost (probe: exp NPV -$1.4M, p_loss 0.99). That is a sensible reading of "closest to the target"; the UI shows it as the best attempt.
+- `buildings.py` is Houston-only (`baseline_kwh_per_year` raises for other cities); fine if the demo city is Houston.
+- Her `FeasibleUpgrade` mirror matches ours field for field (types, categories, size units). `PROPERTY_TYPE_TO_BENCHMARK` has a TODO: real CoStar `property_type` values are in `data/buildings/*/profile.json` (lane-data) to fill it.
+- Solver: `PULP_CBC_CMD` works with the pinned `pulp[cbc]==3.3.2` (her note about deprecation is right); the Vultr box needs the same pins.

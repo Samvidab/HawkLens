@@ -27,7 +27,7 @@
       "title": "Shortfall",
       "why": "How far short the plan falls and the cheapest way to close it.",
       "size": "half",
-      "data_ref": "plans/current.json#/macc",
+      "data_ref": "plans/current.json#/cheapest_extra",
       "props": {
         "shortfall_tonnes": 5658.75,
         "cheapest_extra": [
