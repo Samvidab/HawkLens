@@ -1,0 +1,48 @@
+# Feasibility rules (TRD §7). Every constant lives here so the data/pitch owner can cite sources.
+# Formulas are implemented in feasibility.py; thresholds and factors are read from this file.
+
+constants:
+  floor_height_m: 4.0          # facade height = stories x floor_height_m (also portfolio_3d height)
+
+# Claim fields that back each upgrade: a claim is linked when its `field` starts with a prefix.
+# {O} expands to each facade orientation used by the rule. Upgrades whose trigger is image-derived
+# but have no linked claim get verified=unverified, include_in_optimizer=false.
+claim_fields:
+  rooftop_solar: ["roof.existing_solar", "roof.shading", "roof.usable"]
+  cool_roof: ["roof.color", "roof.type"]
+  window_upgrade: ["facade.{O}."]
+  heat_pump: ["interior.hvac"]
+  led_retrofit: ["interior.lighting"]
+  insulation: ["interior.envelope", "interior.window"]
+
+rooftop_solar:
+  requires: {existing_solar: false, shading_in: [none, partial], usable_roof_m2_min: 100}
+  size_kw: "usable_roof_m2 * packing_factor * panel_kw_per_m2 * shading_derate"
+  packing_factor: 0.75
+  panel_kw_per_m2: 0.20
+  shading_derate: {none: 1.0, partial: 0.7}
+
+cool_roof:
+  requires: {roof_color: dark, roof_type_in: [flat, mixed]}   # Houston and LA both hot climates
+  size_sqft: footprint_sqft
+
+window_upgrade:
+  requires_any_facade_in: [S, W]
+  glazing_ratio_min: 0.35
+  size_sqft: "sum(facade_area * glazing_ratio for S,W)"   # facade area = facade length x stories x floor_height_m
+
+heat_pump:
+  requires_any:
+    - {year_built_max: 1995}
+    - {hvac_visible_contains: [boiler, rooftop_unit_old]}
+  size_sqft: floor_area_sqft or rba_sqft
+
+insulation:
+  requires: {envelope_area_sqft_known: true}
+  size_sqft: envelope_area_sqft
+
+led_retrofit:
+  default: assumed
+  assumed_confidence: 0.5
+  skip_if: {lighting_type: LED}
+  size_sqft: floor_area_sqft or rba_sqft
