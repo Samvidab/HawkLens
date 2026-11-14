@@ -105,3 +105,37 @@ async def test_memo_feeds_the_approved_layout(data, monkeypatch):
 async def test_no_plan_raises(data):
     with pytest.raises(ValueError):
         await memo.write_memo("r")
+
+
+# ---- digits in building names and addresses are allowed, and copied exactly (never spelled out) ----------------------
+async def test_names_and_addresses_with_digits_pass_the_number_guard(data, monkeypatch):
+    import json
+    for bid, name, addr in [("b1", "7900 Fannin", "7900 Fannin St, Houston, TX 77054"), ("b2", "CityNorth 6", "9999 N Interstate 45")]:
+        f = data / f"buildings/{bid}/profile.json"
+        d = json.loads(f.read_text()); d.update(name=name, address=addr); f.write_text(json.dumps(d))
+    calls = fake_llm(monkeypatch, [
+        "Buildings 7900 Fannin (7900 Fannin St, Houston, TX 77054) and CityNorth 6 get {{n_upgrades}} upgrades.\n\n"
+        "Upfront cost is {{total_upfront}}.\n\nHit probability is {{p_hit_target}}."])
+    await run_pricing("r", GOALS[1])
+    md = await memo.write_memo("r")
+    assert "7900 Fannin" in md and "CityNorth 6" in md and "77054" in md  # copied as written, not rejected, no template fallback
+    assert "This plan cuts" not in md and len(calls) == 1
+    assert "seventy" not in md.lower() and "CityNorth six" not in md
+
+
+async def test_the_prompt_tells_the_model_to_copy_names_exactly(data, monkeypatch):
+    import json
+    f = data / "buildings/b1/profile.json"; d = json.loads(f.read_text()); d["name"] = "7900 Fannin"; f.write_text(json.dumps(d))
+    calls = fake_llm(monkeypatch, [GOOD])
+    await run_pricing("r", GOALS[1])
+    await memo.write_memo("r")
+    p = calls[0]
+    assert "7900 Fannin" in p and "Copy those EXACTLY" in p and "Never spell" in p
+    assert "NEVER write a digit or a number, with ONE exception" in p
+
+
+async def test_a_number_that_is_not_in_any_name_is_still_rejected(data, monkeypatch):
+    calls = fake_llm(monkeypatch, ["Allen Center 2 saves 4,242 tonnes. {{total_upfront}}.", "Allen Center 2 saves carbon for {{total_upfront}}."])
+    await run_pricing("r", GOALS[0])
+    md = await memo.write_memo("r")
+    assert "4,242" not in md and "Allen Center 2 saves carbon" in md and len(calls) == 2

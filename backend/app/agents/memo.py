@@ -132,7 +132,8 @@ async def write_memo(run_id: str, plan: dict | None = None) -> str:
     if not plan.get("plan_id"):
         raise ValueError("no plan to write a memo for")
     values, raw = build_values(plan, upgrades)
-    sources = [plan, raw, {p["name"]: p["name"] for p in profiles.values()}]
+    # Digits that belong to a building's name or address are not invented numbers ("7900 Fannin", "CityNorth 6").
+    sources = [plan, raw, [{"name": p.get("name"), "address": p.get("address")} for p in profiles.values()]]
 
     async def generate(allow_numbers: bool) -> str:
         draft = (await text_json(_prompt(plan, profiles, upgrades, allow_numbers), MemoDraft)).markdown

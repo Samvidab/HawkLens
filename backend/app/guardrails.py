@@ -84,7 +84,7 @@ async def guarded_text(generate: Callable[[bool], Awaitable[str]], sources: Any,
     if not check_numbers(draft, sources):
         return draft
     retry = await generate(False)
-    if not check_numbers(retry, sources) and not _numbers_in(retry):
+    if not check_numbers(retry, sources):  # digits explained by the sources (building names, addresses) are fine
         return retry
     if fallback is None:
         raise ValueError(f"LLM text kept inventing numbers: {check_numbers(retry, sources)}")
