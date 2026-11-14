@@ -58,7 +58,7 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 - `cheapest_extra` includes unverified upgrades (`include_in_optimizer == False`) with `verified: false`, so the target-gap card can offer "include unverified". `verified` is False only for `verified == "unverified"` ("assumed" counts as verified).
 - `cheapest_extra[i].fits_budget`: True if adding that upgrade (dropping whatever it replaces in its building/category slot) keeps total upfront within `budget_usd`. Always True with no budget.
 - `set_assumption` keys are dotted paths into assumptions.json (`upgrades.led_retrofit.unit_cost`); a bare global key (`discount_rate`) also works. Unknown keys, wrong types and values the engine rejects (dry-run on the cached upgrades) return `{ok: False, error}` and change nothing. Overrides persist across `simulate` calls until restart.
-- `risk_lambda` is accepted and part of `plan_id`, but not applied until build step 7.
+- `risk_lambda` (≥ 0) is applied: objective = E[NPV] + risk_lambda × CVaR5 over `global.n_scenarios_optimizer` scenarios (see Optimizer). 0 = expected NPV only. Part of `plan_id`.
 - `configure(buildings_root=...)` (setup, outside the contract): where `<building_id>/profile.json` lives (default `data_dir/buildings`). Tests point it at the fixtures. `simulate` re-reads buildings each call.
 - `simulate` accepts our `FeasibleUpgrade`, the agent's `app.schemas.upgrades.FeasibleUpgrade` (validated from `model_dump()`), or dicts. `assumptions={"discount_rate": x}` (a bare global key) works.
 - The target's denominator is every simulated building, including excluded ones.
@@ -135,6 +135,7 @@ cost_per_tonne = -exp_npv / mean(tonnes_lifetime). Negative = cuts carbon and ma
 - plan_id = short hash of (inputs, target, lambda, budget, exclusions), so the same request gives the same ID.
 - `brute_force()` enumerates every plan for small cases. It is the test oracle for PuLP.
 - Speed: optimize < 1 s for 10 buildings. If slower, precompute plans for target steps of 5 %.
+- Measured (MacBook, CBC with cuts and heuristics off, K_risk = 1000): risk_lambda 0 → 30–120 ms; risk_lambda 0.5 → ~0.4 s for 3 buildings, 0.8–1.6 s for 10 buildings including one min_p_hit retry (each CVaR solve ≈ 0.7 s). Over the 1 s goal at 10 buildings; levers: `n_scenarios_optimizer` 500 (≈ 4× faster, slightly different plans) or precomputing.
 
 ## Files
 ```
@@ -154,13 +155,13 @@ backend/tests/engine/
 4. `curve.py`. Test: sorted ascending; negative cost_per_tonne when NPV > 0.
 5. `optimizer.py` step 1 + brute force. Test: PuLP == brute force on the 3-building fixture.
 6. Contract functions in `__init__.py`. Test (`test_contract.py`): output keys and types match TRD §8.1 + the extras above. **Tell the agent owner they can set `ENGINE_MODE=live`.**
-7. Optimizer step 2 (CVaR). Test: raising risk_lambda lowers or holds p_loss.
+7. Optimizer step 2 (CVaR). Tests: PuLP == brute force with the risk term; the R-U term equals the exact worst-5% mean at the optimum; raising risk_lambda raises or holds CVaR and lowers or holds E[NPV]. (p_loss is NOT guaranteed to fall: on the fixtures at 10%, lambda 0 → 0.5 improves CVaR from −$378k to −$201k while p_loss rises 0.36 → 0.44. CVaR and p_loss measure different things.)
 8. Carbon price scenario. Real assumptions from the pitch owner.
 
 ## Sanity checks before the demo
 - Same inputs → same outputs (fixed seed, same plan_id).
 - At lambda = 0 with no budget, raising the target never raises exp_npv.
-- Raising lambda lowers or holds p_loss.
+- Raising lambda raises or holds the plan's CVaR and lowers or holds its E[NPV] (p_loss can go either way).
 - Doubling a building's baseline spend makes its upgrades more attractive.
 - An unreachable target returns status "infeasible" with a shortfall, not an error.
 

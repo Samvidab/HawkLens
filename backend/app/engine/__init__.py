@@ -190,7 +190,8 @@ def optimize(target_pct: float, risk_lambda: float = 0.0, budget_usd: float | No
     """Cheapest plan (max expected NPV) that hits target_pct % of the portfolio's baseline CO2.
 
     The target's denominator is every simulated building, excluded or not.
-    risk_lambda is accepted and part of plan_id but not applied yet (build step 7).
+    risk_lambda >= 0: maximize E[NPV] + risk_lambda x CVaR5 (worst-5% mean NPV) over
+    global.n_scenarios_optimizer scenarios. 0 = expected NPV only.
     global.min_p_hit (assumptions; default 0.8, set_assumption("min_p_hit", x) to change,
     0 turns it off): raise the internal target until the plan hits the real target in at
     least this share of scenarios (see optimizer.solve_with_min_p_hit).
@@ -202,7 +203,7 @@ def optimize(target_pct: float, risk_lambda: float = 0.0, budget_usd: float | No
     return _opt.solve_with_min_p_hit(
         sim, upgrades, baseline_tonnes_per_year=base, target_pct=target_pct,
         min_p_hit=a["global"]["min_p_hit"], budget_usd=budget_usd, exclusions=exclusions or [],
-        risk_lambda=risk_lambda,
+        risk_lambda=risk_lambda, n_risk_scenarios=a["global"]["n_scenarios_optimizer"],
     )
 
 

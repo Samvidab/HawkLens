@@ -19,7 +19,15 @@ owner-excluded or unverified upgrades with the lowest cost per tonne that would 
 tonnes (their building/category slot is empty, or they avoid more CO2 than what's in
 it). Each item has verified (False = needs "include unverified") and fits_budget.
 
-Step 7 adds the CVaR risk term; risk_lambda is not used yet.
+Risk (build step 7): with risk_lambda > 0 the objective becomes
+    E[NPV] + risk_lambda x CVaR5(plan NPV)
+CVaR5 = mean NPV of the worst 5% of scenarios (usually negative; higher = safer). It is
+linearised with Rockafellar-Uryasev over the first n_risk_scenarios scenarios
+(assumptions global.n_scenarios_optimizer, 1000):
+    eta free, u_k >= 0, u_k >= eta - sum_i npv[i,k] x_i,  CVaR = eta - sum_k u_k / (alpha K)
+At the optimum eta is the 5% quantile and the u_k are how far each scenario falls below
+it, so the term equals the exact worst-5% mean when alpha K is a whole number (50 of 1000).
+E[NPV] in the objective still uses all scenarios. risk_lambda = 0 is plain step 5.
 """
 from __future__ import annotations
 
@@ -37,7 +45,7 @@ import pulp
 from .curve import cost_per_tonne
 from .models import FeasibleUpgrade
 from .monte_carlo import SimulationResult
-from .risk import summarize
+from .risk import ALPHA, cvar, summarize
 
 EPS_TONNES = 1e-6          # tolerance on the tonnes constraint (same for both solvers)
 MAX_BRUTE_FORCE_PLANS = 1 << 20
@@ -68,17 +76,36 @@ class Problem:
     budget_usd: float | None
     target_pct: float
     exclusions: tuple[str, ...]
+    risk_lambda: float = 0.0
+    risk_npv: np.ndarray | None = None      # (n_upgrades, K_risk) scenarios the CVaR term uses
+
+    def plan_cvar(self, indices: list[int]) -> float:
+        """Exact worst-5% mean of the plan's NPV over the risk scenarios (0 for an empty plan)."""
+        if not indices:
+            return 0.0
+        return float(cvar(self.risk_npv[sorted(indices)].sum(axis=0), ALPHA))
+
+    def score(self, indices: list[int]) -> float:
+        """The objective both solvers maximize: E[NPV] + risk_lambda x CVaR5."""
+        by = {c.index: c for c in self.candidates}
+        npv = sum(by[i].exp_npv for i in indices)
+        return npv + (self.risk_lambda * self.plan_cvar(indices) if self.risk_lambda else 0.0)
 
 
 def build_problem(sim: SimulationResult, upgrades: list[FeasibleUpgrade], *,
                   baseline_tonnes_per_year: float, target_pct: float,
-                  budget_usd: float | None = None, exclusions: Iterable[str] = ()) -> Problem:
+                  budget_usd: float | None = None, exclusions: Iterable[str] = (),
+                  risk_lambda: float = 0.0, n_risk_scenarios: int = 1000) -> Problem:
     if [u.upgrade_id for u in upgrades] != sim.upgrade_ids:
         raise ValueError("upgrades must be the same list, in the same order, that was simulated")
     if not 0 <= target_pct <= 100:
         raise ValueError("target_pct is a percentage 0-100, e.g. 40 for 40%")
     if budget_usd is not None and budget_usd < 0:
         raise ValueError("budget_usd must be >= 0")
+    if risk_lambda < 0:
+        raise ValueError("risk_lambda must be >= 0 (0 = ignore risk)")
+    if n_risk_scenarios < 1:
+        raise ValueError("n_risk_scenarios must be >= 1")
     ex = tuple(sorted(set(exclusions)))
     cpt = cost_per_tonne(sim.npv, sim.tonnes_lifetime)
     exp_npv = sim.npv.mean(axis=1)
@@ -95,7 +122,9 @@ def build_problem(sim: SimulationResult, upgrades: list[FeasibleUpgrade], *,
         ))
     return Problem(sim=sim, candidates=cands,
                    tonnes_needed=target_pct / 100.0 * baseline_tonnes_per_year,
-                   budget_usd=budget_usd, target_pct=target_pct, exclusions=ex)
+                   budget_usd=budget_usd, target_pct=target_pct, exclusions=ex,
+                   risk_lambda=float(risk_lambda),
+                   risk_npv=np.ascontiguousarray(sim.npv[:, :min(n_risk_scenarios, sim.n_scenarios)]))
 
 
 # --- brute force (test oracle) -----------------------------------------------------------
@@ -116,7 +145,7 @@ def brute_force(p: Problem) -> dict:
     if n_plans > MAX_BRUTE_FORCE_PLANS:
         raise ValueError(f"{n_plans} plans is too many for brute force; use solve()")
 
-    best_ok: tuple[float, list[Candidate]] | None = None        # max NPV among plans hitting target
+    best_ok: tuple[float, list[Candidate]] | None = None        # max score among plans hitting target
     best_any: tuple[float, float, list[Candidate]] | None = None  # max tonnes (then NPV) overall
     for choice in itertools.product(*[[None, *g] for g in groups]):
         plan = [c for c in choice if c is not None]
@@ -124,8 +153,10 @@ def brute_force(p: Problem) -> dict:
             continue
         npv = sum(c.exp_npv for c in plan)
         tonnes = sum(c.tonnes_per_year for c in plan)
-        if tonnes >= p.tonnes_needed - EPS_TONNES and (best_ok is None or npv > best_ok[0]):
-            best_ok = (npv, plan)
+        if tonnes >= p.tonnes_needed - EPS_TONNES:
+            score = p.score([c.index for c in plan])
+            if best_ok is None or score > best_ok[0]:
+                best_ok = (score, plan)
         if best_any is None or (tonnes, npv) > (best_any[0], best_any[1]):
             best_any = (tonnes, npv, plan)
 
@@ -155,7 +186,9 @@ def _solver() -> pulp.LpSolver:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="PULP_CBC_CMD is deprecated",
                                     category=DeprecationWarning)
-            return pulp.PULP_CBC_CMD(msg=0)
+            # Cuts and heuristics off: same optimum (tested against brute force), but the
+            # CVaR model (1,000 tail rows) solves ~40% faster without them.
+            return pulp.PULP_CBC_CMD(msg=0, options=["cuts off", "heuristics off"])
     if name == "HiGHS":
         return pulp.HiGHS(msg=0)
     return pulp.HiGHS_CMD(msg=0)
@@ -168,7 +201,15 @@ def _model(p: Problem, objective: str) -> tuple[pulp.LpProblem, dict[int, pulp.L
     by = {c.index: c for c in p.candidates}
     tonnes = pulp.lpSum(by[i].tonnes_per_year * v for i, v in x.items())
     if objective == "npv":
-        m += pulp.lpSum(by[i].exp_npv * v for i, v in x.items())
+        obj = pulp.lpSum(by[i].exp_npv * v for i, v in x.items())
+        if p.risk_lambda > 0 and x:
+            k = p.risk_npv.shape[1]
+            eta = m.add_variable("eta")                                       # free
+            u = [m.add_variable(f"u_{j}", lowBound=0) for j in range(k)]
+            for j in range(k):
+                m += u[j] >= eta - pulp.lpSum(float(p.risk_npv[i, j]) * v for i, v in x.items()), f"tail_{j}"
+            obj = obj + p.risk_lambda * (eta - pulp.lpSum(u) / (ALPHA * k))
+        m += obj
         m += tonnes >= p.tonnes_needed - EPS_TONNES, "target"
     else:
         # Max tonnes; tiny NPV term breaks ties toward the more valuable plan.
@@ -220,7 +261,8 @@ def _p_hit(p: Problem, selected: list[int]) -> float:
 def solve_with_min_p_hit(sim: SimulationResult, upgrades: list[FeasibleUpgrade], *,
                          baseline_tonnes_per_year: float, target_pct: float,
                          min_p_hit: float = 0.8, budget_usd: float | None = None,
-                         exclusions: Iterable[str] = (), risk_lambda: float = 0.0) -> dict:
+                         exclusions: Iterable[str] = (), risk_lambda: float = 0.0,
+                         n_risk_scenarios: int = 1000) -> dict:
     """Solve, then make the plan likely (not just expected) to hit the owner's target.
 
     The constraint uses EXPECTED tonnes, so a plan that only just clears the target
@@ -236,9 +278,9 @@ def solve_with_min_p_hit(sim: SimulationResult, upgrades: list[FeasibleUpgrade],
     if not 0 <= min_p_hit <= 1:
         raise ValueError("min_p_hit is a probability 0-1, e.g. 0.8")
     kw = dict(baseline_tonnes_per_year=baseline_tonnes_per_year, budget_usd=budget_usd,
-              exclusions=exclusions)
+              exclusions=exclusions, risk_lambda=risk_lambda, n_risk_scenarios=n_risk_scenarios)
     user = build_problem(sim, upgrades, target_pct=target_pct, **kw)
-    id_extra = {"risk_lambda": risk_lambda, "min_p_hit": min_p_hit}
+    id_extra = {"min_p_hit": min_p_hit}
 
     best_sel, status = _solve_indices(user)
     best_internal, best_p, retries = target_pct, _p_hit(user, best_sel), 0
@@ -269,6 +311,7 @@ def plan_id(p: Problem, **extra) -> str:
     h.update(json.dumps({
         "upgrades": p.sim.upgrade_ids, "seed": p.sim.seed, "k": p.sim.n_scenarios,
         "target_pct": p.target_pct, "budget_usd": p.budget_usd, "exclusions": p.exclusions,
+        "risk_lambda": p.risk_lambda, "k_risk": int(p.risk_npv.shape[1]),
         **extra,
     }, sort_keys=True).encode())
     h.update(np.ascontiguousarray(p.sim.npv).tobytes())
