@@ -134,3 +134,9 @@ def baseline_kwh_per_year(b: BuildingFacts, assumptions: dict[str, Any]) -> floa
     if not b.rba_sqft or b.rba_sqft <= 0:
         raise ValueError(f"building {b.building_id!r} has no rba_sqft, so no benchmark baseline")
     return city["kwh_per_sqft_year"][b.benchmark_type] * b.rba_sqft
+
+
+def baseline_tonnes_per_year(b: BuildingFacts, assumptions: dict[str, Any]) -> float:
+    """CO2 from the building's baseline electricity: baseline kWh x grid kg/kWh / 1000."""
+    grid = assumptions["cities"][b.city]["grid_kg_co2_per_kwh"]
+    return baseline_kwh_per_year(b, assumptions) * grid / 1000.0

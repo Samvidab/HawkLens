@@ -30,7 +30,7 @@ cd backend
 python -m pip install "pulp[cbc]" numpy
 python -c "import pulp; print(pulp.listSolvers(onlyAvailable=True))"   # must include PULP_CBC_CMD
 ```
-- Solve with `pulp.PULP_CBC_CMD(msg=0)`. It uses the CBC binary bundled inside pulp, so it works without the venv on PATH. Don't use `COIN_CMD`: it looks for `cbc` on PATH and fails when the venv isn't activated.
+- Solve with `pulp.PULP_CBC_CMD(msg=0)`. It uses the CBC binary bundled inside pulp, so it works without the venv on PATH. PuLP 3.3 marks it deprecated (removed in 4.0), so `optimizer._solver()` silences that one warning; `requirements.txt` pins pulp 3.3.2. Before any PuLP upgrade, switch to `COIN_CMD(path=<venv>/bin/cbc, msg=0)`. Plain `COIN_CMD()` without `path` looks for `cbc` on PATH and fails when the venv isn't activated.
 - Fallback solver: HiGHS (`pip install highspy`), `pulp.HiGHS(msg=0)`, used only if `PULP_CBC_CMD` isn't in `listSolvers(onlyAvailable=True)`.
 - Use `app.config.get_settings()` for `data_dir`. Don't hardcode paths.
 
