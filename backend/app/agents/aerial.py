@@ -118,8 +118,8 @@ def prompt_for(profile: BuildingProfile, images: list[ImageRef], question: str |
         ctx.append(f"- Stories above grade: {profile.stories}")
     if profile.year_built:
         ctx.append(f"- Year built: {profile.year_built}")
-    q = (f"\n## Verifier question\nAnswer this question and re-check only the item it concerns:\n{question}\n"
-         if question else "")
+    q = (f"\n## Verifier questions\nThe verifier doubted some of your earlier answers. Look again and answer "
+         f"these questions, re-checking the items they concern:\n{question}\n" if question else "")
     return (PROMPT_PATH.read_text()
             .replace("{{image_list}}", "\n".join(lines))
             .replace("{{building_context}}", "\n".join(ctx))
@@ -291,3 +291,30 @@ async def run(profile: BuildingProfile, run_id: str | None = None) -> tuple[Aeri
     save(profile, res)
     store.save_claims(profile.building_id, res.claims)
     return res.findings, res.claims
+
+
+FIELD_ATTR = {"roof.type": "roof_type", "roof.color": "roof_color", "roof.usable_fraction": "usable_roof_fraction",
+              "roof.shading": "shading", "roof.existing_solar": "existing_solar"}
+
+
+async def reinspect(profile: BuildingProfile, res: AerialResult, asks: list[tuple[Claim, str]]) -> AerialResult:
+    """Re-answer the sent-back claims (one Gemini call), given the verifier's questions; every
+    other observation is kept as it was."""
+    questions = "\n".join(f"- about `{c.field}`: {q}" for c, q in asks)
+    prompt = prompt_for(profile, res.images, question=questions)
+    try:
+        new = await llm.vision_json(prompt, res.images, AerialObservation)
+    except Exception as e:  # noqa: BLE001 - keep the old answers; the verifier decides again
+        log.warning("aerial reinspect failed for %s: %s", profile.building_id, e)
+        return res
+    obs = res.obs
+    for claim, _ in asks:
+        if claim.field in FIELD_ATTR:
+            attr = FIELD_ATTR[claim.field]
+            obs = obs.model_copy(update={attr: getattr(new, attr)})
+        elif claim.field.startswith("facade."):
+            o = claim.field.split(".")[1]
+            keep = [f for f in obs.facades if f.orientation != o]
+            obs = obs.model_copy(update={"facades": keep + [f for f in new.facades if f.orientation == o]})
+    findings, claims = build_findings(profile, obs, res.images)
+    return AerialResult(images=res.images, obs=obs, findings=findings, claims=claims)

@@ -1,27 +1,27 @@
 # Lane A (critical path), branch `lane-data`
 
-Tasks: T0.3 → T0.4 → T1.1 → T1.5 → T1.6 → T1.8. **All done; AC-1 passes** (Vexcel obliques pending).
+Phase 1 done (AC-1). Phase 2: T2.1 done live; T2.2 and T2.3 code + tests done, **live runs blocked on Gemini daily quota**.
 
 ## Done
 - T0.1, T0.2 (before this session)
-- T0.3/T0.4 (`f5a16ce`, `d711f9f`, `0a1e311`): `adapters/README.md`; `costar.py` (local kit, streamed), `matterport.py` (GraphQL: key check, basics, panos + face download, rooms, MatterPak), `vexcel.py` (ortho/extract overhead), `types.py`. Live test (`-m live`) passes.
-- T1.1 (`a51e025`, `0a1e311`): `data/portfolio.json`, 8 Houston offices, all with Vexcel overhead. Hero 23551 Harwin Plaza II: all 10 MatterPaks unlocked; hero model `hu9LX64osUN` (17 panos, 3 rooms).
-- Merged `agent` (Lane B schemas + costar-quickstart.md) at `30adcdf`.
-- T1.5 (`93f652f`): `agents/records.py` → `profile.json` with `source_fields`, estimated footprint (typical floor plate), `fetch` event.
-- T1.6 (`dc629c7`): `agents/aerial.py` + `prompts/aerial.md`: Vexcel overhead → Gemini structured observations → Claims with marks; `usable_roof_m2` in code; `aerial.json`, `claims.json`, `images.json`, `aerial_debug.png`; fallback to unknowns on LLM failure. Debug PNGs checked for 23551 and 239601.
-- T1.8: `scripts/survey_one.py`. **AC-1:** 23551 → 3 upgrades (rooftop_solar 417.4 kW with Vexcel evidence, heat_pump, led_retrofit); 2nd run with `CACHE_MODE=read_only` prints identical JSON.
-
-## In progress
-- none
+- T0.3/T0.4 (`f5a16ce`, `d711f9f`, `0a1e311`): `adapters/README.md`; `costar.py`, `matterport.py`, `vexcel.py` (overhead), `types.py`. Live test (`-m live`) passes.
+- T1.1 (`a51e025`, `0a1e311`): `data/portfolio.json`, 8 Houston offices, all with Vexcel overhead. Hero 23551 Harwin Plaza II, model `hu9LX64osUN` (17 panos, 3 rooms).
+- T1.5 (`93f652f`) records agent · T1.6 (`dc629c7`) aerial inspector · T1.8 (`bbcffd3`) `survey_one.py`, **AC-1 passes**.
+- T2.1 (`dff900c`): `agents/graph.py` (orchestrator plan → `Send` fan-out → survey subgraph [records → aerial ∥ interior → site engineer → verify ⟲ reinspect → finalize] → collect), `main.py` (`POST /run`, `GET /state/{id}`, SSE events router, `/portfolio`, `/registry`, `/media/{id}`, `/media/mesh/{model}/{file}`). **Live: run_8e9dd656 surveyed 8/8 buildings, 4 at a time, 23 feasible upgrades, events streamed over SSE.** That run was `CACHE_MODE=read_write`: records, Vexcel imagery and aerial Gemini calls for all 8 are cached.
+- T2.2 (code + tests): `agents/verifier.py` + `prompts/verifier.md`. One batched Gemini call per building per inspector per round; ≥0.7 verified, <0.3 rejected, else sent back with a number-checked question (≤2 loops) then unverified; unknown values → unverified; verifier errors → unverified, never a send-back. Batched `aerial.reinspect`. `verification.json` per building. Tests drive the real subgraph through every outcome incl. 3 `send_back` events.
+- T2.3 (code + tests): `agents/interior.py` + `prompts/interior.md`. 5 panoramas (farthest-point sampled, ceiling + 2 horizon faces), lighting / HVAC / window claims, pins at scan xyz, `interior.json` + `interior_scan.json`, batched reinspect, MatterPak download when available.
+- `llm.py` (Lane B's file, small change): waits out 429s using the API's `retryDelay`, optional `GEMINI_RPM` pacing, fails fast with `QuotaExhausted` when the API asks for > 90 s (daily cap).
 
 ## Blocked / open
-- **Vexcel obliques + roof attributes:** `backend/toolkit/` (Vexcel quickstart, models_index.csv, AGENTS.md, matterport_quickstart.py) was not in the `agent` branch; only `docs/agent/costar-quickstart.md` came through. `vexcel.oblique` raises NotImplementedError; facades empty, so `window_upgrade` is never proposed.
-- `/media/{image_id}` route: not in my scope (main.py). Evidence files are indexed per building in `data/buildings/<id>/images.json` (image_id → local_path) for whoever adds the route.
-- Solar/cool-roof upgrades stay `unverified` / `include_in_optimizer=False` until the verifier (T2.2) runs.
+- **Gemini free tier: 20 requests/day per model** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `gemini-3.6-flash` spent; also 5/min). Blocks: live verifier run (genuine send_back), live interior run on the hero, cache warm-up with verifier + interior, and any re-run. Needs billing on the key or a paid key.
+- **No genuine live send_back yet.** The send_backs in run t22-live were caused by 429 errors being scored as doubt (bug, fixed). Proven only in tests so far.
+- **MatterPak not downloadable**: every portfolio model (37, incl. hero's 10) has `bundle availability: unlocked` but all resources `unavailable`, no URL. Mesh route is ready; hero_3d needs CoStar to generate/unlock the files, or `models_index.csv` to pick a splat model.
+- **Hero scan is one suite** (~1,000 sf of 105,717 sf, 3 unlabelled rooms, empty wall graph): scanned area kept in `interior_scan.json`, not used as building floor area (coverage < 50%); envelope area null → insulation not proposed.
+- **Vexcel obliques**: `backend/toolkit/` still not on `agent`; facades empty, no window_upgrade.
 
 ## Notes
-- venv: main checkout `backend/.venv` (Python 3.11.9). Tests: 126 pass + 1 live.
-- `COSTAR_KIT_DIR` was only in the main checkout root `.env`; added to this worktree's `backend/.env`.
-- CoStar CDN photos (403): skipped by decision.
-- Estimated footprints run ~20% under real roofs (hero); `usable_roof_m2` inherits that. Overhead crop = 2.2× estimated side to keep the whole roof in view.
+- venv: main checkout `backend/.venv` (Python 3.11.9). Tests: 140 pass + 1 live.
+- Port 8765 is taken by another process; I ran the API on 8791.
+- `COSTAR_KIT_DIR` added to this worktree's `backend/.env`. CoStar CDN photos (403) skipped by decision.
+- Estimated footprints run ~20% under real roofs; overhead crop = 2.2× estimated side.
 - `occupancy_pct` not in the CoStar property record; null.

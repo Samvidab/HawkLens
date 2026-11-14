@@ -52,6 +52,7 @@ class SurveyState(TypedDict, total=False):
     claims: list[Claim]
     upgrades: list[FeasibleUpgrade]
     sent_back: dict[str, str]  # claim_id → verifier question (T2.2)
+    _verify_round: int
 
 
 async def records_node(s: SurveyState) -> dict:
