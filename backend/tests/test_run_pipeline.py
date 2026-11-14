@@ -62,5 +62,10 @@ def test_post_run_returns_run_id(client, monkeypatch):  # noqa: F811
 
 
 def test_survey_runner_is_registered():
+    """main.py registers Lane A's survey with replan at import (other tests may reset it)."""
+    import importlib
+
     from app.agents import replan
+    replan.register_survey_runner(None)
+    importlib.reload(main)
     assert replan._survey_runner is graph.survey_runner
