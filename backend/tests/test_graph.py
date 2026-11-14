@@ -66,8 +66,8 @@ async def test_run_surveys_all_in_parallel_with_cap(env, monkeypatch):
     state = json.loads((data / "runs" / "g1" / "state.json").read_text())
     assert state["status"] == "surveyed" and state["hero_id"] == "b1" and set(state["results"]) == set(ids)
     ev = load_events("g1")
-    assert ev[0].kind == "plan" and ev[-1].kind == "done"
-    assert sum(e.kind == "decide" for e in ev) == len(ids)
+    assert ev[0].kind == "plan" and ev[-1].kind == "decide" and ev[-1].message.startswith("Survey complete")
+    assert sum(e.kind == "decide" and e.agent == "Site engineer" for e in ev) == len(ids)
     assert ev[0].message.startswith("Plan: survey 5 Houston buildings, 2 at a time")  # template fallback
 
 
@@ -78,7 +78,7 @@ async def test_one_failing_building_does_not_stop_the_run(env, monkeypatch):
     out = await graph.run(Goal(city="Houston", target_pct=40, building_ids=["b2", "b3"]), "g2")
     assert out["results"]["b2"]["status"] == "done" and out["results"]["b3"]["status"] == "error"
     kinds = [e.kind for e in load_events("g2")]
-    assert "error" in kinds and kinds[-1] == "done"
+    assert "error" in kinds and kinds[-1] == "decide"
 
 
 async def test_plan_drops_lines_with_invented_numbers(monkeypatch):

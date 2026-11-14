@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import events, media
 from app.agents import graph
-from app.agents.replan import ReplanError, replan
+from app.agents.replan import ReplanError, register_survey_runner, replan
 from app.config import get_settings
 from app.envutil import env_value
 from app.schemas.goal import Goal, OwnerAction
@@ -37,6 +37,7 @@ app = FastAPI(title="RetroAlpha backend")
 configure_cors(app)
 app.include_router(events.router)  # GET /events/{run_id}
 app.include_router(media.router)   # GET /media/mesh/{model_id}/{file}, GET /media/{image_id}
+register_survey_runner(graph.survey_runner)  # replan's `goal` action surveys missing buildings via Lane A's graph
 
 _runs: dict[str, asyncio.Task] = {}  # keep references so background runs aren't garbage-collected
 _compose_lock = asyncio.Lock()  # engine state is process-wide; one re-plan at a time
@@ -54,16 +55,6 @@ def health() -> dict:
     }
 
 
-@app.post("/run")
-async def start_run(goal: Goal) -> dict:
-    """Start survey (→ pricing → compose, once those exist) in the background; returns run_id."""
-    run_id = graph.new_run_id()
-    task = asyncio.create_task(graph.run(goal, run_id))
-    _runs[run_id] = task
-    task.add_done_callback(lambda t: _runs.pop(run_id, None))
-    return {"run_id": run_id}
-
-
 @app.get("/registry")
 def registry() -> dict:
     """Widget JSON Schemas (frontend mirrors these as TypeScript)."""
@@ -77,6 +68,24 @@ def portfolio():
     if not path.exists():
         raise HTTPException(404, "portfolio.json not found; run scripts/pick_portfolio.py")
     return json.loads(path.read_text())
+
+
+@app.post("/run")
+async def start_run(goal: Goal) -> dict:
+    """Survey (Lane A graph) -> pricing -> compose in the background; returns run_id at once.
+    The frontend opens GET /events/{run_id} and reads GET /state/{run_id} after the `done` event."""
+    run_id = graph.new_run_id()
+
+    async def pipeline() -> None:
+        async def compose_goal() -> None:
+            async with _compose_lock:
+                await replan(OwnerAction(run_id=run_id, type="goal", payload=goal.model_dump(mode="json")))
+        await graph.run_full(goal, run_id, compose_goal)
+
+    task = asyncio.create_task(pipeline())
+    _runs[run_id] = task
+    task.add_done_callback(lambda t: _runs.pop(run_id, None))
+    return {"run_id": run_id}
 
 
 @app.post("/compose", response_model=Layout)

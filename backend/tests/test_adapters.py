@@ -140,3 +140,29 @@ async def test_live_matterport_and_vexcel(isolated_cache):
     ref = (await vexcel.overhead(geometry.point_wkt(*HERO_LATLON), 60, city="Houston"))[0]
     from pathlib import Path
     assert Path(ref.local_path).stat().st_size > 10_000
+
+
+@pytest.mark.parametrize("expired_status", [403, 410])
+async def test_pano_face_resigns_expired_link(isolated_cache, monkeypatch, expired_status):
+    import httpx
+
+    from app.adapters.types import PanoramaRef
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if "stale" in str(req.url):
+            return httpx.Response(expired_status)
+        return httpx.Response(200, content=b"\xff\xd8fresh")
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(matterport.httpx, "AsyncClient",
+                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+
+    async def fresh(model_id):
+        return [PanoramaRef(pano_id="p1", model_id="m1", xyz=(0, 0, 0),
+                            skybox_urls=[f"https://cdn/fresh/{i}.jpg" for i in range(6)])]
+
+    monkeypatch.setattr(matterport, "_fresh_panos", fresh)
+    stale = PanoramaRef(pano_id="p1", model_id="m1", xyz=(0, 0, 0),
+                        skybox_urls=[f"https://cdn/stale/{i}.jpg" for i in range(6)])
+    path = await matterport.pano_face(stale, 2)
+    assert path.read_bytes() == b"\xff\xd8fresh"

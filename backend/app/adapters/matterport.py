@@ -56,6 +56,9 @@ Q_MATTERPAK = """query MatterPak($id: ID!) { model(id: $id) {
 } }"""
 
 
+EXPIRED_LINK = {400, 401, 403, 410}  # what Matterport's CDN answers for an expired signed URL (410 seen)
+
+
 class MatterportError(RuntimeError):
     pass
 
@@ -161,7 +164,7 @@ async def pano_face(pano: PanoramaRef, face: int) -> Path:
             raise MatterportError(f"no skybox face {face} for pano {pano.pano_id}")
         async with httpx.AsyncClient(timeout=60, follow_redirects=True) as c:
             r = await c.get(url)
-            if r.status_code in (401, 403):  # signed link expired: re-query once
+            if r.status_code in EXPIRED_LINK:  # signed link expired (cached query): re-query once
                 fresh = {p.pano_id: p for p in await _fresh_panos(pano.model_id)}
                 r = await c.get(fresh[pano.pano_id].skybox_urls[face])
             r.raise_for_status()

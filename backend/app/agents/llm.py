@@ -28,10 +28,6 @@ BACKOFF_S = 1.0
 RATE_LIMIT_RETRIES = 8  # 429s are waited out (free-tier keys: a few requests per minute)
 RATE_LIMIT_DEFAULT_WAIT_S = 15.0
 RATE_LIMIT_MAX_WAIT_S = 90.0  # longer asks mean a daily quota is spent: fail fast instead of hanging
-
-
-class QuotaExhausted(RuntimeError):
-    pass
 CACHE_NAMESPACE = "gemini"
 
 _sem: asyncio.Semaphore | None = None
@@ -41,6 +37,10 @@ tokens_used: int = 0  # running total; callers may reset between surveys
 
 class TokenBudgetExceeded(RuntimeError):
     pass
+
+
+class QuotaExhausted(RuntimeError):
+    """The API asked for a wait longer than RATE_LIMIT_MAX_WAIT_S (daily quota spent)."""
 
 
 class ImageLike(Protocol):  # adapters.vexcel.ImageRef satisfies this
@@ -145,7 +145,6 @@ async def _generate(model: str, prompt: str, images: list[bytes], schema: type[B
 
 async def _call_with_retries(model: str, prompt: str, images: list[bytes], schema: type[BaseModel]) -> str:
     global tokens_used
-    last: Exception | None = None
     attempt = limited = 0
     while True:
         try:
@@ -157,7 +156,6 @@ async def _call_with_retries(model: str, prompt: str, images: list[bytes], schem
             log.info("gemini model=%s tokens=%d total=%d", model, tokens, tokens_used)
             return text
         except Exception as e:  # noqa: BLE001 - transport/API errors
-            last = e
             code = getattr(e, "code", None)
             if code == 429 and limited < RATE_LIMIT_RETRIES:  # rate limited: wait as told, don't count
                 limited += 1

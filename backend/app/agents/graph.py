@@ -282,7 +282,8 @@ async def collect(s: RunState) -> dict:
     done = [r for r in res.values() if r.get("status") == "done"]
     n_up = sum(r.get("upgrades", 0) for r in done)
     write_state(s["run_id"], status="surveyed", results=res)
-    emit(s["run_id"], ORCH, "done",
+    # Not `done`: the frontend reads /state on `done`, which needs pricing + compose first (run_full).
+    emit(s["run_id"], ORCH, "decide",
          f"Survey complete: {len(done)} of {len(res)} buildings, {n_up} feasible upgrades")
     _semaphores.pop(s["run_id"], None)
     return {}
@@ -314,3 +315,28 @@ async def run(goal: Goal, run_id: str | None = None) -> dict:
         emit(run_id, ORCH, "error", f"run failed ({type(e).__name__})")
         write_state(run_id, status="error", error=str(e)[:300])
         raise
+
+
+async def survey_runner(run_id: str, goal: Goal, building_ids: list[str]) -> None:
+    """Registered with agents.replan: survey buildings a `goal` action finds unsurveyed."""
+    await run(goal.model_copy(update={"building_ids": building_ids}), run_id)
+
+
+async def run_full(goal: Goal, run_id: str, compose) -> None:
+    """POST /run pipeline: survey every goal building → `compose()` (Lane B: pricing → composer →
+    state.json with the layout) → `done`. Errors still end with `done` so the UI never hangs."""
+    try:
+        out = await run(goal, run_id)
+    except Exception:  # noqa: BLE001 - already reported by run()
+        emit(run_id, ORCH, "done", "Run stopped: survey failed")
+        return
+    try:
+        await compose()
+    except Exception as e:  # noqa: BLE001
+        log.exception("pricing/compose failed for %s", run_id)
+        emit(run_id, ORCH, "error", f"pricing/compose failed ({type(e).__name__})")
+        write_state(run_id, status="error", error=str(e)[:300], results=out["results"])
+        emit(run_id, ORCH, "done", "Run finished without a workspace")
+        return
+    write_state(run_id, status="ready", results=out["results"])  # merges into composer's state.json
+    emit(run_id, ORCH, "done", "Workspace ready")
