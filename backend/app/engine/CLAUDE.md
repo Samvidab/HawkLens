@@ -27,10 +27,10 @@ The owner of this folder is new to NumPy, PuLP and FastAPI. After each change, e
 ```
 cd backend
 python -m pip install "pulp[cbc]" numpy
-python -c "import pulp; print(pulp.listSolvers(onlyAvailable=True))"   # must include COIN_CMD
+python -c "import pulp; print(pulp.listSolvers(onlyAvailable=True))"   # must include PULP_CBC_CMD
 ```
-- CBC is not bundled with plain `pulp`. Solve with `pulp.COIN_CMD(msg=0)`. `PULP_CBC_CMD` no longer exists.
-- Backup solver: HiGHS (`pip install highspy`), selected by name from `listSolvers`.
+- Solve with `pulp.PULP_CBC_CMD(msg=0)`. It uses the CBC binary bundled inside pulp, so it works without the venv on PATH. Don't use `COIN_CMD`: it looks for `cbc` on PATH and fails when the venv isn't activated.
+- Fallback solver: HiGHS (`pip install highspy`), `pulp.HiGHS(msg=0)`, used only if `PULP_CBC_CMD` isn't in `listSolvers(onlyAvailable=True)`.
 - Use `app.config.get_settings()` for `data_dir`. Don't hardcode paths.
 
 ## Contract (must match TRD §8.1 exactly)
