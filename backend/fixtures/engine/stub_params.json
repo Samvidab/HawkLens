@@ -1,0 +1,11 @@
+{
+  "_flag": "STUB: placeholder pricing so the pipeline runs before the real engine is wired. NOT sourced. Never show as real.",
+  "life_years": {"rooftop_solar": 25, "cool_roof": 15, "window_upgrade": 25, "heat_pump": 15, "insulation": 30, "led_retrofit": 12},
+  "unit_cost_usd": {"rooftop_solar": 2200, "cool_roof": 3.0, "window_upgrade": 55, "heat_pump": 12, "insulation": 6, "led_retrofit": 2.5},
+  "annual_savings_usd_per_unit": {"rooftop_solar": 280, "cool_roof": 0.18, "window_upgrade": 1.6, "heat_pump": 0.55, "insulation": 0.3, "led_retrofit": 0.32},
+  "tonnes_per_year_per_unit": {"rooftop_solar": 1.1, "cool_roof": 0.00045, "window_upgrade": 0.0042, "heat_pump": 0.0011, "insulation": 0.0006, "led_retrofit": 0.0009},
+  "npv_sd_fraction_of_upfront": 0.4,
+  "discount_rate": 0.07,
+  "baseline": {"kg_co2_per_sqft_year": 4.5, "spend_usd_per_sqft_year": 2.1, "default_sqft": 100000},
+  "n_hist_bins": 30
+}

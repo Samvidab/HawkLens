@@ -15,7 +15,7 @@ from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from app.adapters.cache import cached
-from app.config import get_settings
+from app.config import BACKEND_DIR, get_settings
 
 log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
@@ -27,10 +27,6 @@ BACKOFF_S = 1.0
 RATE_LIMIT_RETRIES = 8  # 429s are waited out (free-tier keys: a few requests per minute)
 RATE_LIMIT_DEFAULT_WAIT_S = 15.0
 RATE_LIMIT_MAX_WAIT_S = 90.0  # longer asks mean a daily quota is spent: fail fast instead of hanging
-
-
-class QuotaExhausted(RuntimeError):
-    pass
 CACHE_NAMESPACE = "gemini"
 
 _sem: asyncio.Semaphore | None = None
@@ -42,17 +38,36 @@ class TokenBudgetExceeded(RuntimeError):
     pass
 
 
+class QuotaExhausted(RuntimeError):
+    """The API asked for a wait longer than RATE_LIMIT_MAX_WAIT_S (daily quota spent)."""
+
+
 class ImageLike(Protocol):  # adapters.vexcel.ImageRef satisfies this
     image_id: str
     local_path: str
 
 
+def _env(name: str) -> str | None:
+    """Process env first, then backend/.env (Settings drops keys it does not declare)."""
+    if os.environ.get(name):
+        return os.environ[name]
+    from dotenv import dotenv_values
+
+    return dotenv_values(BACKEND_DIR / ".env").get(name) or None
+
+
 def token_budget() -> int:
-    """MAX_TOKENS_PER_SURVEY from the environment (0 = unlimited). config.py is outside this lane."""
+    """MAX_TOKENS_PER_SURVEY (0 = unlimited). config.py is outside this lane."""
     try:
-        return int(os.environ.get("MAX_TOKENS_PER_SURVEY", "0"))
+        return int(_env("MAX_TOKENS_PER_SURVEY") or 0)
     except ValueError:
         return 0
+
+
+def _should_fall_back(e: Exception) -> bool:
+    """Server-side failure or timeout (after the primary model's retries)."""
+    code = getattr(e, "code", None)
+    return isinstance(e, (asyncio.TimeoutError, TimeoutError)) or (isinstance(code, int) and 500 <= code < 600)
 
 
 _pace_lock: asyncio.Lock | None = None
@@ -135,7 +150,6 @@ async def _generate(model: str, prompt: str, images: list[bytes], schema: type[B
 
 async def _call_with_retries(model: str, prompt: str, images: list[bytes], schema: type[BaseModel]) -> str:
     global tokens_used
-    last: Exception | None = None
     attempt = limited = 0
     while True:
         try:
@@ -147,7 +161,6 @@ async def _call_with_retries(model: str, prompt: str, images: list[bytes], schem
             log.info("gemini model=%s tokens=%d total=%d", model, tokens, tokens_used)
             return text
         except Exception as e:  # noqa: BLE001 - transport/API errors
-            last = e
             code = getattr(e, "code", None)
             if code == 429 and limited < RATE_LIMIT_RETRIES:  # rate limited: wait as told, don't count
                 limited += 1
@@ -165,7 +178,8 @@ async def _call_with_retries(model: str, prompt: str, images: list[bytes], schem
             attempt += 1
 
 
-async def _structured(model: str, prompt: str, images: list[ImageLike], schema: type[T]) -> T:
+async def _structured(model: str, prompt: str, images: list[ImageLike], schema: type[T],
+                      fallback_model: str | None = None) -> T:
     budget = token_budget()
     if budget and tokens_used >= budget:
         raise TokenBudgetExceeded(f"{tokens_used} tokens used, budget {budget}")
@@ -176,9 +190,18 @@ async def _structured(model: str, prompt: str, images: list[ImageLike], schema: 
         return {"model": model, "prompt": p, "image_ids": [i.image_id for i in images],
                 "schema": schema.__name__, "schema_fields": sorted(schema.model_fields)}
 
+    async def call(p: str) -> str:
+        try:
+            return await _call_with_retries(model, p, blobs, schema)
+        except Exception as e:  # noqa: BLE001
+            if not fallback_model or fallback_model == model or not _should_fall_back(e):
+                raise
+            log.warning("gemini %s failed (%s); falling back once to %s", model, type(e).__name__, fallback_model)
+            return await _call_with_retries(fallback_model, p, blobs, schema)
+
     async def attempt(p: str) -> str:
-        return await cached(CACHE_NAMESPACE, params(p),
-                            lambda: _call_with_retries(model, p, blobs, schema))
+        # Cached under the primary model's key whichever model answered, so read_only replays hit.
+        return await cached(CACHE_NAMESPACE, params(p), lambda: call(p))
 
     text = await attempt(prompt)
     try:
@@ -192,11 +215,12 @@ async def _structured(model: str, prompt: str, images: list[ImageLike], schema: 
 
 
 async def vision_json(prompt: str, images: list[ImageLike], schema: type[T]) -> T:
-    """Strongest multimodal model (GEMINI_MODEL_VISION)."""
+    """Strongest multimodal model (GEMINI_MODEL_VISION); one retry on GEMINI_MODEL_VISION_FALLBACK
+    if it fails with a 5xx or timeout after its own retries."""
     model = get_settings().gemini_model_vision
     if not model:
         raise RuntimeError("GEMINI_MODEL_VISION is not set")
-    return await _structured(model, prompt, images, schema)
+    return await _structured(model, prompt, images, schema, _env("GEMINI_MODEL_VISION_FALLBACK"))
 
 
 async def text_json(prompt: str, schema: type[T], *, fast: bool = True) -> T:

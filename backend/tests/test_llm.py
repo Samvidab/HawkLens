@@ -140,3 +140,64 @@ async def test_client_error_is_not_retried(env, monkeypatch):
     with pytest.raises(NotFound):
         await llm.text_json("q", Toy)
     assert len(calls) == 1
+
+
+def model_replies(by_model, calls):
+    async def _g(model, prompt, images, schema):
+        calls.append(model)
+        r = by_model[model]
+        if isinstance(r, Exception):
+            raise r
+        return r, 5
+    return _g
+
+
+class ServerErr(Exception):
+    code = 503
+
+
+async def test_vision_falls_back_on_5xx_and_caches_under_primary(env, image, monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL_VISION_FALLBACK", "fb-model")
+    calls = []
+    monkeypatch.setattr(llm, "_generate", model_replies({"vis-model": ServerErr("busy"), "fb-model": '{"color":"x","count":1}'}, calls))
+    assert (await llm.vision_json("q", [image], Toy)).color == "x"
+    assert calls == ["vis-model"] * 3 + ["fb-model"]  # primary retries, then one fallback call
+    calls.clear()
+    assert (await llm.vision_json("q", [image], Toy)).color == "x" and calls == []  # cached
+
+
+async def test_vision_falls_back_on_timeout(env, image, monkeypatch):
+    import asyncio
+    monkeypatch.setenv("GEMINI_MODEL_VISION_FALLBACK", "fb-model")
+    monkeypatch.setattr(llm, "RETRIES", 0)
+    calls = []
+    monkeypatch.setattr(llm, "_generate", model_replies({"vis-model": asyncio.TimeoutError(), "fb-model": '{"color":"t","count":2}'}, calls))
+    assert (await llm.vision_json("q", [image], Toy)).count == 2
+    assert calls == ["vis-model", "fb-model"]
+
+
+async def test_vision_no_fallback_on_4xx_or_when_unset(env, image, monkeypatch):
+    class NF(Exception):
+        code = 404
+    monkeypatch.setenv("GEMINI_MODEL_VISION_FALLBACK", "fb-model")
+    calls = []
+    monkeypatch.setattr(llm, "_generate", model_replies({"vis-model": NF("x"), "fb-model": '{"color":"x","count":1}'}, calls))
+    with pytest.raises(NF):
+        await llm.vision_json("q", [image], Toy)
+    assert calls == ["vis-model"]
+    monkeypatch.delenv("GEMINI_MODEL_VISION_FALLBACK")
+    monkeypatch.setattr(llm, "_env", lambda n: None)
+    calls.clear()
+    monkeypatch.setattr(llm, "_generate", model_replies({"vis-model": ServerErr("busy")}, calls))
+    with pytest.raises(ServerErr):
+        await llm.vision_json("q2", [image], Toy)
+    assert "fb-model" not in calls
+
+
+async def test_text_json_never_uses_vision_fallback(env, monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL_VISION_FALLBACK", "fb-model")
+    calls = []
+    monkeypatch.setattr(llm, "_generate", model_replies({"fast-model": ServerErr("busy")}, calls))
+    with pytest.raises(ServerErr):
+        await llm.text_json("q", Toy)
+    assert set(calls) == {"fast-model"}

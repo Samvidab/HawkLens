@@ -20,7 +20,8 @@ from app.schemas.events import ActivityEvent, EventKind
 
 MAX_MESSAGE = 90
 REPLAY_TOTAL_S = 35.0  # target length of a paced replay
-REPLAY_MIN_DELAY_S, REPLAY_MAX_DELAY_S = 0.1, 1.5
+REPLAY_MIN_DELAY_S, REPLAY_MAX_DELAY_S = 0.1, 2.5
+DWELL = {"send_back": 2.5, "verify": 1.5, "plan": 1.5, "act": 1.5, "done": 0.0}  # relative pause after a kind
 
 router = APIRouter()
 
@@ -103,13 +104,26 @@ async def live_stream(run_id: str) -> AsyncIterator[ActivityEvent]:
         _subs[run_id].remove(q)
 
 
+def pace(events: list[ActivityEvent], total_s: float = REPLAY_TOTAL_S) -> list[float]:
+    """Pause after each event so a replay lasts about `total_s` (30-40 s for a real run).
+
+    Pauses are weighted by kind (a send_back dwells longer so the audience can read it), then clamped to
+    [REPLAY_MIN_DELAY_S, REPLAY_MAX_DELAY_S]; very short runs therefore finish faster than `total_s`.
+    The last event has no pause.
+    """
+    if not events:
+        return []
+    w = [DWELL.get(e.kind, 1.0) for e in events[:-1]]
+    scale = total_s / (sum(w) or 1.0)
+    return [min(REPLAY_MAX_DELAY_S, max(REPLAY_MIN_DELAY_S, x * scale)) if x else 0.0 for x in w] + [0.0]
+
+
 async def replay_stream(run_id: str, delay: float | None = None) -> AsyncIterator[ActivityEvent]:
     events = load_events(run_id)
-    if delay is None:
-        delay = min(REPLAY_MAX_DELAY_S, max(REPLAY_MIN_DELAY_S, REPLAY_TOTAL_S / max(len(events), 1)))
-    for ev in events:
+    delays = [delay] * len(events) if delay is not None else pace(events)
+    for ev, d in zip(events, delays):
         yield ev
-        await asyncio.sleep(delay)
+        await asyncio.sleep(d)
 
 
 @router.get("/events/{run_id}")
