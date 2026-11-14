@@ -43,11 +43,11 @@ def test_real_run_creates_and_reads_back(tmp_path):
     r, writes = run(tmp_path, "--yes", "--max-usd", "250000", balance=5_000_000.0)
     assert r.returncode == 0, r.stdout + r.stderr
     out = json.loads(r.stdout[r.stdout.index("{"):r.stdout.rindex("}") + 1])
-    assert out["state"] == "executed" and out["nessie_ids"]["account"] == RESERVE and out["nessie_ids"]["transfer"].startswith("xfer-")
+    assert out["state"] == "executed" and out["nessie_ids"]["account"] == RESERVE and out["nessie_ids"]["transfer"].startswith("w-")
     assert out["total_upfront_usd"] <= 250_000 and "read-back matches the plan: True" in r.stdout
     assert sum(b["amount"] for b in out["read_back"]["reserve_bills"]) == pytest_approx(out["total_upfront_usd"])
     assert out["read_back"]["reserve_balance_usd"] == pytest_approx(out["total_upfront_usd"])
-    assert [w[1] for w in writes][0] == f"/accounts/{OPERATING}/transfers" and all("/transfers" in w[1] or "/bills" in w[1] for w in writes)
+    assert [w[1] for w in writes][0] == f"/accounts/{OPERATING}/withdrawals" and all(any(k in w[1] for k in ("/withdrawals", "/deposits", "/bills")) for w in writes)
 
 
 def pytest_approx(v):

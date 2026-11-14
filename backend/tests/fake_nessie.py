@@ -86,15 +86,28 @@ class FakeNessie:
             b = {**json, "_id": f"bill-{uuid.uuid4().hex[:8]}", "account_id": m[1]}
             self.bills[m[1]].append(b)
             return Resp(201, {"code": 201, "objectCreated": b})
-        if m := re.fullmatch(r"/accounts/([^/]+)/transfers", path) and method == "POST":
-            src = re.fullmatch(r"/accounts/([^/]+)/transfers", path)[1]
-            missing = {"medium", "payee_id", "amount"} - set(json or {})
-            if missing or src not in self.accounts or json["payee_id"] not in self.accounts:
-                return Resp(400, {"code": 400, "message": f"invalid transfer {sorted(missing)}"})
-            if self.accounts[src]["balance"] < json["amount"]:
-                return Resp(400, {"code": 400, "message": "insufficient funds"})
-            self.accounts[src]["balance"] -= json["amount"]; self.accounts[json["payee_id"]]["balance"] += json["amount"]
-            t = {**json, "_id": f"xfer-{len(self.transfers)}"}
+        # Strict like the real sandbox: unknown fields are rejected ("extra fields not permitted")
+        if m := re.fullmatch(r"/accounts/([^/]+)/(withdrawals|deposits)", path):
+            acct, kind = m[1], m[2]
+            allowed = {"medium", "transaction_date", "status", "amount", "description"}
+            required = allowed  # a stored withdrawal/deposit without all of these breaks its list endpoint on the real sandbox
+            body = json or {}
+            if acct not in self.accounts:
+                return Resp(404, {"code": 404})
+            if set(body) - allowed or required - set(body):
+                return Resp(400, {"code": 400, "message": f"validation: extra/missing fields {sorted(set(body) ^ allowed)}"})
+            if kind == "withdrawals":
+                if self.accounts[acct]["balance"] < body["amount"]:
+                    return Resp(400, {"code": 400, "message": "insufficient funds"})
+                self.accounts[acct]["balance"] -= body["amount"]
+            else:
+                self.accounts[acct]["balance"] += body["amount"]
+            t = {**body, "_id": f"{kind[0]}-{len(self.transfers)}", "account": acct, "kind": kind}
             self.transfers.append(t)
             return Resp(201, {"code": 201, "objectCreated": t})
+        if re.fullmatch(r"/accounts/([^/]+)/transfers", path):
+            body = json or {}
+            if {"medium", "payee_id"} & set(body):
+                return Resp(400, {"code": 400, "message": "2 validation errors for TransferCreate: extra fields not permitted"})
+            return Resp(201, {"code": 201, "objectCreated": {**body, "_id": f"rec-{len(self.transfers)}"}})  # a record only, no balance change
         return Resp(404, {"code": 404, "message": f"{method} {path}"})
