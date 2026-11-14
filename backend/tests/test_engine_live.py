@@ -49,7 +49,7 @@ def test_outputs_conform_and_carry_the_extras(data):
     assert ec.check_outputs(sim, bars, opt, base) == []
     m = next(iter(sim.values()))
     assert m["upfront_usd"] > 0 and m["tonnes_per_year"] > 0 and len(m["hist_bins"]) == 30
-    assert opt["status"] in ("ok", "infeasible") and opt["risk_supported"] is False
+    assert opt["status"] in ("ok", "infeasible") and opt["risk_supported"] is True  # the final engine applies risk_lambda (CVaR)
     assert all(b["annual_spend_usd"] > 0 and b["tonnes_per_year"] > 0 for b in base.values())
     assert ec.optimize(5, 0.5, None, []) == opt  # deterministic
 
@@ -59,10 +59,10 @@ def test_goal_end_to_end_with_real_pricing(c, data):
     assert r.status_code == 200, r.text
     lay = r.json()
     p = plan(data)
-    assert p["stub"] is False and p["risk_supported"] is False and p["selected"]
+    assert p["stub"] is False and p["risk_supported"] is True and p["selected"]
     w = {x["type"]: x["props"] for x in lay["widgets"]}
     assert w["plan_table"]["sample_pricing"] is False  # no "sample pricing" badge with the real engine
-    assert w["target_control"]["risk_supported"] is False and w["target_control"]["p_hit_target"] is not None
+    assert w["target_control"]["risk_supported"] is True and w["target_control"]["p_hit_target"] is not None
     rows = w["plan_table"]["rows"]
     assert rows and all(r["upfront_usd"] and r["tonnes_per_year"] and r["exp_npv"] is not None for r in rows)
     assert w["plan_table"]["totals"]["upfront_usd"] == pytest.approx(sum(r["upfront_usd"] for r in rows))
@@ -71,16 +71,24 @@ def test_goal_end_to_end_with_real_pricing(c, data):
     assert not any(e["kind"] == "error" for e in events_of(data))  # no contract-drift event
 
 
-def test_risk_slider_is_flagged_and_changes_nothing(c, data):
-    post(c, "goal", GOAL)
-    a = plan(data)
-    n = len(events_of(data))
-    r = post(c, "set_risk", {"risk_lambda": 0.9})
-    assert r.status_code == 200
-    b = plan(data)
-    assert b["selected"] == a["selected"] and b["exp_npv"] == a["exp_npv"] and b["goal"]["risk_lambda"] == 0.9
-    assert events_of(data)[n]["message"] == "re-plan: risk appetite 0.9 (not modelled yet)"
-    assert {x["type"]: x for x in r.json()["widgets"]}["target_control"]["props"]["risk_supported"] is False
+def test_risk_slider_is_applied_by_the_engine(c, data):
+    """The final engine applies risk_lambda (E[NPV] + lambda x CVaR5): the flag is true and the slider's action re-plans."""
+    post(c, "goal", {**GOAL, "target_pct": 5, "risk_lambda": 0.0})
+    plans = {0.0: plan(data)}
+    for lam in (0.2, 0.5, 2.0):
+        n = len(events_of(data))
+        r = post(c, "set_risk", {"risk_lambda": lam})
+        assert r.status_code == 200
+        plans[lam] = plan(data)
+        assert plans[lam]["goal"]["risk_lambda"] == lam and plans[lam]["risk_supported"] is True
+        assert events_of(data)[n]["message"] == f"re-plan: risk appetite {lam:g}"  # no "(not modelled yet)"
+        assert {x["type"]: x for x in r.json()["widgets"]}["target_control"]["props"]["risk_supported"] is True
+    assert len({p["plan_id"] for p in plans.values()}) == 4  # lambda is part of the plan id
+    # what raising lambda guarantees (engine docs): worst-5% mean never worse, expected NPV never higher
+    lams = sorted(plans)
+    for lo, hi in zip(lams, lams[1:]):
+        assert plans[hi]["cvar5"] >= plans[lo]["cvar5"] - 1e-6, (lo, hi)
+        assert plans[hi]["exp_npv"] <= plans[lo]["exp_npv"] + 1e-6, (lo, hi)
 
 
 def test_exclusions_budget_and_unverified(c, data):
