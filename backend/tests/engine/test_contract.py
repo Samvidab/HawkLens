@@ -9,6 +9,7 @@ from app.engine import state
 from app.engine.models import load_feasibility
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"   # frozen placeholders
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 
 TRD_SIM_KEYS = {"exp_npv", "p_loss", "cvar5", "tonnes_lifetime", "cost_per_tonne", "hist_bins"}
@@ -29,7 +30,7 @@ def upgrades():
 @pytest.fixture(autouse=True)
 def fresh_state():
     state.clear()
-    engine.configure(buildings_root=FIXTURES)
+    engine.configure(buildings_root=FIXTURES, assumptions_path=TEST_ASSUMPTIONS)
     yield
     state.clear()
 
@@ -157,7 +158,7 @@ def test_set_assumption_survives_a_new_simulate(upgrades):
     engine.set_assumption("upgrades.led_retrofit.unit_cost", 0.5)     # before any simulate
     cheap = engine.simulate(upgrades, {})["hou-001-led_retrofit"]
     state.clear()
-    engine.configure(buildings_root=FIXTURES)
+    engine.configure(buildings_root=FIXTURES, assumptions_path=TEST_ASSUMPTIONS)
     normal = engine.simulate(upgrades, {})["hou-001-led_retrofit"]
     assert cheap["upfront_usd"] < normal["upfront_usd"]
 

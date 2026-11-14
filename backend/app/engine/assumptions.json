@@ -7,23 +7,34 @@
     "carbon_price.start_year_range is years from today; price_range_per_tonne is USD per tonne CO2.",
     "kwh_per_sqft_year keys are benchmark types, not CoStar names. buildings.py maps CoStar property_type to them; unknown types use 'Other'.",
     "Full field definitions and example sources: ASSUMPTIONS.md.",
-    "Houston only. The Goal schema still allows 'Los Angeles' (TRD), but there are no LA values, so the engine cannot price LA buildings."
+    "Houston only. The Goal schema still allows 'Los Angeles' (TRD), but there are no LA values, so the engine cannot price LA buildings.",
+    "Values mapped 2026-11-14 from origin/nessie_data:backend/data/simulation_assumptions/houston.json @1f763d7 (AI-researched by the data lane; 'estimated' rows have no source URL). Remaining PLACEHOLDER fields are named in each block's source."
   ],
   "global": {
     "n_scenarios": 10000,
     "n_scenarios_optimizer": 1000,
     "seed": 20261115,
-    "discount_rate": 0.07,
+    "discount_rate": 0.075,
     "general_inflation": 0.025,
     "max_savings_share": 0.5,
     "min_p_hit": 0.8,
-    "source": "PLACEHOLDER",
-    "energy_price_growth": {"mu": 0.02, "sd": 0.015, "source": "PLACEHOLDER"},
+    "source": "discount_rate 7.5%/yr -> 0.075: houston.json @1f763d7 row 13, estimated (analyst_assumption), no source URL; general_inflation 2.5%/yr -> 0.025: https://www.bls.gov / Federal Reserve economic projections (houston.json @1f763d7 row 14, sourced); PLACEHOLDER: max_savings_share (not in houston.json); model settings, no source needed: min_p_hit, n_scenarios, n_scenarios_optimizer, seed",
+    "energy_price_growth": {
+      "mu": 0.022,
+      "sd": 0.0075,
+      "source": "mu 2.2%/yr -> 0.022, sd = (high 4.0% - low 1.0%)/4 = 0.0075: https://www.eia.gov/outlooks/aeo/ / historical EIA Texas electricity price trends (houston.json @1f763d7 row 12, sourced)"
+    },
     "carbon_price": {
-      "p_fee_starts": 0.5,
-      "start_year_range": [3, 10],
-      "price_range_per_tonne": [25, 100],
-      "source": "PLACEHOLDER"
+      "p_fee_starts": 0.15,
+      "start_year_range": [
+        4,
+        4
+      ],
+      "price_range_per_tonne": [
+        50,
+        50
+      ],
+      "source": "p_fee_starts 0.15, start year 2030 = year 4 after a 2026 install -> [4, 4], price $50/t -> [50, 50] (row gives one year and one price, not ranges): houston.json @1f763d7 row 15, estimated (analyst_assumption), no source URL"
     }
   },
   "building_estimates": {
@@ -33,67 +44,109 @@
   "cities": {
     "Houston": {
       "electricity_rate_usd_per_kwh": 0.12,
-      "grid_kg_co2_per_kwh": 0.38,
-      "solar_kwh_per_kw_year": 1450,
-      "export_rate_usd_per_kwh": 0.04,
-      "kwh_per_sqft_year": {"Office": 15.0, "Retail": 14.0, "Industrial": 10.0, "Multi-Family": 12.0, "Other": 14.0},
-      "source": "PLACEHOLDER"
+      "grid_kg_co2_per_kwh": 0.319,
+      "solar_kwh_per_kw_year": 1580.0,
+      "export_rate_usd_per_kwh": 0.085,
+      "kwh_per_sqft_year": {
+        "Office": 16.9,
+        "Retail": 15.4,
+        "Industrial": 6.6,
+        "Multi-Family": 12.0,
+        "Other": 14.0
+      },
+      "source": "grid_kg_co2_per_kwh (eGRID2024 ERCT 700.7 lb/MWh x 0.00045359 = 0.319): https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-guidance / https://carbonrecycling.co.uk/emission-factors/us/egrid-erct (houston.json @1f763d7 row 3, sourced); solar_kwh_per_kw_year (PVWatts, 77002, 20 deg tilt, 14% losses): https://pvwatts.nrel.gov / https://calcpanel.com/tools/pv-energy-production (houston.json @1f763d7 row 4, sourced); export_rate_usd_per_kwh (retail buyback plans, commercial eligibility varies): https://chariotenergy.com / https://nuwattenergy.com (houston.json @1f763d7 row 2, sourced); kwh_per_sqft_year.Office: https://portfoliomanager.energystar.gov/pdf/reference/US%20National%20Median%20Table.pdf / https://electricityplans.com (houston.json @1f763d7 row 5a, sourced); kwh_per_sqft_year.Retail: https://portfoliomanager.energystar.gov/pdf/reference/US%20National%20Median%20Table.pdf / https://electricityplans.com (houston.json @1f763d7 row 5b, sourced); kwh_per_sqft_year.Industrial: https://electricityplans.com / https://www.eia.gov/consumption/commercial/ (houston.json @1f763d7 row 5c, sourced); kwh_per_sqft_year.Multi-Family: https://www.eia.gov/consumption/residential/ / https://portfoliomanager.energystar.gov (houston.json @1f763d7 row 5d, sourced); PLACEHOLDER: electricity_rate_usd_per_kwh (houston.json row 1 is a single month, June 2026, not an annual average, kept by decision), kwh_per_sqft_year.Other (not in houston.json)"
     }
   },
   "upgrades": {
     "rooftop_solar": {
-      "cost_unit": "usd_per_kw", "unit_cost": 2500, "avoided_replacement_cost_per_unit": 0,
+      "cost_unit": "usd_per_kw",
+      "unit_cost": 2100.0,
+      "avoided_replacement_cost_per_unit": 0,
       "savings_unit": "fraction_of_modeled_generation",
-      "savings_mu": 0.95, "savings_sd": 0.08,
-      "life_min": 20, "life_max": 30,
-      "incentive_fraction": 0.30, "incentive_p": 0.8, "incentive_lag_years": 1,
-      "maint_frac_per_year": 0.01,
-      "source": "PLACEHOLDER"
+      "savings_mu": 0.95,
+      "savings_sd": 0.08,
+      "life_min": 20,
+      "life_max": 30,
+      "incentive_fraction": 0.3,
+      "incentive_p": 0.8,
+      "incentive_lag_years": 1,
+      "maint_frac_per_year": 0.005,
+      "source": "unit_cost $2.10/W x 1000 = $2,100/kW (her unit column says $/kW, her note says $2.10/W = $2,100/kW): https://nuwattenergy.com / https://pacificsolarcompany.com (houston.json @1f763d7 row 6 rooftop solar, sourced); life_min/life_max = low/high 20-30 yr: houston.json @1f763d7 row 9 rooftop solar, estimated (published_data), no source URL; maint_frac_per_year 0.5%/yr -> 0.005: houston.json @1f763d7 row 10 rooftop solar, estimated (published_data), no source URL; PLACEHOLDER: incentive_fraction, incentive_p, incentive_lag_years, savings_mu, savings_sd (row 8 for solar is the yield, not realized fraction of modeled output) (houston.json row 11/16 not mapped: units/eligibility unresolved)"
     },
     "cool_roof": {
-      "cost_unit": "usd_per_sqft", "unit_cost": 2.0, "avoided_replacement_cost_per_unit": 1.5,
+      "cost_unit": "usd_per_sqft",
+      "unit_cost": 2.75,
+      "avoided_replacement_cost_per_unit": 2.25,
       "savings_unit": "kwh_per_sqft_year",
-      "savings_mu": 0.4, "savings_sd": 0.15,
-      "life_min": 15, "life_max": 20,
-      "incentive_fraction": 0.10, "incentive_p": 0.3, "incentive_lag_years": 0,
-      "maint_frac_per_year": 0.005,
-      "source": "PLACEHOLDER"
+      "savings_mu": 1.5,
+      "savings_sd": 0.425,
+      "life_min": 15,
+      "life_max": 25,
+      "incentive_fraction": 0.1,
+      "incentive_p": 0.3,
+      "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.002,
+      "source": "unit_cost $2.75/sqft: https://www.rockymountainpower.net / https://www.eia.gov (houston.json @1f763d7 row 6 cool roof, sourced); avoided_replacement_cost_per_unit $2.25/sqft: houston.json @1f763d7 row 7 cool roof, estimated (published_data), no source URL; savings_mu 1.5 kwh_per_sqft_year, savings_sd = (2.5 - 0.8)/4 = 0.425: houston.json @1f763d7 row 8 cool roof, estimated (published_data), no source URL; life_min/life_max = low/high 15-25 yr: houston.json @1f763d7 row 9 cool roof, estimated (published_data), no source URL; maint_frac_per_year 0.2%/yr -> 0.002: houston.json @1f763d7 row 10 cool roof, estimated (published_data), no source URL; PLACEHOLDER: incentive_fraction, incentive_p, incentive_lag_years (houston.json row 11 not mapped: units/eligibility unresolved)"
     },
     "window_upgrade": {
-      "cost_unit": "usd_per_sqft", "unit_cost": 60.0, "avoided_replacement_cost_per_unit": 40.0,
+      "cost_unit": "usd_per_sqft",
+      "unit_cost": 35.0,
+      "avoided_replacement_cost_per_unit": 30.0,
       "savings_unit": "fraction_of_building_kwh",
-      "savings_mu": 0.05, "savings_sd": 0.02,
-      "life_min": 25, "life_max": 35,
-      "incentive_fraction": 0.10, "incentive_p": 0.3, "incentive_lag_years": 0,
-      "maint_frac_per_year": 0.002,
-      "source": "PLACEHOLDER"
+      "savings_mu": 0.08,
+      "savings_sd": 0.025,
+      "life_min": 20,
+      "life_max": 40,
+      "incentive_fraction": 0.1,
+      "incentive_p": 0.3,
+      "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.001,
+      "source": "unit_cost $35.0/sqft: https://www.rockymountainpower.net / commercial retrofit cost databases (houston.json @1f763d7 row 6 windows, sourced); avoided_replacement_cost_per_unit $30.0/sqft: houston.json @1f763d7 row 7 windows, estimated (published_data), no source URL; savings_mu 0.08 fraction_of_building_kwh, savings_sd = (0.14 - 0.04)/4 = 0.025: houston.json @1f763d7 row 8 windows, estimated (published_data), no source URL; life_min/life_max = low/high 20-40 yr: houston.json @1f763d7 row 9 windows, estimated (published_data), no source URL; maint_frac_per_year 0.1%/yr -> 0.001: houston.json @1f763d7 row 10 windows, estimated (published_data), no source URL; PLACEHOLDER: incentive_fraction, incentive_p, incentive_lag_years (houston.json row 11 not mapped: units/eligibility unresolved)"
     },
     "insulation": {
-      "cost_unit": "usd_per_sqft", "unit_cost": 3.0, "avoided_replacement_cost_per_unit": 0,
+      "cost_unit": "usd_per_sqft",
+      "unit_cost": 3.5,
+      "avoided_replacement_cost_per_unit": 0,
       "savings_unit": "kwh_per_sqft_year",
-      "savings_mu": 0.3, "savings_sd": 0.15,
-      "life_min": 25, "life_max": 40,
-      "incentive_fraction": 0.10, "incentive_p": 0.4, "incentive_lag_years": 0,
+      "savings_mu": 2.0,
+      "savings_sd": 0.625,
+      "life_min": 25,
+      "life_max": 50,
+      "incentive_fraction": 0.1,
+      "incentive_p": 0.4,
+      "incentive_lag_years": 0,
       "maint_frac_per_year": 0.0,
-      "source": "PLACEHOLDER"
+      "source": "unit_cost $3.5/sqft: https://www.rockymountainpower.net / commercial building cost references (houston.json @1f763d7 row 6 insulation, sourced); savings_mu 2.0 kwh_per_sqft_year, savings_sd = (3.5 - 1.0)/4 = 0.625: houston.json @1f763d7 row 8 insulation, estimated (published_data), no source URL; life_min/life_max = low/high 25-50 yr: houston.json @1f763d7 row 9 insulation, estimated (published_data), no source URL; maint_frac_per_year 0.0%/yr -> 0.0: houston.json @1f763d7 row 10 insulation, estimated (published_data), no source URL; PLACEHOLDER: incentive_fraction, incentive_p, incentive_lag_years (houston.json row 11 not mapped: units/eligibility unresolved)"
     },
     "heat_pump": {
-      "cost_unit": "usd_per_sqft", "unit_cost": 20.0, "avoided_replacement_cost_per_unit": 12.0,
+      "cost_unit": "usd_per_sqft",
+      "unit_cost": 18.0,
+      "avoided_replacement_cost_per_unit": 15.0,
       "savings_unit": "fraction_of_building_kwh",
-      "savings_mu": 0.15, "savings_sd": 0.05,
-      "life_min": 15, "life_max": 20,
-      "incentive_fraction": 0.20, "incentive_p": 0.5, "incentive_lag_years": 0,
-      "maint_frac_per_year": 0.02,
-      "source": "PLACEHOLDER"
+      "savings_mu": 0.18,
+      "savings_sd": 0.045,
+      "life_min": 15,
+      "life_max": 22,
+      "incentive_fraction": 0.2,
+      "incentive_p": 0.5,
+      "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.015,
+      "source": "unit_cost $18.0/sqft: http://rmi.org / commercial RTU electrification studies (houston.json @1f763d7 row 6 heat pump, sourced); avoided_replacement_cost_per_unit $15.0/sqft: houston.json @1f763d7 row 7 heat pump, estimated (published_data), no source URL; savings_mu 0.18 fraction_of_building_kwh, savings_sd = (0.28 - 0.1)/4 = 0.045 (rmi.org, her note says partly 'HVAC electrification', may not be electricity-only): http://rmi.org / commercial electrification studies (houston.json @1f763d7 row 8 heat pump, sourced); life_min/life_max = low/high 15-22 yr: houston.json @1f763d7 row 9 heat pump, estimated (published_data), no source URL; maint_frac_per_year 1.5%/yr -> 0.015: houston.json @1f763d7 row 10 heat pump, estimated (published_data), no source URL; PLACEHOLDER: incentive_fraction, incentive_p, incentive_lag_years (houston.json row 11 not mapped: units/eligibility unresolved)"
     },
     "led_retrofit": {
-      "cost_unit": "usd_per_sqft", "unit_cost": 1.5, "avoided_replacement_cost_per_unit": 0,
+      "cost_unit": "usd_per_sqft",
+      "unit_cost": 1.8,
+      "avoided_replacement_cost_per_unit": 0,
       "savings_unit": "fraction_of_building_kwh",
-      "savings_mu": 0.06, "savings_sd": 0.02,
-      "life_min": 10, "life_max": 15,
-      "incentive_fraction": 0.10, "incentive_p": 0.6, "incentive_lag_years": 0,
+      "savings_mu": 0.12,
+      "savings_sd": 0.0325,
+      "life_min": 10,
+      "life_max": 20,
+      "incentive_fraction": 0.1,
+      "incentive_p": 0.6,
+      "incentive_lag_years": 0,
       "maint_frac_per_year": 0.0,
-      "source": "PLACEHOLDER"
+      "source": "unit_cost $1.8/sqft: https://www.rockymountainpower.net / commercial lighting retrofit guides (houston.json @1f763d7 row 6 LED, sourced); savings_mu 0.12 fraction_of_building_kwh, savings_sd = (0.2 - 0.07)/4 = 0.0325: houston.json @1f763d7 row 8 LED, estimated (published_data), no source URL; life_min/life_max = low/high 10-20 yr: houston.json @1f763d7 row 9 LED, estimated (published_data), no source URL; maint_frac_per_year 0.0%/yr -> 0.0: houston.json @1f763d7 row 10 LED, estimated (published_data), no source URL; PLACEHOLDER: incentive_fraction, incentive_p, incentive_lag_years (houston.json row 11 not mapped: units/eligibility unresolved)"
     }
   }
 }

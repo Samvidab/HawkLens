@@ -89,7 +89,8 @@ def _apply(base: dict, changes: dict, prefix: list[str] | None = None) -> None:
 
 
 def _effective(request: dict | None) -> dict:
-    a = copy.deepcopy(load_assumptions())
+    path = state.assumptions_path()
+    a = copy.deepcopy(load_assumptions(path) if path is not None else load_assumptions())
     if request:
         _apply(a, request)
     for k, v in state.overrides().items():
@@ -144,11 +145,19 @@ def _ensure_fresh() -> _mc.SimulationResult:
 
 # --- setup (not part of the TRD contract) ------------------------------------------------
 
-def configure(*, buildings_root: str | Path | None = None) -> None:
-    """Where to read <building_id>/profile.json (default: data_dir/buildings). Tests and
-    scripts point it at fixtures. Kept out of the contract functions so their signatures
-    match TRD §8.1 exactly (the agent's engine_client checks parameter names)."""
+def configure(*, buildings_root: str | Path | None = None,
+              assumptions_path: str | Path | None = None) -> None:
+    """Setup, outside the TRD contract (so the five contract signatures stay exact; the
+    agent's engine_client checks parameter names).
+
+    buildings_root:   where <building_id>/profile.json lives (default data_dir/buildings)
+    assumptions_path: base assumptions file (default app/engine/assumptions.json). Tests
+                      point it at a frozen copy so mechanics tests don't move when the
+                      sourced values change.
+    Each call sets both; omitted = default.
+    """
     state.set_buildings_root(buildings_root)
+    state.set_assumptions_path(assumptions_path)
 
 
 # --- contract ----------------------------------------------------------------------------

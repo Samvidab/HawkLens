@@ -11,6 +11,7 @@ from app.engine.monte_carlo import simulate
 from app.engine.optimizer import brute_force, build_problem, solve
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 RESULT_KEYS = {"plan_id", "selected", "exp_npv", "cvar5", "p_hit_target", "total_upfront",
                "tonnes_per_year", "status", "p_loss", "hist_bins", "tonnes_needed",
@@ -19,7 +20,7 @@ RESULT_KEYS = {"plan_id", "selected", "exp_npv", "cvar5", "p_hit_target", "total
 
 @pytest.fixture(scope="module")
 def setup():
-    a = load_assumptions()
+    a = load_assumptions(TEST_ASSUMPTIONS)   # frozen placeholders: mechanics, not data
     buildings = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
     upgrades = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
     sim = simulate(upgrades, buildings, a, n_scenarios=10_000)

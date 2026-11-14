@@ -28,6 +28,7 @@ class _Cache:
     assumptions: dict[str, Any] | None = None    # the `assumptions` passed to simulate() (before overrides)
     overrides: dict[str, Any] = field(default_factory=dict)   # dotted key -> value, from set_assumption
     buildings_root: Path | None = None           # None = data_dir/buildings
+    assumptions_path: Path | None = None         # None = app/engine/assumptions.json
     stale: bool = False
 
 
@@ -90,6 +91,15 @@ def request_assumptions() -> dict[str, Any]:
 
 def set_buildings_root(root: str | Path | None) -> None:
     _cache.buildings_root = Path(root) if root is not None else None
+
+
+def set_assumptions_path(path: str | Path | None) -> None:
+    _cache.assumptions_path = Path(path) if path is not None else None
+    _cache.stale = True
+
+
+def assumptions_path() -> Path | None:
+    return _cache.assumptions_path
 
 
 def buildings_root() -> Path | None:

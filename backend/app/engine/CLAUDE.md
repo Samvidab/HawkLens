@@ -59,7 +59,8 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 - `cheapest_extra[i].fits_budget`: True if adding that upgrade (dropping whatever it replaces in its building/category slot) keeps total upfront within `budget_usd`. Always True with no budget.
 - `set_assumption` keys are dotted paths into assumptions.json (`upgrades.led_retrofit.unit_cost`); a bare global key (`discount_rate`) also works. Unknown keys, wrong types and values the engine rejects (dry-run on the cached upgrades) return `{ok: False, error}` and change nothing. Overrides persist across `simulate` calls until restart.
 - `risk_lambda` (≥ 0) is applied: objective = E[NPV] + risk_lambda × CVaR5 over `global.n_scenarios_optimizer` scenarios (see Optimizer). 0 = expected NPV only. Part of `plan_id`.
-- `configure(buildings_root=...)` (setup, outside the contract): where `<building_id>/profile.json` lives (default `data_dir/buildings`). Tests point it at the fixtures. `simulate` re-reads buildings each call.
+- `configure(buildings_root=..., assumptions_path=...)` (setup, outside the contract): where `<building_id>/profile.json` lives (default `data_dir/buildings`) and which base assumptions file to use (default `app/engine/assumptions.json`). `simulate` re-reads buildings each call.
+- Tests: mechanics tests use the frozen placeholder copy `tests/engine/fixtures/assumptions.json` (never update it), so sourcing new values never breaks them. `test_loaders.py` and `test_real_assumptions.py` check the live file.
 - `simulate` accepts our `FeasibleUpgrade`, the agent's `app.schemas.upgrades.FeasibleUpgrade` (validated from `model_dump()`), or dicts. `assumptions={"discount_rate": x}` (a bare global key) works.
 - The target's denominator is every simulated building, including excluded ones.
 - `hist_bins` = `[{x0, x1, count}]`, 30 bins (the `risk_histogram` widget's format).

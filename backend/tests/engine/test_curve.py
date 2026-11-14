@@ -11,13 +11,14 @@ from app.engine.models import load_assumptions, load_feasibility
 from app.engine.monte_carlo import simulate
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 BAR_KEYS = {"upgrade_id", "building_id", "type", "tonnes_per_year", "cost_per_tonne"}
 
 
 @pytest.fixture(scope="module")
 def sim_and_upgrades():
-    a = load_assumptions()
+    a = load_assumptions(TEST_ASSUMPTIONS)   # frozen placeholders: mechanics, not data
     buildings = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
     upgrades = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
     return simulate(upgrades, buildings, a, n_scenarios=10_000), upgrades

@@ -14,13 +14,14 @@ from app.engine.optimizer import brute_force, build_problem, solve
 from app.engine.risk import cvar
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 LAMBDAS = [0, 0.25, 0.5, 1, 2, 5]
 
 
 @pytest.fixture(scope="module")
 def setup():
-    a = load_assumptions()
+    a = load_assumptions(TEST_ASSUMPTIONS)   # frozen placeholders: mechanics, not data
     buildings = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
     upgrades = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
     sim = simulate(upgrades, buildings, a, n_scenarios=10_000)
@@ -125,7 +126,7 @@ def test_risk_scenarios_are_the_first_n_optimizer_scenarios(setup):
 
 def test_contract_risk_lambda_is_applied():
     state.clear()
-    engine.configure(buildings_root=FIXTURES)
+    engine.configure(buildings_root=FIXTURES, assumptions_path=TEST_ASSUMPTIONS)
     try:
         ups = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
         engine.simulate(ups, {})

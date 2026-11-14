@@ -13,12 +13,13 @@ from app.engine.npv import npv
 from app.engine.risk import cvar, hist_bins, summarize
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 
 
 @pytest.fixture(scope="module")
 def portfolio():
-    a = load_assumptions()
+    a = load_assumptions(TEST_ASSUMPTIONS)   # frozen placeholders: mechanics, not data
     buildings = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
     upgrades = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
     return upgrades, buildings, a
