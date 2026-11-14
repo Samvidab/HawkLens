@@ -1,0 +1,138 @@
+{
+  "layout_id": "lay_sample_approved",
+  "run_id": "sample",
+  "situation": "approved",
+  "focus_building_id": null,
+  "generated_at": "2026-11-14T15:02:11Z",
+  "widgets": [
+    {
+      "id": "w1",
+      "type": "financing_card",
+      "title": "Financing",
+      "why": "Accounts and bills opened for the approved plan.",
+      "size": "half",
+      "data_ref": "plans/current.json#/financing",
+      "props": {
+        "plan_id": "plan_3249c72ce7",
+        "total_upfront_usd": 4161500.0,
+        "bills": [
+          {
+            "contractor": "Electrical contractor",
+            "amount": 2825000.0
+          },
+          {
+            "contractor": "Solar installer",
+            "amount": 1336500.0
+          }
+        ],
+        "state": "executed",
+        "nessie_ids": {
+          "account": "1447ded07d026a78476b0d59",
+          "transfer": "563212e67efe1427aa9fc20b",
+          "bill: Electrical contractor": "062649e7d6c28ba76785188c",
+          "bill: Solar installer": "b920b5feb88d7c8ca4b8b943"
+        }
+      }
+    },
+    {
+      "id": "w2",
+      "type": "memo",
+      "title": "Investment memo",
+      "why": "The plan in prose; every number comes from the engine.",
+      "size": "wide",
+      "data_ref": "memo/plan_3249c72ce7.md",
+      "props": {
+        "markdown": "# Retrofit plan memo (plan_3249c72ce7)\n\nThis plan cuts 1,685 t/yr against a need of 1,620 t/yr for a 25% reduction target, using 5 upgrades across 3 buildings.\n\nIt costs $4.2M upfront (no budget cap), with an expected net present value of $692,850. In the worst 5 percent of outcomes the value is -$1.7M, and the chance of a loss is 28%.\n\nThe probability of hitting the target is 100%. Every upgrade is backed by images the agents inspected and checked.\n\n## Upgrades in the plan\n\n| Building | Upgrade | Size | Upfront | Tonnes/yr |\n|---|---|---|---|---|\n| Sample Tower | rooftop_solar | 360 kW | $792,000 | 396 |\n| Sample Plaza | rooftop_solar | 158 kW | $346,500 | 173 |\n| Sample Lofts | rooftop_solar | 90 kW | $198,000 | 99 |\n| Sample Tower | led_retrofit | 820,000 sqft | $2.0M | 738 |\n| Sample Plaza | led_retrofit | 310,000 sqft | $775,000 | 279 |\n\n_Sample pricing: figures come from placeholder stub values, not the quant engine._\n"
+      }
+    },
+    {
+      "id": "w3",
+      "type": "plan_table",
+      "title": "Approved plan",
+      "why": "The upgrades that were financed.",
+      "size": "wide",
+      "data_ref": "plans/current.json#/selected",
+      "props": {
+        "rows": [
+          {
+            "upgrade_id": "b1:rooftop_solar",
+            "building_name": "Sample Tower",
+            "type": "rooftop_solar",
+            "size": "360 kW",
+            "upfront_usd": 792000.0,
+            "exp_npv": 382681.18,
+            "cost_per_tonne": -38.65,
+            "tonnes_per_year": 396.0,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b2:rooftop_solar",
+            "building_name": "Sample Plaza",
+            "type": "rooftop_solar",
+            "size": "158 kW",
+            "upfront_usd": 346500.0,
+            "exp_npv": 167423.02,
+            "cost_per_tonne": -38.65,
+            "tonnes_per_year": 173.25,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b3:rooftop_solar",
+            "building_name": "Sample Lofts",
+            "type": "rooftop_solar",
+            "size": "90 kW",
+            "upfront_usd": 198000.0,
+            "exp_npv": 95670.3,
+            "cost_per_tonne": -38.65,
+            "tonnes_per_year": 99.0,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b1:led_retrofit",
+            "building_name": "Sample Tower",
+            "type": "led_retrofit",
+            "size": "820,000 sqft",
+            "upfront_usd": 2050000.0,
+            "exp_npv": 34160.88,
+            "cost_per_tonne": -3.86,
+            "tonnes_per_year": 738.0,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b2:led_retrofit",
+            "building_name": "Sample Plaza",
+            "type": "led_retrofit",
+            "size": "310,000 sqft",
+            "upfront_usd": 775000.0,
+            "exp_npv": 12914.48,
+            "cost_per_tonne": -3.86,
+            "tonnes_per_year": 279.0,
+            "verified": "assumed",
+            "owner_included": false
+          }
+        ],
+        "totals": {
+          "upfront_usd": 4161500.0,
+          "exp_npv": 692849.86,
+          "tonnes_per_year": 1685.25
+        },
+        "sample_pricing": true
+      }
+    },
+    {
+      "id": "w4",
+      "type": "activity_feed",
+      "title": "Agent activity",
+      "why": "Every agent step, as it happens.",
+      "size": "side",
+      "data_ref": "runs/sample/events.jsonl",
+      "props": {
+        "run_id": "sample"
+      }
+    }
+  ]
+}

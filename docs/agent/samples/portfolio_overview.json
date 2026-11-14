@@ -1,0 +1,535 @@
+{
+  "layout_id": "lay_sample_portfolio_overview",
+  "run_id": "sample",
+  "situation": "portfolio_overview",
+  "focus_building_id": null,
+  "generated_at": "2026-11-14T15:02:11Z",
+  "widgets": [
+    {
+      "id": "w1",
+      "type": "target_control",
+      "title": "Your target",
+      "why": "Set the goal; agents re-plan on release.",
+      "size": "full",
+      "data_ref": "plans/current.json#/goal",
+      "props": {
+        "target_pct": 25.0,
+        "budget_usd": null,
+        "risk_lambda": 0.5,
+        "p_hit_target": 1.0,
+        "tonnes_needed": 1620.0,
+        "tonnes_planned": 1685.25
+      }
+    },
+    {
+      "id": "w2",
+      "type": "portfolio_3d",
+      "title": "Portfolio",
+      "why": "Where the planned upgrades sit across your buildings.",
+      "size": "wide",
+      "data_ref": "buildings/*/profile.json",
+      "props": {
+        "buildings": [
+          {
+            "building_id": "b1",
+            "name": "Sample Tower",
+            "lat": 29.7604,
+            "lon": -95.3698,
+            "footprint_wkt": "POLYGON ((-95.36952159774033 29.76016686720193, -95.36953280428271 29.760642911257904, -95.3700784035469 29.760633132132927, -95.37006719443004 29.760157088264574, -95.36952159774033 29.76016686720193))",
+            "height_m": 120.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": 1134.0,
+            "excluded": false,
+            "overlays": [
+              {
+                "type": "solar",
+                "polygon_wkt": "POLYGON ((-95.36952159774033 29.76016686720193, -95.36953280428271 29.760642911257904, -95.3700784035469 29.760633132132927, -95.37006719443004 29.760157088264574, -95.36952159774033 29.76016686720193))",
+                "facade": null
+              }
+            ]
+          },
+          {
+            "building_id": "b2",
+            "name": "Sample Plaza",
+            "lat": 29.7551,
+            "lon": -95.3655,
+            "footprint_wkt": "POLYGON ((-95.36524167666848 29.754883652119236, -95.36525205489936 29.755325404031066, -95.36575832443971 29.75531634730825, -95.36574794399247 29.75487459555768, -95.36524167666848 29.754883652119236))",
+            "height_m": 48.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": 452.25,
+            "excluded": false,
+            "overlays": [
+              {
+                "type": "solar",
+                "polygon_wkt": "POLYGON ((-95.36524167666848 29.754883652119236, -95.36525205489936 29.755325404031066, -95.36575832443971 29.75531634730825, -95.36574794399247 29.75487459555768, -95.36524167666848 29.754883652119236))",
+                "facade": null
+              }
+            ]
+          },
+          {
+            "building_id": "b3",
+            "name": "Sample Lofts",
+            "lat": 29.7498,
+            "lon": -95.3601,
+            "footprint_wkt": "POLYGON ((-95.35988740644362 29.749621923902748, -95.35989592714077 29.74998551167345, -95.3603125943069 29.74997807570962, -95.36030407210875 29.74961448804791, -95.35988740644362 29.749621923902748))",
+            "height_m": 32.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": 99.0,
+            "excluded": false,
+            "overlays": [
+              {
+                "type": "solar",
+                "polygon_wkt": "POLYGON ((-95.35988740644362 29.749621923902748, -95.35989592714077 29.74998551167345, -95.3603125943069 29.74997807570962, -95.36030407210875 29.74961448804791, -95.35988740644362 29.749621923902748))",
+                "facade": null
+              }
+            ]
+          },
+          {
+            "building_id": "b4",
+            "name": "Sample Annex",
+            "lat": 29.765,
+            "lon": -95.356,
+            "footprint_wkt": "POLYGON ((-95.35578436312413 29.764819392941394, -95.35579299497843 29.76518813848729, -95.35621563764842 29.765180606659783, -95.356207004249 29.764811861225798, -95.35578436312413 29.764819392941394))",
+            "height_m": 20.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": null,
+            "excluded": false,
+            "overlays": []
+          }
+        ],
+        "focus_building_id": null
+      }
+    },
+    {
+      "id": "w3",
+      "type": "abatement_curve",
+      "title": "Which cuts pay for themselves",
+      "why": "Bars below zero cut carbon and save money.",
+      "size": "half",
+      "data_ref": "plans/current.json#/macc",
+      "props": {
+        "bars": [
+          {
+            "upgrade_id": "b1:rooftop_solar",
+            "building_id": "b1",
+            "building_name": "Sample Tower",
+            "type": "rooftop_solar",
+            "tonnes_per_year": 396.0,
+            "cost_per_tonne": -38.65,
+            "in_plan": true
+          },
+          {
+            "upgrade_id": "b2:rooftop_solar",
+            "building_id": "b2",
+            "building_name": "Sample Plaza",
+            "type": "rooftop_solar",
+            "tonnes_per_year": 173.25,
+            "cost_per_tonne": -38.65,
+            "in_plan": true
+          },
+          {
+            "upgrade_id": "b3:rooftop_solar",
+            "building_id": "b3",
+            "building_name": "Sample Lofts",
+            "type": "rooftop_solar",
+            "tonnes_per_year": 99.0,
+            "cost_per_tonne": -38.65,
+            "in_plan": true
+          },
+          {
+            "upgrade_id": "b1:led_retrofit",
+            "building_id": "b1",
+            "building_name": "Sample Tower",
+            "type": "led_retrofit",
+            "tonnes_per_year": 738.0,
+            "cost_per_tonne": -3.86,
+            "in_plan": true
+          },
+          {
+            "upgrade_id": "b2:led_retrofit",
+            "building_id": "b2",
+            "building_name": "Sample Plaza",
+            "type": "led_retrofit",
+            "tonnes_per_year": 279.0,
+            "cost_per_tonne": -3.86,
+            "in_plan": true
+          },
+          {
+            "upgrade_id": "b3:led_retrofit",
+            "building_id": "b3",
+            "building_name": "Sample Lofts",
+            "type": "led_retrofit",
+            "tonnes_per_year": 126.0,
+            "cost_per_tonne": -3.86,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b4:led_retrofit",
+            "building_id": "b4",
+            "building_name": "Sample Annex",
+            "type": "led_retrofit",
+            "tonnes_per_year": 81.0,
+            "cost_per_tonne": -3.86,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b1:cool_roof",
+            "building_id": "b1",
+            "building_name": "Sample Tower",
+            "type": "cool_roof",
+            "tonnes_per_year": 13.5,
+            "cost_per_tonne": 201.57,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b2:cool_roof",
+            "building_id": "b2",
+            "building_name": "Sample Plaza",
+            "type": "cool_roof",
+            "tonnes_per_year": 11.63,
+            "cost_per_tonne": 201.57,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b4:cool_roof",
+            "building_id": "b4",
+            "building_name": "Sample Annex",
+            "type": "cool_roof",
+            "tonnes_per_year": 8.1,
+            "cost_per_tonne": 201.57,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b1:window_upgrade",
+            "building_id": "b1",
+            "building_name": "Sample Tower",
+            "type": "window_upgrade",
+            "tonnes_per_year": 286.4,
+            "cost_per_tonne": 346.23,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b2:window_upgrade",
+            "building_id": "b2",
+            "building_name": "Sample Plaza",
+            "type": "window_upgrade",
+            "tonnes_per_year": 74.42,
+            "cost_per_tonne": 346.23,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b3:window_upgrade",
+            "building_id": "b3",
+            "building_name": "Sample Lofts",
+            "type": "window_upgrade",
+            "tonnes_per_year": 46.67,
+            "cost_per_tonne": 346.23,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b1:heat_pump",
+            "building_id": "b1",
+            "building_name": "Sample Tower",
+            "type": "heat_pump",
+            "tonnes_per_year": 902.0,
+            "cost_per_tonne": 423.68,
+            "in_plan": false
+          },
+          {
+            "upgrade_id": "b4:heat_pump",
+            "building_id": "b4",
+            "building_name": "Sample Annex",
+            "type": "heat_pump",
+            "tonnes_per_year": 99.0,
+            "cost_per_tonne": 423.68,
+            "in_plan": false
+          }
+        ],
+        "selected_upgrade_ids": []
+      }
+    },
+    {
+      "id": "w4",
+      "type": "plan_table",
+      "title": "Recommended plan",
+      "why": "The cheapest verified mix that meets the target.",
+      "size": "wide",
+      "data_ref": "plans/current.json#/selected",
+      "props": {
+        "rows": [
+          {
+            "upgrade_id": "b1:rooftop_solar",
+            "building_name": "Sample Tower",
+            "type": "rooftop_solar",
+            "size": "360 kW",
+            "upfront_usd": 792000.0,
+            "exp_npv": 382681.18,
+            "cost_per_tonne": -38.65,
+            "tonnes_per_year": 396.0,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b2:rooftop_solar",
+            "building_name": "Sample Plaza",
+            "type": "rooftop_solar",
+            "size": "158 kW",
+            "upfront_usd": 346500.0,
+            "exp_npv": 167423.02,
+            "cost_per_tonne": -38.65,
+            "tonnes_per_year": 173.25,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b3:rooftop_solar",
+            "building_name": "Sample Lofts",
+            "type": "rooftop_solar",
+            "size": "90 kW",
+            "upfront_usd": 198000.0,
+            "exp_npv": 95670.3,
+            "cost_per_tonne": -38.65,
+            "tonnes_per_year": 99.0,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b1:led_retrofit",
+            "building_name": "Sample Tower",
+            "type": "led_retrofit",
+            "size": "820,000 sqft",
+            "upfront_usd": 2050000.0,
+            "exp_npv": 34160.88,
+            "cost_per_tonne": -3.86,
+            "tonnes_per_year": 738.0,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b2:led_retrofit",
+            "building_name": "Sample Plaza",
+            "type": "led_retrofit",
+            "size": "310,000 sqft",
+            "upfront_usd": 775000.0,
+            "exp_npv": 12914.48,
+            "cost_per_tonne": -3.86,
+            "tonnes_per_year": 279.0,
+            "verified": "assumed",
+            "owner_included": false
+          }
+        ],
+        "totals": {
+          "upfront_usd": 4161500.0,
+          "exp_npv": 692849.86,
+          "tonnes_per_year": 1685.25
+        },
+        "sample_pricing": true
+      }
+    },
+    {
+      "id": "w5",
+      "type": "risk_histogram",
+      "title": "Risk",
+      "why": "How the plan's returns spread across outcomes.",
+      "size": "half",
+      "data_ref": "plans/current.json",
+      "props": {
+        "bins": [
+          {
+            "x0": -2220200.14,
+            "x1": -2025996.81,
+            "count": 4.0
+          },
+          {
+            "x0": -2025996.81,
+            "x1": -1831793.47,
+            "count": 5.0
+          },
+          {
+            "x0": -1831793.47,
+            "x1": -1637590.14,
+            "count": 8.0
+          },
+          {
+            "x0": -1637590.14,
+            "x1": -1443386.81,
+            "count": 11.0
+          },
+          {
+            "x0": -1443386.81,
+            "x1": -1249183.47,
+            "count": 14.0
+          },
+          {
+            "x0": -1249183.47,
+            "x1": -1054980.14,
+            "count": 19.0
+          },
+          {
+            "x0": -1054980.14,
+            "x1": -860776.81,
+            "count": 24.0
+          },
+          {
+            "x0": -860776.81,
+            "x1": -666573.47,
+            "count": 30.0
+          },
+          {
+            "x0": -666573.47,
+            "x1": -472370.14,
+            "count": 37.0
+          },
+          {
+            "x0": -472370.14,
+            "x1": -278166.81,
+            "count": 44.0
+          },
+          {
+            "x0": -278166.81,
+            "x1": -83963.47,
+            "count": 50.0
+          },
+          {
+            "x0": -83963.47,
+            "x1": 110239.86,
+            "count": 56.0
+          },
+          {
+            "x0": 110239.86,
+            "x1": 304443.19,
+            "count": 61.0
+          },
+          {
+            "x0": 304443.19,
+            "x1": 498646.53,
+            "count": 64.0
+          },
+          {
+            "x0": 498646.53,
+            "x1": 692849.86,
+            "count": 66.0
+          },
+          {
+            "x0": 692849.86,
+            "x1": 887053.19,
+            "count": 66.0
+          },
+          {
+            "x0": 887053.19,
+            "x1": 1081256.53,
+            "count": 64.0
+          },
+          {
+            "x0": 1081256.53,
+            "x1": 1275459.86,
+            "count": 61.0
+          },
+          {
+            "x0": 1275459.86,
+            "x1": 1469663.19,
+            "count": 56.0
+          },
+          {
+            "x0": 1469663.19,
+            "x1": 1663866.53,
+            "count": 50.0
+          },
+          {
+            "x0": 1663866.53,
+            "x1": 1858069.86,
+            "count": 44.0
+          },
+          {
+            "x0": 1858069.86,
+            "x1": 2052273.19,
+            "count": 37.0
+          },
+          {
+            "x0": 2052273.19,
+            "x1": 2246476.53,
+            "count": 30.0
+          },
+          {
+            "x0": 2246476.53,
+            "x1": 2440679.86,
+            "count": 24.0
+          },
+          {
+            "x0": 2440679.86,
+            "x1": 2634883.19,
+            "count": 19.0
+          },
+          {
+            "x0": 2634883.19,
+            "x1": 2829086.53,
+            "count": 14.0
+          },
+          {
+            "x0": 2829086.53,
+            "x1": 3023289.86,
+            "count": 11.0
+          },
+          {
+            "x0": 3023289.86,
+            "x1": 3217493.19,
+            "count": 8.0
+          },
+          {
+            "x0": 3217493.19,
+            "x1": 3411696.53,
+            "count": 5.0
+          },
+          {
+            "x0": 3411696.53,
+            "x1": 3605899.86,
+            "count": 4.0
+          }
+        ],
+        "exp_npv": 692849.86,
+        "cvar5": -1710085.73,
+        "p_loss": 0.2761,
+        "scope": "plan"
+      }
+    },
+    {
+      "id": "w6",
+      "type": "financing_card",
+      "title": "Financing",
+      "why": "What approval would set up.",
+      "size": "half",
+      "data_ref": "plans/current.json#/financing",
+      "props": {
+        "plan_id": "plan_3249c72ce7",
+        "total_upfront_usd": 4161500.0,
+        "bills": [
+          {
+            "contractor": "Solar installer",
+            "amount": 1336500.0
+          },
+          {
+            "contractor": "Electrical contractor",
+            "amount": 2825000.0
+          }
+        ],
+        "state": "proposed",
+        "nessie_ids": null
+      }
+    },
+    {
+      "id": "w7",
+      "type": "activity_feed",
+      "title": "Agent activity",
+      "why": "Every agent step, as it happens.",
+      "size": "side",
+      "data_ref": "runs/sample/events.jsonl",
+      "props": {
+        "run_id": "sample"
+      }
+    }
+  ]
+}

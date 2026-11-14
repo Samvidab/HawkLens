@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic_core import to_jsonable_python
 
 from app.config import get_settings
 
@@ -17,8 +17,7 @@ def data_path(*parts: str) -> Path:
 
 
 def write_json(path: Path, obj: Any) -> Path:
-    if isinstance(obj, BaseModel):
-        obj = obj.model_dump(mode="json")
+    obj = to_jsonable_python(obj)  # models, lists of models, nested dicts
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp-")
     try:

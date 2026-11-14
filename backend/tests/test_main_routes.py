@@ -35,3 +35,11 @@ def test_events_router_mounted(client):
     events.emit("rr", "A", "done", "x")
     r = c.get("/events/rr?replay=1&delay=0")
     assert r.status_code == 200 and '"kind":"done"' in r.text
+
+
+def test_write_json_handles_models_and_lists_of_models(tmp_path):
+    from app.schemas import Goal
+    from app.storage import write_json
+    write_json(tmp_path / "a.json", [Goal(city="Houston", target_pct=1), {"x": Goal(city="Houston", target_pct=2)}])
+    got = json.loads((tmp_path / "a.json").read_text())
+    assert got[0]["target_pct"] == 1 and got[1]["x"]["target_pct"] == 2
