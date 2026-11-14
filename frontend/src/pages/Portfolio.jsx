@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react'
-import portfolio3d from '../assets/portfolio-3d.svg'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Page from '../components/Page'
+import ShowcaseModal from '../components/ShowcaseModal'
+import { assetUrl, fetchProperties } from '../lib/api'
 import { useGo } from '../lib/ui'
 import {
   BUDGET_K,
@@ -14,8 +15,22 @@ import {
 export default function Portfolio() {
   const go = useGo()
   const [target, setTarget] = useState(40)
-  const [buildingSelected, setBuildingSelected] = useState(true)
   const model = deriveModel(target)
+
+  // Real Matterport properties from the backend.
+  const [properties, setProperties] = useState([])
+  const [loadError, setLoadError] = useState(null)
+  const [tourProperty, setTourProperty] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    fetchProperties({ limit: 24 })
+      .then((d) => alive && setProperties(d.results || []))
+      .catch((e) => alive && setLoadError(e.message))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const setTargetClamped = useCallback((next) => setTarget(clampTarget(next)), [])
 
@@ -25,7 +40,9 @@ export default function Portfolio() {
         Houston portfolio
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        8 buildings · All surveys complete
+        {properties.length
+          ? `${properties.length} buildings · Live Matterport scans`
+          : 'Loading buildings…'}
       </p>
       <LinkArrow className="left-[1055px] top-[154px]" onClick={() => go('/start-survey')}>
         Run survey
@@ -35,11 +52,14 @@ export default function Portfolio() {
       </LinkArrow>
 
       <PortfolioModel
-        selected={buildingSelected}
-        onToggleSelected={() => setBuildingSelected((v) => !v)}
-        onViewBuilding={() => go('/building')}
-        onExpand={() => go('/expanded-portfolio-model')}
+        properties={properties}
+        loadError={loadError}
+        onOpenTour={(p) => setTourProperty(p)}
       />
+
+      {tourProperty && (
+        <ShowcaseModal property={tourProperty} onClose={() => setTourProperty(null)} />
+      )}
 
       <CarbonGoal
         target={target}
@@ -85,57 +105,70 @@ function LinkArrow({ className = '', children, onClick }) {
   )
 }
 
-function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand }) {
+function PortfolioModel({ properties, loadError, onOpenTour }) {
   return (
     <section className="absolute left-[56px] top-[231px] w-[848px] h-[420px] overflow-hidden rounded-[8px] bg-model">
       <p className="absolute left-[23px] top-[21px] whitespace-nowrap font-medium text-ink text-[15px]">
         Your buildings
       </p>
       <p className="absolute left-[23px] top-[46px] whitespace-nowrap text-muted text-[13px]">
-        Explore Midtown office or expand the portfolio.
+        Real Matterport scans — expand a building to walk through it.
       </p>
 
-      <img
-        src={portfolio3d}
-        alt="Schematic 3D portfolio with solar roof overlays"
-        className="absolute left-[9px] top-[62px] w-[827.2px] h-[310.2px]"
-      />
-
-      <button
-        type="button"
-        aria-label="Select Midtown office"
-        onClick={onToggleSelected}
-        className={`absolute left-[427px] top-[190px] w-[171px] h-[123px] rounded-[6px] transition-shadow ${
-          selected ? 'ring-2 ring-brand/60' : 'hover:ring-2 hover:ring-brand/30'
-        }`}
-      />
-
-      {selected && (
-        <div className="absolute left-[495px] top-[120px] w-[204px] h-[49px] rounded-[5px] bg-white overflow-hidden shadow-sm">
-          <span className="absolute left-[12px] top-[8px] whitespace-nowrap font-medium text-ink text-[13px]">
-            Midtown office
-          </span>
-          <button
-            type="button"
-            onClick={onViewBuilding}
-            className="absolute left-[12px] top-[29px] whitespace-nowrap text-brand text-[11px] hover:underline"
-          >
-            View building&nbsp;&nbsp;→
-          </button>
+      {/* Scrollable grid of real building cards (replaces the schematic green blocks) */}
+      <div className="absolute left-[23px] right-[23px] top-[74px] bottom-[42px] overflow-y-auto pr-1">
+        {loadError && (
+          <p className="text-[13px] text-[#b4532f]">
+            Couldn&rsquo;t load buildings ({loadError}). Is the backend running on :8000?
+          </p>
+        )}
+        {!loadError && properties.length === 0 && (
+          <p className="text-muted text-[13px]">Loading buildings…</p>
+        )}
+        <div className="grid grid-cols-3 gap-3">
+          {properties.map((p) => (
+            <BuildingCard key={p.id} property={p} onOpenTour={onOpenTour} />
+          ))}
         </div>
-      )}
+      </div>
 
-      <p className="absolute left-[23px] top-[384px] whitespace-nowrap text-muted text-[11px]">
-        Solar shown on eligible roofs
+      <p className="absolute left-[23px] bottom-[14px] whitespace-nowrap text-muted text-[11px]">
+        Imagery &amp; 3D tours via Matterport (licensed from CoStar)
       </p>
-      <button
-        type="button"
-        onClick={onExpand}
-        className="absolute left-[736px] top-[378px] whitespace-nowrap text-muted text-[12px] hover:text-ink"
-      >
-        Expand ↗
-      </button>
     </section>
+  )
+}
+
+function BuildingCard({ property, onOpenTour }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenTour(property)}
+      className="group relative block w-full overflow-hidden rounded-[6px] bg-white text-left shadow-sm hover:shadow-md transition-shadow"
+    >
+      <div className="relative w-full aspect-[4/3] bg-line overflow-hidden">
+        {property.thumbnail_url ? (
+          <img
+            src={assetUrl(property.thumbnail_url)}
+            alt={property.name || property.id}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted text-[12px]">
+            no image
+          </div>
+        )}
+        {/* Expand affordance */}
+        <span className="absolute right-2 top-2 rounded-[4px] bg-white/90 px-2 py-1 text-[11px] font-medium text-brand opacity-0 group-hover:opacity-100 transition-opacity">
+          Expand ↗
+        </span>
+      </div>
+      <div className="px-2.5 py-2">
+        <p className="truncate text-[13px] font-medium text-ink">{property.name || property.id}</p>
+        <p className="truncate text-[11px] text-muted">{property.address || 'Houston, TX'}</p>
+      </div>
+    </button>
   )
 }
 

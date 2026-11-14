@@ -9,7 +9,8 @@ app = FastAPI(title="RetroAlpha backend")
 # Allow the local Vite dev server to call the API during development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    # Any localhost port during development (Vite picks 5173+ depending on what's free).
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_methods=["*"],
     allow_headers=["*"],
 )

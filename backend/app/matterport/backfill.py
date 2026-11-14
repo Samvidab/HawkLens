@@ -85,6 +85,16 @@ async def backfill_slice(
         for m in chosen:
             detail = await client.graphql(MODEL_BY_ID, {"id": m.id}, op_name=f"model_{m.id}")
             full = merge_model_detail(m, detail["model"])
+            # Matterport image URLs are short-lived signed URLs; download the bytes now
+            # and serve our own durable copy (R5). Use the freshly-signed URL from the
+            # full-model response.
+            if full.thumbnail_url:
+                try:
+                    data = await client.get_bytes(full.thumbnail_url, op_name=f"thumb_{m.id}")
+                    path = store.save_thumbnail(m.id, data)
+                    full = full.model_copy(update={"thumbnail_path": str(path)})
+                except Exception:
+                    pass  # keep the record even if the thumbnail fetch fails
             store.save_model(full)
             stored.append(full)
     finally:

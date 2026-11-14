@@ -54,7 +54,8 @@ class MpModel(BaseModel):
     modified: str | None = None
     address: MpAddress = Field(default_factory=MpAddress)
     geo: MpGeo = Field(default_factory=MpGeo)
-    thumbnail_url: str | None = None
+    thumbnail_url: str | None = None   # short-lived signed URL (do not serve to clients)
+    thumbnail_path: str | None = None  # local saved copy under cache/media (durable)
     embed_html: str | None = None    # raw <iframe> snippet from publication.embed
     show_url: str | None = None      # https://my.matterport.com/show/?m=<id>
     published: bool = False

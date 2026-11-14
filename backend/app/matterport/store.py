@@ -40,6 +40,25 @@ def load_model(model_id: str) -> MpModel | None:
     return MpModel.model_validate_json(path.read_text())
 
 
+def media_dir() -> Path:
+    return get_settings().cache_dir / "media" / "mp"
+
+
+def save_thumbnail(model_id: str, data: bytes) -> Path:
+    """Persist thumbnail bytes under cache/media/mp/<id>/thumb.jpg and return the path."""
+    path = media_dir() / model_id / "thumb.jpg"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+    return path
+
+
+def thumbnail_path(model_id: str) -> Path | None:
+    path = media_dir() / model_id / "thumb.jpg"
+    return path if path.exists() else None
+
+
 def list_models() -> list[MpModel]:
     d = models_dir()
     if not d.exists():

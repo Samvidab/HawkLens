@@ -2,10 +2,19 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 
-from app.matterport import service
+from app.matterport import service, store
 
 router = APIRouter(prefix="/properties", tags=["properties"])
+
+
+@router.get("/{model_id}/thumbnail")
+def get_thumbnail(model_id: str):
+    path = store.thumbnail_path(model_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail="no thumbnail stored")
+    return FileResponse(path, media_type="image/jpeg")
 
 
 @router.get("")

@@ -10,12 +10,14 @@ from app.matterport.models import MpModel
 
 
 def _public(m: MpModel) -> dict:
+    # Prefer our durable, self-hosted thumbnail; the raw CDN URL expires quickly.
+    thumb = f"/properties/{m.id}/thumbnail" if m.thumbnail_path else None
     return {
         "id": m.id,
         "name": m.name,
         "city": m.city,
         "address": m.address.formatted,
-        "thumbnail_url": m.thumbnail_url,
+        "thumbnail_url": thumb,
         "show_url": m.show_url,
         "embed_html": m.embed_html,
         "published": m.published,

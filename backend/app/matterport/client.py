@@ -92,6 +92,41 @@ class MatterportClient:
             root=self._s.cache_dir,
         )
 
+    async def get_bytes(self, url: str, *, op_name: str) -> bytes:
+        """Download a binary asset (e.g. a thumbnail) with retries, cached by url.
+
+        Matterport image URLs are short-lived signed URLs, so we fetch the bytes at
+        ingest time and persist them ourselves rather than storing the URL.
+        """
+        from app.adapters.cache import cached_bytes
+
+        async def _do() -> bytes:
+            last_exc: Exception | None = None
+            for attempt in range(self._s.mp_max_retries + 1):
+                try:
+                    resp = await self._client.get(url)
+                except (httpx.TransportError, httpx.TimeoutException) as exc:
+                    last_exc = exc
+                    await self._sleep_before_retry(attempt, None)
+                    continue
+                if resp.status_code in _RETRYABLE_STATUS and attempt < self._s.mp_max_retries:
+                    await self._sleep_before_retry(attempt, resp.headers.get("Retry-After"))
+                    continue
+                if resp.status_code >= 400:
+                    raise MatterportError(f"Asset HTTP {resp.status_code} for {op_name}")
+                return resp.content
+            raise MatterportError(f"Exhausted retries fetching {op_name}; last error: {last_exc}")
+
+        path = await cached_bytes(
+            "matterport_asset",
+            {"op": op_name},
+            _do,
+            ext=".jpg",
+            mode=self._s.cache_mode,
+            root=self._s.cache_dir,
+        )
+        return path.read_bytes()
+
     async def _request_with_retries(self, payload: dict[str, Any]) -> httpx.Response:
         last_exc: Exception | None = None
         for attempt in range(self._s.mp_max_retries + 1):
