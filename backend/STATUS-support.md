@@ -14,6 +14,8 @@
 
 - T2.4 engine + Nessie stubs (`integrations/engine_client.py`, `nessie_client.py`, `fixtures/engine/stub_params.json`) with contract tests. Stub engine returns the extras the quant-engine branch documents (upfront_usd, tonnes_per_year, status, p_loss, hist_bins, tonnes_needed, shortfall_tonnes, cheapest_extra, baseline()) and flags `stub: true`. Live mode imports `app.engine`. Nessie `Bill` shape is mine (TRD left it undefined); teammate to replace file.
 
+- T2.5 pricing node (`agents/pricing.py`), composer v0 (`agents/composer.py`, portfolio_overview only), POST /compose (goal/set_target/set_budget/set_risk re-price; other actions just recompose until T3.1), GET /state/{run_id}, `storage.py` atomic writes. AC-3 path works against the stub engine: goal in -> layout JSON out (tested).
+
 ## In progress
 - nothing
 
