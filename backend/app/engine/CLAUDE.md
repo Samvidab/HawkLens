@@ -42,16 +42,22 @@ simulate(upgrades: list[FeasibleUpgrade], assumptions: dict) -> {
     upgrade_id: {exp_npv, p_loss, cvar5, tonnes_lifetime, cost_per_tonne, hist_bins,
                  upfront_usd, tonnes_per_year}}          # last two: extra, needed by plan_table
 macc(exclusions: list[str]) -> {bars: [{upgrade_id, building_id, type, tonnes_per_year, cost_per_tonne}]}
-optimize(target_pct, risk_lambda, budget_usd, exclusions) -> {
+optimize(target_pct, risk_lambda, budget_usd, exclusions, *, min_p_hit=0.8) -> {
     plan_id, selected: [upgrade_id], exp_npv, cvar5, p_hit_target, total_upfront, tonnes_per_year,
     # extra, needed by widgets:
     status,            # "ok" | "infeasible"
     p_loss, hist_bins, # plan-level risk_histogram
-    tonnes_needed,     # target_control
-    shortfall_tonnes, cheapest_extra}   # target_gap_card, when infeasible
-set_assumption(key, value) -> {ok}
+    tonnes_needed,     # target_control (always the owner's target_pct)
+    shortfall_tonnes, cheapest_extra,   # target_gap_card, when infeasible; each extra has fits_budget
+    internal_target_pct, min_p_hit, met_min_p_hit, p_hit_retries}
+set_assumption(key, value) -> {ok} | {ok: False, error}
 baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for building_header
 ```
+- `min_p_hit` (extra, keyword-only, default 0.8): the target constraint uses *expected* tonnes, so a plan that only just clears it hits the target in about half the scenarios. If `p_hit_target < min_p_hit`, `optimize` raises the internal target by 2 percentage points and re-solves, at most 10 times. It returns the first plan that reaches `min_p_hit`, or the one with the highest `p_hit_target` (stopping early if a raised target becomes unreachable). `tonnes_needed`, `p_hit_target` and `shortfall_tonnes` always use the owner's `target_pct`; `internal_target_pct` is the one actually solved. `min_p_hit=0` turns it off.
+- `cheapest_extra[i].fits_budget`: True if adding that upgrade (dropping whatever it replaces in its building/category slot) keeps total upfront within `budget_usd`. Always True with no budget.
+- `set_assumption` keys are dotted paths into assumptions.json (`upgrades.led_retrofit.unit_cost`); a bare global key (`discount_rate`) also works. Unknown keys, wrong types and values the engine rejects (dry-run on the cached upgrades) return `{ok: False, error}` and change nothing. Overrides persist across `simulate` calls until restart.
+- `risk_lambda` is accepted and part of `plan_id`, but not applied until build step 7.
+- `simulate` and `baseline` take an extra keyword `buildings_root` (default `data_dir/buildings`); tests point it at the fixtures.
 - `hist_bins` = `[{x0, x1, count}]`, 30 bins (the `risk_histogram` widget's format).
 - The extra fields only add to the contract; they don't break it. Tell the agent owner they exist.
 - State: `simulate` caches its scenario arrays in module memory. `macc` and `optimize` use the latest cached simulation. `set_assumption` updates assumptions and marks the cache stale (re-simulate on next call).

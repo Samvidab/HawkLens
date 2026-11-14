@@ -185,26 +185,88 @@ def _run(m: pulp.LpProblem, x: dict[int, pulp.LpVariable]) -> list[int] | None:
     return sorted(i for i, v in x.items() if (v.value() or 0) > 0.5)
 
 
-def solve(p: Problem) -> dict:
-    """PuLP model; same result format as brute_force()."""
+def _solve_indices(p: Problem) -> tuple[list[int], str]:
     selected = _run(*_model(p, "npv"))
     if selected is not None:
-        return _result(p, selected, status="ok")
+        return selected, "ok"
     closest = _run(*_model(p, "tonnes"))
     if closest is None:
         raise RuntimeError("solver failed on the max-tonnes model, which is always feasible")
-    return _result(p, closest, status="infeasible")
+    return closest, "infeasible"
+
+
+def solve(p: Problem) -> dict:
+    """PuLP model; same result format as brute_force()."""
+    selected, status = _solve_indices(p)
+    return _result(p, selected, status=status)
+
+
+# --- minimum chance of hitting the target ------------------------------------------------
+
+P_HIT_STEP_PCT = 2.0        # raise the internal target by 2 percentage points per retry
+MAX_P_HIT_RETRIES = 10
+
+
+def _p_hit(p: Problem, selected: list[int]) -> float:
+    if not selected:
+        return float(p.tonnes_needed <= EPS_TONNES)
+    tonnes = p.sim.tonnes_per_year[sorted(selected)].sum(axis=0)
+    return float((tonnes >= p.tonnes_needed - EPS_TONNES).mean())
+
+
+def solve_with_min_p_hit(sim: SimulationResult, upgrades: list[FeasibleUpgrade], *,
+                         baseline_tonnes_per_year: float, target_pct: float,
+                         min_p_hit: float = 0.8, budget_usd: float | None = None,
+                         exclusions: Iterable[str] = (), risk_lambda: float = 0.0) -> dict:
+    """Solve, then make the plan likely (not just expected) to hit the owner's target.
+
+    The constraint uses EXPECTED tonnes, so a plan that only just clears the target
+    hits it in about half the scenarios. If p_hit_target < min_p_hit, raise the
+    internal target by 2 percentage points and re-solve, at most 10 times. Every
+    result is still judged against the owner's real target: tonnes_needed,
+    p_hit_target and shortfall all use target_pct, not the internal one.
+
+    Returns the first plan that reaches min_p_hit; if none does (the raised target
+    becomes unreachable, or 10 retries run out), the plan with the highest p_hit.
+    Extra fields: internal_target_pct, min_p_hit, met_min_p_hit, p_hit_retries.
+    """
+    if not 0 <= min_p_hit <= 1:
+        raise ValueError("min_p_hit is a probability 0-1, e.g. 0.8")
+    kw = dict(baseline_tonnes_per_year=baseline_tonnes_per_year, budget_usd=budget_usd,
+              exclusions=exclusions)
+    user = build_problem(sim, upgrades, target_pct=target_pct, **kw)
+    id_extra = {"risk_lambda": risk_lambda, "min_p_hit": min_p_hit}
+
+    best_sel, status = _solve_indices(user)
+    best_internal, best_p, retries = target_pct, _p_hit(user, best_sel), 0
+    internal = target_pct
+    if status == "ok":
+        while best_p < min_p_hit and retries < MAX_P_HIT_RETRIES and internal < 100:
+            internal = min(internal + P_HIT_STEP_PCT, 100.0)
+            retries += 1
+            sel, st = _solve_indices(build_problem(sim, upgrades, target_pct=internal, **kw))
+            if st != "ok":
+                break                      # raised target unreachable: keep the best so far
+            ph = _p_hit(user, sel)
+            if ph > best_p:
+                best_sel, best_internal, best_p = sel, internal, ph
+
+    out = _result(user, best_sel, status=status, id_extra=id_extra)
+    out.update(internal_target_pct=best_internal, min_p_hit=min_p_hit,
+               met_min_p_hit=out["p_hit_target"] >= min_p_hit, p_hit_retries=retries)
+    return out
 
 
 # --- shared result -----------------------------------------------------------------------
 
-def plan_id(p: Problem, risk_lambda: float = 0.0) -> str:
-    """Same inputs -> same ID. Hashes the simulated NPVs too, so changed assumptions change it."""
+def plan_id(p: Problem, **extra) -> str:
+    """Same inputs -> same ID. Hashes the simulated NPVs too, so changed assumptions change it.
+    extra: other request settings that change the answer (risk_lambda, min_p_hit)."""
     h = hashlib.sha256()
     h.update(json.dumps({
         "upgrades": p.sim.upgrade_ids, "seed": p.sim.seed, "k": p.sim.n_scenarios,
         "target_pct": p.target_pct, "budget_usd": p.budget_usd, "exclusions": p.exclusions,
-        "risk_lambda": risk_lambda,
+        **extra,
     }, sort_keys=True).encode())
     h.update(np.ascontiguousarray(p.sim.npv).tobytes())
     return h.hexdigest()[:12]
@@ -215,7 +277,7 @@ def _bar(c: Candidate) -> dict:
             "tonnes_per_year": c.tonnes_per_year, "cost_per_tonne": c.cost_per_tonne}
 
 
-def _result(p: Problem, selected: list[int], *, status: str) -> dict:
+def _result(p: Problem, selected: list[int], *, status: str, id_extra: dict | None = None) -> dict:
     sel = sorted(selected)
     sim = p.sim
     plan_npv = sim.npv[sel].sum(axis=0) if sel else np.zeros(sim.n_scenarios)
@@ -228,19 +290,29 @@ def _result(p: Problem, selected: list[int], *, status: str) -> dict:
         shortfall = max(p.tonnes_needed - exp_tonnes, 0.0)
         # Only suggest upgrades that would ADD tonnes: their (building, category) slot is
         # empty, or they'd replace a selected upgrade that avoids less CO2.
-        slot_tonnes = {(c.building_id, c.category): c.tonnes_per_year
-                       for c in p.candidates if c.index in chosen}
+        in_slot = {(c.building_id, c.category): c for c in p.candidates if c.index in chosen}
         extras = [c for c in p.candidates
                   if c.index not in chosen and (c.eligible or c.user_excluded)
                   and np.isfinite(c.cost_per_tonne)
-                  and c.tonnes_per_year > slot_tonnes.get((c.building_id, c.category), 0.0)]
+                  and c.tonnes_per_year > (in_slot[(c.building_id, c.category)].tonnes_per_year
+                                           if (c.building_id, c.category) in in_slot else 0.0)]
         extras.sort(key=lambda c: (c.cost_per_tonne, c.upgrade_id))
-        cheapest_extra = [_bar(c) for c in extras[:N_CHEAPEST_EXTRA]]
+        plan_upfront = sum(sim.inputs[i].upfront_usd for i in sel)
+
+        def fits(c: Candidate) -> bool:
+            # Adding c (and dropping whatever it replaces in its slot) stays within budget.
+            if p.budget_usd is None:
+                return True
+            replaced = in_slot.get((c.building_id, c.category))
+            new_total = plan_upfront - (replaced.upfront_usd if replaced else 0.0) + c.upfront_usd
+            return new_total <= p.budget_usd + 1e-6
+
+        cheapest_extra = [{**_bar(c), "fits_budget": fits(c)} for c in extras[:N_CHEAPEST_EXTRA]]
     else:
         shortfall, cheapest_extra = 0.0, []
 
     return {
-        "plan_id": plan_id(p),
+        "plan_id": plan_id(p, **(id_extra or {})),
         "selected": [sim.upgrade_ids[i] for i in sel],
         "exp_npv": risk["exp_npv"],
         "cvar5": risk["cvar5"],
