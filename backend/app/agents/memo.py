@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from app import events
 from app.agents.llm import text_json
-from app.guardrails import check_numbers, fill_placeholders, guarded_text
+from app.guardrails import check_numbers, check_wording, fill_placeholders, guarded_text
 from app.storage import data_path, read_json
 
 log = logging.getLogger(__name__)
@@ -30,14 +30,33 @@ CATALOG = {
     "p_loss": "probability the plan loses money",
     "p_hit_target": "probability the plan hits the target",
     "budget": "a complete phrase about the budget, e.g. 'no budget cap' or 'a budget cap of $X'; do not add words around it",
-    "n_upgrades": "number of upgrades in the plan",
+    "n_upgrades": "number of individual upgrades in the plan (one per building and upgrade type): say \"upgrades\", never \"upgrade types\"",
+    "n_upgrade_types": "number of distinct upgrade types (rooftop solar, LED retrofit, ...): say \"upgrade types\", never \"upgrades\"",
     "n_buildings": "number of buildings with upgrades",
+    "return_summary": ("one finished sentence, written by code, stating plainly whether the plan pays back on average and which "
+                       "upgrade types pay for themselves; include it exactly once, as its own sentence, and never soften or contradict it"),
 }
 STUB_NOTE = "_Sample pricing: figures come from placeholder stub values, not the quant engine._"
 
 
 class MemoDraft(BaseModel):
     markdown: str
+
+
+class DraftRejected(Exception):
+    """The model's draft broke a memo rule (wording, counts, missing required sentence). The reason is fed back once."""
+
+
+MAX_DRAFTS = 2
+LABEL = {"rooftop_solar": "rooftop solar", "cool_roof": "cool roof", "window_upgrade": "window upgrade",
+         "heat_pump": "heat pump", "insulation": "insulation", "led_retrofit": "LED retrofit"}
+# "23 upgrade types" for 23 upgrades (or "3 upgrades" for 3 types): the counts must name what they count.
+_WRONG_COUNT_WORDS = (
+    (re.compile(r"\{\{\s*n_upgrades\s*\}\}\s+(?:[\w-]+\s+)?(?:upgrade\s+types|types\s+of\s+upgrades?|kinds\s+of\s+upgrades?|upgrade\s+categories)", re.I),
+     "{{n_upgrades}} counts individual upgrades: write \"{{n_upgrades}} upgrades\", not \"upgrade types\""),
+    (re.compile(r"\{\{\s*n_upgrade_types\s*\}\}\s+(?:[\w-]+\s+)?upgrades?\b(?!\s+types)", re.I),
+     "{{n_upgrade_types}} counts upgrade types: write \"{{n_upgrade_types}} upgrade types\", not \"upgrades\""),
+)
 
 
 def usd(v: float | None) -> str:
@@ -62,7 +81,8 @@ def build_values(plan: dict, upgrades: dict[str, dict]) -> tuple[dict[str, str],
     sel = plan.get("selected", [])
     n_buildings = len({upgrades[u]["building_id"] for u in sel if u in upgrades})
     goal = plan.get("goal", {})
-    raw = {"n_upgrades": len(sel), "n_buildings": n_buildings}
+    n_types = len({upgrades[u]["type"] for u in sel if u in upgrades})
+    raw = {"n_upgrades": len(sel), "n_buildings": n_buildings, "n_upgrade_types": n_types}
     budget = goal.get("budget_usd")
     values = {
         "target_pct": f"{goal.get('target_pct', 0):g}%", "tonnes_needed": tonnes(plan.get("tonnes_needed")),
@@ -70,16 +90,49 @@ def build_values(plan: dict, upgrades: dict[str, dict]) -> tuple[dict[str, str],
         "total_upfront": usd(plan.get("total_upfront")), "exp_npv": usd(plan.get("exp_npv")),
         "cvar5": usd(plan.get("cvar5")), "p_loss": pct(plan.get("p_loss")), "p_hit_target": pct(plan.get("p_hit_target")),
         "budget": "no budget cap" if budget is None else f"a budget cap of {usd(budget)}",
-        "n_upgrades": str(raw["n_upgrades"]), "n_buildings": str(raw["n_buildings"]),
+        "n_upgrades": str(raw["n_upgrades"]), "n_buildings": str(raw["n_buildings"]), "n_upgrade_types": str(n_types),
+        "return_summary": return_summary(plan, upgrades),
     }
     return values, raw
+
+
+def _join(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def return_summary(plan: dict, upgrades: dict[str, dict]) -> str:
+    """A plain, neutral sentence about whether the plan pays back on average and which upgrade types do, from the plan's own
+    expected NPVs (the plan's and each selected upgrade's). Written by code so the model cannot soften it."""
+    npv = plan.get("exp_npv")
+    if npv is None:
+        return "The expected net present value of the plan is not available."
+    by_type: dict[str, float] = {}
+    for uid in plan.get("selected", []):
+        v = plan.get("simulate", {}).get(uid, {}).get("exp_npv")
+        if uid in upgrades and v is not None:
+            by_type[upgrades[uid]["type"]] = by_type.get(upgrades[uid]["type"], 0.0) + v
+    paying = sorted(LABEL.get(t, t) for t, v in by_type.items() if v > 0)
+    losing = sorted(LABEL.get(t, t) for t, v in by_type.items() if v <= 0)
+    if npv < 0:
+        if paying:
+            verb = "pays" if len(paying) == 1 else "pay"
+            who = "itself" if len(paying) == 1 else "themselves"
+            tail = f"the {_join(paying)} portion{'' if len(paying) == 1 else 's'} {verb} for {who}"
+        else:
+            tail = "no upgrade type pays for itself on average"
+        return f"On average the plan costs more than it saves; {tail}."
+    base = "On average the plan saves more than it costs" if npv > 0 else "On average the plan breaks even"
+    if losing:
+        verb = "costs" if len(losing) == 1 else "cost"
+        return f"{base}; the {_join(losing)} portion{'' if len(losing) == 1 else 's'} {verb} more than {'it saves' if len(losing) == 1 else 'they save'}."
+    return f"{base}."
 
 
 FALLBACK = (
     "This plan cuts {{tonnes_per_year}} against a need of {{tonnes_needed}} for a {{target_pct}} reduction target, "
     "using {{n_upgrades}} upgrades across {{n_buildings}} buildings.\n\n"
     "It costs {{total_upfront}} upfront ({{budget}}), with an expected net present value of "
-    "{{exp_npv}}. In the worst 5 percent of outcomes the value is {{cvar5}}, and the chance of a loss is {{p_loss}}.\n\n"
+    "{{exp_npv}}. {{return_summary}} In the worst 5 percent of outcomes the value is {{cvar5}}, and the chance of a loss is {{p_loss}}.\n\n"
     "The probability of hitting the target is {{p_hit_target}}. Every upgrade is backed by images the agents inspected "
     "and checked."
 )
@@ -89,7 +142,21 @@ def _placeholders(text: str) -> set[str]:
     return {m.strip() for m in re.findall(r"\{\{(.*?)\}\}", text)}
 
 
-def _prompt(plan: dict, profiles: dict[str, dict], upgrades: dict[str, dict], allow_numbers: bool) -> str:
+def check_draft(draft: str) -> None:
+    """Raise DraftRejected if the model's draft breaks a memo rule; the message says what to fix."""
+    if unknown := _placeholders(draft) - set(CATALOG):
+        raise DraftRejected(f"it used unknown placeholders {sorted(unknown)}")
+    if words := check_wording(draft):
+        raise DraftRejected(f"it used evaluative or promotional wording ({', '.join(words)}); describe results neutrally")
+    n = len(re.findall(r"\{\{\s*return_summary\s*\}\}", draft))
+    if n != 1:
+        raise DraftRejected(f"it must contain {{{{return_summary}}}} exactly once as its own sentence (found {n})")
+    for pattern, message in _WRONG_COUNT_WORDS:
+        if pattern.search(draft):
+            raise DraftRejected(message)
+
+
+def _prompt(plan: dict, profiles: dict[str, dict], upgrades: dict[str, dict], allow_numbers: bool, feedback: str | None = None) -> str:
     sel = [upgrades[u] for u in plan.get("selected", []) if u in upgrades]
     names = sorted({profiles[u["building_id"]]["name"] for u in sel if u["building_id"] in profiles})
     return PROMPT.format(
@@ -97,7 +164,8 @@ def _prompt(plan: dict, profiles: dict[str, dict], upgrades: dict[str, dict], al
         outcome="target met" if plan.get("status") == "ok" else "target NOT met within limits",
         buildings=", ".join(names) or "none", types=", ".join(sorted({u["type"] for u in sel})) or "none",
         target_met="yes" if plan.get("status") == "ok" else "no",
-        extra="" if allow_numbers else "- Your previous draft contained a number. Use placeholders only.")
+        extra=("" if allow_numbers else "- Your previous draft contained a number. Use placeholders only.\n")
+        + (f"- Your previous draft was rejected because {feedback}. Fix exactly that.\n" if feedback else ""))
 
 
 def _appendix(plan: dict, profiles: dict[str, dict], upgrades: dict[str, dict]) -> str:
@@ -135,18 +203,22 @@ async def write_memo(run_id: str, plan: dict | None = None) -> str:
     # Digits that belong to a building's name or address are not invented numbers ("7900 Fannin", "CityNorth 6").
     sources = [plan, raw, [{"name": p.get("name"), "address": p.get("address")} for p in profiles.values()]]
 
-    async def generate(allow_numbers: bool) -> str:
-        draft = (await text_json(_prompt(plan, profiles, upgrades, allow_numbers), MemoDraft)).markdown
-        unknown = _placeholders(draft) - set(CATALOG)
-        if unknown:
-            raise ValueError(f"unknown placeholders {sorted(unknown)}")
-        return draft
+    template, feedback = FALLBACK, None
+    for attempt in range(MAX_DRAFTS):  # a draft that breaks a memo rule is regenerated once, told why; then the template
+        async def generate(allow_numbers: bool) -> str:
+            draft = (await text_json(_prompt(plan, profiles, upgrades, allow_numbers, feedback), MemoDraft)).markdown
+            check_draft(draft)
+            return draft
 
-    try:
-        template = await guarded_text(generate, sources, fallback=FALLBACK)
-    except Exception as e:  # noqa: BLE001 - Gemini failure, bad placeholders, cap hit: use the stock memo
-        log.warning("memo LLM failed (%s); using template", e)
-        template = FALLBACK
+        try:
+            template = await guarded_text(generate, sources, fallback=FALLBACK)
+            break
+        except DraftRejected as e:
+            feedback = str(e)
+            log.warning("memo draft %d rejected: %s", attempt + 1, feedback)
+        except Exception as e:  # noqa: BLE001 - Gemini failure, cap hit: use the stock memo
+            log.warning("memo LLM failed (%s); using template", e)
+            break
     prose = fill_placeholders(template, values)
     if bad := check_numbers(prose, sources):  # defence in depth: substituted text must be explained
         log.warning("memo failed number check %s; using template", bad)

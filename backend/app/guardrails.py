@@ -9,6 +9,28 @@ from __future__ import annotations
 import re
 from typing import Any, Awaitable, Callable, Iterable
 
+# Words that judge or promote financial results. The memo may only state figures and what they mean. A word is allowed
+# only if a threshold stated in the plan supports it; plans carry no such thresholds today, so the default is "never".
+EVALUATIVE_WORDS = (
+    "strong", "strongly", "robust", "robustly", "attractive", "solid", "compelling", "excellent", "impressive", "promising",
+    "favorable", "favourable", "lucrative", "outstanding", "exceptional", "healthy", "resilient", "rigorous", "rigorously",
+    "absolute", "absolutely", "thorough", "thoroughly", "guarantee", "guaranteed", "protection", "protections", "protective",
+    "protect", "protects", "safeguard", "safeguards", "secure", "secured", "risk-free", "no-brainer",
+)
+_EVALUATIVE = re.compile(r"(?<![\w-])(" + "|".join(sorted(map(re.escape, EVALUATIVE_WORDS), key=len, reverse=True)) + r")(?![\w-])", re.I)
+
+
+def check_wording(text: str, allowed: Iterable[str] = ()) -> list[str]:
+    """Evaluative or promotional words in `text` (lower-cased, in order, no repeats); `allowed` = words a stated threshold supports."""
+    ok = {w.lower() for w in allowed}
+    seen: list[str] = []
+    for m in _EVALUATIVE.finditer(_PLACEHOLDER.sub(" ", text)):
+        w = m.group(1).lower()
+        if w not in ok and w not in seen:
+            seen.append(w)
+    return seen
+
+
 MAX_VERIFIER_LOOPS = 2
 MAX_TOOL_STEPS = 8
 
