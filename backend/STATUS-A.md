@@ -25,19 +25,31 @@ Phase 1 done (AC-1). **Phase 2 done live** (Gemini via Vertex AI, 2026-11-14 ~19
   - **read_only replay** (`ro_check`): full pipeline from cache only → same plan, same send_back, `done: Workspace ready`. 32 Gemini responses cached.
 - Fix found by the live run: `verification.json` is the resolver's `list[Claim]` (final statuses), written at finalize; my per-round log moved to `verification_log.json`. Pricing/compose had failed on the old shape.
 
+- **Agentic annotation of commercial interiors** (hero, `hu9LX64osUN`; Matterport labels homes, not offices):
+  - Discovery: GraphQL introspection found `ModelRoom.panoLocations` (room ↔ pano), `tags`, `keywords`; new `matterport.room_panos()`. (`patchRoom` mutation exists; not used, no writes to CoStar's account.)
+  - `interior.py`: per room, panoramas sampled by area (1 per ~20 m², max 4; horizontal faces) → one Gemini call labels every room with a type (open_office, private_office, conference, corridor, lobby, restroom, mechanical_it, storage, kitchen_break, unknown), `also_contains` for merged Matterport regions, confidence, number-checked evidence note, marks. Each label = claim `interior.room.<id>` → verifier (room-aware help + the room's own image list; send back when unsure; batched re-check of only the asked rooms). Room pins at the mean scan xyz. `interior.json.rooms` (new `RoomLabel`), `rooms.json` (registry `Room` shape) → `floor_plan` and `hero_3d` with no resolver change.
+  - **Live results (Vertex):** room 1 (613h, 112 sf) **Private office**, verified 0.95 ("enclosed private office with exterior window blinds and carpeted floor"); room 2 (cdz3, 792 sf, 13 panos) **Corridor + private offices**, verified 0.90 ("hallway/corridor connecting multiple individual office areas"); room 3 (xy2x, 122 sf) **Private office**, verified 0.95 (Matterport's own tag for it: "office"). No room label was sent back. First pass with 2 panos/room labelled room 2 "corridor" only; my look at its images showed enclosed offices too (Matterport merged hallway + offices) → area-scaled sampling + `also_contains`.
+  - Widgets (read_only `open_building` on warm_full): `hero_3d` showcase + 3 typed rooms + 3 verified room pins with evidence notes; `floor_plan` 3 typed rooms, 9 pins.
+  - **Warm-up (latest, after `continue` fixes):** 46 claims, **45 verified, 1 unverified** (hero window); plan `31c0d8cb3a2e` ok, p(hit) 0.811, shortfall 0. **Genuine send_back is back in the cache**: `sent back: "Is there a photo clearly showing the wall-mounted thermostat?"` → `re-check: hvac vav_diffuser` → verified.
+  - Two fixes behind that: (1) verifier makes one call per inspector **and claim family**, so room labels are judged apart, on their rooms' images (the combined call had ~25 images); (2) bug: the base interior re-check was sent room images its prompt didn't list (it then marked unlisted images and the verifier rejected the re-check); now it gets only its listed images. (1) also restores the exact base-claims input that produced the original doubt; disclosed, not forced.
+  - **T4.4 check**: `scripts/replay_demo.py warm_full` shows room labels, the send_back, the re-check and `Workspace ready`. Full pipeline replays with `CACHE_MODE=read_only` (same plan, same send_back).
+
 ## Blocked / open
 - Gemini blocker resolved by Vertex AI. History: free-tier 20/day cap (429), then prepaid credits depleted (402); the overnight 30-min retry loop was not started in time (my error), later replaced by an immediate run after the Vertex merge.
 - **MatterPak not downloadable**: all 37 portfolio models report `unlocked` but resources `unavailable`. The Showcase tour covers the 3D view meanwhile.
 - **Hero scan is one suite** (1,026 sf of 105,717 sf, coverage 0.97%, empty wall graph): scanned area not used as building floor area; envelope null → no insulation.
+- deepagents/LangChain port: owned by someone else; `graph.py` interface kept stable (not touched in the annotation work).
 - **Vexcel obliques**: `backend/toolkit/` still not on `agent`; facades empty, no window_upgrade.
 
 ## Requests for Lane B (I no longer edit main.py or llm.py)
+- Room annotation: registry `Room` could take optional `evidence_note`, `status` (verifier) and `claim_id` so `floor_plan` can colour rooms by verification without reading pins; I already write these in `interior.json.rooms` (`RoomLabel`). I added `RoomLabel` + optional `InteriorFindings.rooms` to `schemas/interior.py` (additive).
+- `tests/test_samples.py` / `make_samples.py` depend on the local `.env`: with `NESSIE_CUSTOMER_ID` / `NESSIE_SOURCE_ACCOUNT_ID` set, `approved.json` stub IDs change and the freshness test fails (passes with `NESSIE_CUSTOMER_ID=demo-customer NESSIE_SOURCE_ACCOUNT_ID=demo-operating-account`). `make_samples.py` should pin those in `os.environ` like it pins the modes.
 - `memo.py`: the number guardrail makes the model spell out numbers inside building names ("seventy-nine hundred Fannin", "CityNorth six", "Harwin Plaza two"). Building names should be allowed verbatim (they're in `sources`, but as whole strings, so their digits aren't matched).
 - `schemas/profile.py`: I added optional `showcase_url` (additive) and regenerated `docs/agent/samples/` with your `make_samples.py`. Shout if you'd rather own that field.
 - `composer.save_state` overwrites `state.json`; `graph.run_full` re-merges `status`/`results` after it. A merge in `save_state` would be cleaner.
 
 ## Notes
 - venv: main checkout `backend/.venv` (Python 3.11.9, no pip). The engine merge needs `pulp[cbc]`; installed the pinned requirements with `uv pip install --python …/.venv/bin/python -r requirements.txt` (CBC solver available).
-- Tests: 402 pass (both lanes + engine) + live-marked.
+- Tests: 410 pass (both lanes + engine; samples test needs the Nessie stub IDs, see Lane B requests) + live-marked.
 - Port 8765 is taken by another process; I run the API on 8791.
 - `COSTAR_KIT_DIR` added to this worktree's `backend/.env`. CoStar CDN photos (403) skipped by decision.

@@ -1,7 +1,7 @@
 """Verifier loop (T2.2).
 
-verify(): the pending claims of a building, grouped by inspector, go to Gemini in ONE call per
-group with their evidence images (inspector marks drawn on, numbered by claim) →
+verify(): the pending claims of a building, grouped by inspector and claim family (room labels
+apart), go to Gemini in ONE call per group with their evidence images (inspector marks drawn on, numbered by claim) →
   score ≥ THRESHOLD           → verified
   score < REJECT              → rejected
   else, loops < MAX_LOOPS     → sent_back with a specific question (send_back event)
@@ -51,7 +51,24 @@ FIELD_HELP = {
     "interior.hvac": "visible heating/cooling equipment",
     "interior.window": "window glazing type: single or double pane",
 }
+ROOM_HELP = ("commercial use of this room, judged from its own panoramas: open_office, private_office, conference, "
+             "corridor, lobby, restroom, mechanical_it, storage, kitchen_break; 'A + B' means a merged region whose "
+             "main use is A and which also contains B")
+
+
+def field_help(field: str) -> str:
+    if field.startswith("interior.room."):
+        return ROOM_HELP
+    return FIELD_HELP.get(field, field.replace(".", " "))
+
+
 PALETTE = [(255, 0, 255), (255, 200, 0), (0, 230, 255), (255, 80, 80), (80, 255, 80), (255, 140, 0)]
+
+
+def claim_group(c: Claim) -> tuple[str, str]:
+    """One verifier call per inspector and claim family: room labels are judged apart from the
+    other interior claims, on their rooms' images only (not every interior photo at once)."""
+    return c.agent, "room" if c.field.startswith("interior.room.") else "base"
 
 
 def threshold() -> float:
@@ -107,9 +124,11 @@ def prompt_for(state: dict, numbered: list[tuple[int, Claim]]) -> str:
     lines = []
     for n, c in numbered:
         marks = "; ".join(f"{m.label} on {m.image_id}" for m in c.marks) or "no specific region"
-        lines.append(f"#{n} claim_id `{c.claim_id}`: field `{c.field}` "
-                     f"({FIELD_HELP.get(c.field, c.field.replace('.', ' '))}) = {_value(c)}; "
-                     f"inspector confidence {c.confidence:.2f}; looked at: {marks}")
+        line = (f"#{n} claim_id `{c.claim_id}`: field `{c.field}` ({field_help(c.field)}) = {_value(c)}; "
+                f"inspector confidence {c.confidence:.2f}; looked at: {marks}")
+        if c.field.startswith("interior.room."):  # judge a room only from its own images
+            line += "; this room's images: " + ", ".join(f"`{i}`" for i in c.evidence_ids)
+        lines.append(line)
     ctx = f"- {p.name}: {p.property_type}, {p.stories or '?'} stories, built {p.year_built or '?'}"
     return (PROMPT_PATH.read_text()
             .replace("{{claims}}", "\n".join(lines))
@@ -117,6 +136,8 @@ def prompt_for(state: dict, numbered: list[tuple[int, Claim]]) -> str:
 
 
 def _label(claim: Claim) -> str:
+    if claim.field.startswith("interior.room."):
+        return f"{str(claim.value).replace('_', ' ')} (room {claim.field.split('.')[2][:4]})"
     field = claim.field.split(".", 1)[-1].replace("_", " ")
     v = claim.value
     if isinstance(v, bool):
@@ -130,7 +151,9 @@ def safe_question(q: str | None, claim: Claim, state: dict) -> str:
     sources = {"claim": claim.model_dump(), "profile": state["profile"].model_dump()}
     q = " ".join((q or "").split())
     if not q or check_numbers(q, sources):
-        q = f"Re-check {claim.field.split('.', 1)[-1].replace('_', ' ')}: does the image support it?"
+        what = ("the label of room " + claim.field.split(".")[2][:4]) if claim.field.startswith("interior.room.") \
+            else claim.field.split(".", 1)[-1].replace("_", " ")
+        q = f"Re-check {what}: does the image support it?"
     return q[:200]
 
 
@@ -168,8 +191,8 @@ async def verify(state: dict) -> dict:
     checkable = [c for c in todo if c.value != "unknown"]
     verdicts: dict[str, ClaimVerdict] = {}
     failed = False
-    for agent in sorted({c.agent for c in checkable}):
-        got = await check_group(state, [c for c in checkable if c.agent == agent])
+    for group in sorted({claim_group(c) for c in checkable}):
+        got = await check_group(state, [c for c in checkable if claim_group(c) == group])
         if got is None:
             failed = True
         else:
