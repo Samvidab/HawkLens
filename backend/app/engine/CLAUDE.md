@@ -12,6 +12,7 @@ The engine prices the feasible upgrades the agent team finds, ranks them by cost
 The owner of this folder is new to NumPy, PuLP and FastAPI. After each change, explain the code in plain language, and point out anything that would be hard to defend to a judge.
 
 ## Scope and boundaries
+- **Houston only.** `assumptions.json` and the test fixtures cover Houston and nothing else. `Goal.city` still allows "Los Angeles" so it matches the TRD, but don't add LA values or LA fixtures.
 - Edit only `backend/app/engine/` and `backend/tests/engine/`. The one allowed change outside them: add `numpy` and `pulp[cbc]` to `backend/requirements.txt` (pin versions after install, like the rest of the file).
 - Do not edit `integrations/engine_client.py`. The agent owner switches it to call this engine with `ENGINE_MODE=live`.
 - The engine is imported in-process by the backend (TRD §8.1 prefers this). No HTTP endpoints needed unless the team decides otherwise.
@@ -61,25 +62,28 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 ### Unconfirmed (assume, but confirm with the agent owner)
 - `target_pct` scale: assume a percentage 0–100 (the UI slider shows 0–80 %, default 40).
 - Building fields: read `rba_sqft`, `floor_area_sqft`, `envelope_area_sqft`, `city` from `data/buildings/<id>/profile.json` and `interior.json` (TRD §8.1). Isolate this in `buildings.py`, so a field-name change touches one file.
+  - Only buildings with a Matterport scan have `interior.json`. Without one: `floor_area_sqft` = `rba_sqft`, and `envelope_area_sqft` = 4 × √(rba_sqft / stories) × floor height × stories (square footprint, TRD §7 floor height). Both are flagged `*_estimated = True`.
+- Property types: `buildings.PROPERTY_TYPE_TO_BENCHMARK` maps CoStar `property_type` to a benchmark key; unknown types use `"Other"`. TODO: confirm against CoStar's real names.
 - Baseline energy: from Nessie bills (`integrations/nessie_client.get_bills(building_id)`, TRD §8.2) when `NESSIE_MODE=live`; otherwise a benchmark: energy use per sq ft by building type × `rba_sqft`. The `Bill` schema isn't defined yet, so isolate it in `buildings.py` too.
 
 ## Upgrade vocabulary (from TRD §5)
 | type | category | size_unit | cost basis |
 | --- | --- | --- | --- |
 | rooftop_solar | solar | kW | $/kW; generation = kW × kWh/kW/yr (city yield) |
-| cool_roof | roof | sqft | $/sqft; savings fraction of cooling share of baseline |
+| cool_roof | roof | sqft | $/sqft; `savings_mu` is already a share of the whole building (cooling share folded in, see ASSUMPTIONS.md) |
 | window_upgrade | envelope | sqft | $/sqft |
 | insulation | envelope | sqft | $/sqft |
 | heat_pump | hvac | sqft (served area) | $/sqft |
-| led_retrofit | lighting | fixtures | $/fixture |
+| led_retrofit | lighting | sqft (floor area, TRD §7) | $/sqft |
 
 At most one upgrade per building per category. Scale envelope and roof savings by coverage = size / relevant area (envelope or roof area) where known.
 
 ## assumptions.json (`backend/app/engine/assumptions.json`)
-The data/pitch owner fills in sourced values. Until then, use placeholders and mark each with `"source": "PLACEHOLDER"`.
+The data/pitch owner fills in sourced values; every field's unit and definition is in `ASSUMPTIONS.md`. Until then, use placeholders and mark each with `"source": "PLACEHOLDER"`.
 - Global: `n_scenarios` 10000, `n_scenarios_optimizer` 1000, `seed`, `discount_rate` 0.07 (overridden by `Goal.discount_rate`), `energy_price_growth` {mu, sd}, `carbon_price` {p_fee_starts, start_year_range, price_range_per_tonne}.
-- Per city (Houston, Los Angeles): `electricity_rate_usd_per_kwh`, `grid_kg_co2_per_kwh`, `solar_kwh_per_kw_year`, benchmark `kwh_per_sqft_year` by building type.
-- Per upgrade type: `unit_cost`, `savings_mu`, `savings_sd`, `life_min`, `life_max`, `incentive_fraction`, `incentive_p`, `maint_frac_per_year`, `source`.
+- Building estimates: `floor_height_m` (for the envelope fallback).
+- Per city (Houston only): `electricity_rate_usd_per_kwh`, `grid_kg_co2_per_kwh`, `solar_kwh_per_kw_year`, benchmark `kwh_per_sqft_year` by benchmark type (incl. `"Other"`).
+- Per upgrade type: `cost_unit` (matches the size unit), `unit_cost`, `savings_mu`, `savings_sd`, `life_min`, `life_max`, `incentive_fraction`, `incentive_p`, `maint_frac_per_year`, `source`.
 
 ## Math
 ### NPV per scenario (vectorized over K scenarios)
@@ -117,7 +121,7 @@ cost_per_tonne = -exp_npv / mean(tonnes_lifetime). Negative = cuts carbon and ma
 ## Files
 ```
 backend/app/engine/
-  CLAUDE.md  __init__.py  models.py  assumptions.json
+  CLAUDE.md  __init__.py  models.py  assumptions.json  ASSUMPTIONS.md
   buildings.py   # building fields + baseline (one place for field names)
   npv.py  monte_carlo.py  risk.py  macc.py  optimizer.py  state.py
 backend/tests/engine/
