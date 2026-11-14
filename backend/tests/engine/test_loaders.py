@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from app.engine.monte_carlo import SAVINGS_UNITS
+from app.engine.monte_carlo import SAVINGS_UNITS, check_uncertainty
 from app.engine.models import (
     ASSUMPTIONS_PATH,
     CATEGORY_BY_TYPE,
@@ -22,6 +22,8 @@ ALL_TYPES = set(CATEGORY_BY_TYPE)
 UPGRADE_KEYS = {
     "cost_unit", "unit_cost", "avoided_replacement_cost_per_unit", "savings_unit", "savings_mu", "savings_sd", "life_min", "life_max",
     "incentive_fraction", "incentive_p", "incentive_lag_years", "maint_frac_per_year", "source",
+    "replacement_due_age_years", "incentive_usd_per_kwh_saved", "incentive_cap_frac_of_cost",
+    "incentive_min_kwh_saved",
 }
 CITY_KEYS = {
     "electricity_rate_usd_per_kwh", "grid_kg_co2_per_kwh", "solar_kwh_per_kw_year", "export_rate_usd_per_kwh",
@@ -88,6 +90,12 @@ def test_assumptions_cover_every_type_and_city():
         assert isinstance(block["incentive_lag_years"], int) and block["incentive_lag_years"] >= 0, t
         assert 0 <= block["avoided_replacement_cost_per_unit"], t
         assert block["savings_unit"] in SAVINGS_UNITS, t
+        assert block["incentive_usd_per_kwh_saved"] >= 0 and block["incentive_min_kwh_saved"] >= 0, t
+        assert 0 < block["incentive_cap_frac_of_cost"] <= 1, t
+        age = block["replacement_due_age_years"]
+        assert age is None or (isinstance(age, int) and age > 0), t
+        if block["avoided_replacement_cost_per_unit"] > 0:
+            assert age is not None, f"{t}: has an avoided replacement cost but no replacement_due_age_years"
     assert set(a["cities"]) == {"Houston"}   # Houston only; no LA values on purpose
     for c, block in a["cities"].items():
         assert set(block) == CITY_KEYS, c
@@ -101,6 +109,7 @@ def test_assumptions_globals_and_rates_are_decimals():
     assert 0 < g["discount_rate"] < 1
     assert 0 <= g["general_inflation"] < 1
     assert 0 < g["max_savings_share"] <= 1
+    assert isinstance(g["analysis_year"], int) and 2020 <= g["analysis_year"] <= 2100
     assert {"mu", "sd", "source"} <= set(g["energy_price_growth"])
     assert {"p_fee_starts", "start_year_range", "price_range_per_tonne", "source"} <= set(g["carbon_price"])
 
@@ -125,7 +134,8 @@ def test_assumptions_doc_lists_every_field():
                 continue                      # notes
             if k not in names_not_fields:
                 keys.add(k)
-            if isinstance(v, dict) and k != "kwh_per_sqft_year":   # its keys are a <type> row
+            if isinstance(v, dict) and k not in ("kwh_per_sqft_year", "uncertainty"):
+                # kwh_per_sqft_year keys are a <type> row; uncertainty keys are paths (one row)
                 walk(v)
 
     walk(a)
@@ -159,3 +169,20 @@ def test_savings_basis_per_type():
     assert u["cool_roof"]["savings_unit"] == u["insulation"]["savings_unit"] == "kwh_per_sqft_year"
     for t in ("window_upgrade", "heat_pump", "led_retrofit"):
         assert u[t]["savings_unit"] == "fraction_of_building_kwh", t
+
+
+
+def test_uncertainty_block_is_valid_and_covers_every_estimate():
+    """Every fixed value whose source says ESTIMATE must carry a spread."""
+    a = load_assumptions()
+    spreads = check_uncertainty(a)                       # raises on unknown paths / bad widths
+    for t, b in a["upgrades"].items():
+        for field in ("unit_cost", "maint_frac_per_year", "avoided_replacement_cost_per_unit"):
+            marked = any(part.startswith(f"{field} ") and "ESTIMATE" in part for part in b["source"].split("; "))
+            if marked and (field != "avoided_replacement_cost_per_unit" or b[field] > 0):
+                assert f"upgrades.{t}.{field}" in spreads, f"upgrades.{t}.{field} is an ESTIMATE with no spread"
+
+
+
+def test_no_placeholders_left_in_live_file():
+    assert "PLACEHOLDER" not in ASSUMPTIONS_PATH.read_text()

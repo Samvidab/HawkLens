@@ -353,3 +353,141 @@ def test_size_unit_mismatch_raises_clear_error(portfolio, uid, bad_unit):
         price_inputs(u, buildings["hou-001"], a)
     with pytest.raises(ValueError, match="size_unit"):
         simulate([u], buildings, a, n_scenarios=10)
+
+
+
+# --- replacement-due rule and estimate spreads -----------------------------------------------
+
+def _hp(upgrades):
+    return next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+
+
+@pytest.mark.parametrize("age,due", [(41, True), (40, True), (42, False), (None, False)])
+def test_replacement_due_rule(portfolio, age, due):
+    """hou-001 was built in 1985: 2026 - 1985 = 41. Credit applies only if 41 >= due age."""
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["global"]["analysis_year"] = 2026
+    d["upgrades"]["heat_pump"]["replacement_due_age_years"] = age
+    x = price_inputs(_hp(upgrades), buildings["hou-001"], d)
+    assert x.replacement_due is due
+    assert x.avoided_replacement_usd == (pytest.approx(1_344_000) if due else 0)
+    assert x.upfront_usd == pytest.approx(896_000 if due else 2_240_000)
+    # maintenance basis follows: net when the credit applies, gross when it doesn't
+    assert x.maintenance_usd_per_year == pytest.approx(0.02 * x.upfront_usd)
+
+
+def test_replacement_due_needs_a_build_year(portfolio):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["upgrades"]["heat_pump"]["replacement_due_age_years"] = 20
+    unknown = dataclasses.replace(buildings["hou-001"], year_built=None)
+    assert price_inputs(_hp(upgrades), unknown, d).avoided_replacement_usd == 0
+
+
+def test_no_due_age_key_keeps_legacy_behaviour(portfolio):
+    """The frozen test file has no replacement_due_age_years: credit always applies (as before)."""
+    upgrades, buildings, a = portfolio
+    assert "replacement_due_age_years" not in a["upgrades"]["heat_pump"]
+    assert price_inputs(_hp(upgrades), buildings["hou-001"], a).replacement_due is True
+
+
+def test_estimate_spread_widens_npv_but_keeps_its_mean(portfolio):
+    """A ±30% spread on heat-pump unit cost: multiplier ~ Normal(1, 0.15), so NPVs spread out
+    while the mean stays close (cost enters NPV linearly)."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    base = simulate(upgrades, buildings, d, n_scenarios=20_000)
+    d["uncertainty"] = {"upgrades.heat_pump.unit_cost": 0.3}
+    wide = simulate(upgrades, buildings, d, n_scenarios=20_000)
+    i = wide.index("hou-001-heat_pump")
+    assert np.ptp(base.npv[i]) == pytest.approx(0, abs=1e-6) and wide.npv[i].std() > 0
+    gross = price_inputs(_hp(upgrades), buildings["hou-001"], d).gross_cost_usd
+    # The multiplier scales the FULL cost (the avoided credit has no spread here), so upfront
+    # varies by 0.15 x gross. The 20% incentive (on gross) and maintenance (2% of net upfront,
+    # ~11x annuity) also scale with it and roughly cancel: NPV std ~ 0.15 x gross x (1 - 0.2 + 0.2).
+    assert 0.9 < wide.npv[i].std() / (0.15 * gross) < 1.15
+    assert wide.npv[i].mean() == pytest.approx(base.npv[i].mean(), rel=0.02)
+    # other upgrades are untouched by a spread on heat-pump cost
+    j = wide.index("hou-001-led_retrofit")
+    assert np.array_equal(wide.npv[j], base.npv[j])
+
+
+def test_estimate_spread_is_deterministic_and_shared(portfolio):
+    """Same seed -> same draws; one draw per field, shared by every upgrade using it."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)                       # only the shared multiplier varies
+    d["uncertainty"] = {"cities.Houston.kwh_per_sqft_year.Office": 0.3}
+    one = simulate(upgrades, buildings, d, n_scenarios=2_000)
+    two = simulate(upgrades, buildings, d, n_scenarios=2_000)
+    assert np.array_equal(one.npv, two.npv)
+    # hou-001 and hou-003 are both Office: their LED savings move together
+    l1, l3 = one.index("hou-001-led_retrofit"), one.index("hou-003-led_retrofit")
+    assert np.corrcoef(one.tonnes_per_year[l1], one.tonnes_per_year[l3])[0, 1] > 0.99
+    assert one.tonnes_per_year[l1].std() > 0
+    # hou-002 is Retail: no Office spread reaches it
+    assert np.ptp(one.tonnes_per_year[one.index("hou-002-led_retrofit")]) == pytest.approx(0, abs=1e-9)
+
+
+@pytest.mark.parametrize("bad", [{"upgrades.heat_pump.savings_mu": 0.3}, {"global.seed": 0.3},
+                                 {"upgrades.heat_pump.unit_cost": 1.5}, {"cities.Houston.nope": 0.3}])
+def test_invalid_uncertainty_rejected(portfolio, bad):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a); d["uncertainty"] = bad
+    with pytest.raises(ValueError, match="uncertainty"):
+        simulate(upgrades, buildings, d, n_scenarios=10)
+
+
+
+# --- rebates ($/kWh, cap, minimum) and per-scenario due ages -------------------------------
+
+def _det_with(a, **upd):
+    d = deterministic(a)
+    for t, fields in upd.items():
+        d["upgrades"][t].update(fields)
+    return d
+
+
+def test_kwh_rebate_hand_check(portfolio):
+    """hou-001 LED (frozen placeholders, deterministic): kWh saved = 0.06 x 1,800,000 = 108,000.
+    Rebate = $0.06 x 108,000 = $6,480; cap 50% of $168,000 doesn't bind; minimum 100,000 met.
+    Incentive = 10% x 168,000 credit + 6,480 rebate = $23,280 (p = 1, lag 0)."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")
+    base = simulate([led], buildings, deterministic(a), n_scenarios=10).npv[0][0]
+    d = _det_with(a, led_retrofit=dict(incentive_usd_per_kwh_saved=0.06, incentive_cap_frac_of_cost=0.5,
+                                         incentive_min_kwh_saved=100_000, incentive_lag_years=0))
+    with_rebate = simulate([led], buildings, d, n_scenarios=10).npv[0][0]
+    assert with_rebate - base == pytest.approx(6_480, abs=0.01)
+
+
+def test_rebate_minimum_not_met_pays_nothing(portfolio):
+    """hou-002 LED saves 0.06 x 630,000 = 37,800 kWh < 100,000 -> no rebate."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-002-led_retrofit")
+    base = simulate([led], buildings, deterministic(a), n_scenarios=10).npv[0][0]
+    d = _det_with(a, led_retrofit=dict(incentive_usd_per_kwh_saved=0.06, incentive_min_kwh_saved=100_000))
+    assert simulate([led], buildings, d, n_scenarios=10).npv[0][0] == pytest.approx(base)
+
+
+def test_incentive_cap_binds(portfolio):
+    """$5/kWh x 108,000 = $540,000 rebate, capped at 50% of $168,000 = $84,000 total incentive."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")
+    no_inc = simulate([led], buildings, _det_with(a, led_retrofit=dict(incentive_fraction=0.0)), n_scenarios=10).npv[0][0]
+    d = _det_with(a, led_retrofit=dict(incentive_fraction=0.0, incentive_usd_per_kwh_saved=5.0,
+                                         incentive_cap_frac_of_cost=0.5, incentive_lag_years=0))
+    assert simulate([led], buildings, d, n_scenarios=10).npv[0][0] - no_inc == pytest.approx(84_000, abs=0.01)
+
+
+def test_due_age_spread_makes_credit_probabilistic(portfolio):
+    """hou-001 is 41 years old. Due age 40 with a ±30% spread: due when 40 x m <= 41, i.e.
+    m <= 1.025, P = Phi(0.025 / 0.15) ~ 0.566. Without the spread it's always due."""
+    upgrades, buildings, a = portfolio
+    hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+    d = _det_with(a, heat_pump=dict(replacement_due_age_years=40))
+    always = simulate([hp], buildings, d, n_scenarios=20_000).npv[0]
+    d["uncertainty"] = {"upgrades.heat_pump.replacement_due_age_years": 0.3}
+    mixed = simulate([hp], buildings, d, n_scenarios=20_000).npv[0]
+    share_due = float(np.isclose(mixed, always[0]).mean())
+    assert share_due == pytest.approx(0.566, abs=0.02)

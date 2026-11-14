@@ -51,6 +51,7 @@ class BuildingFacts:
     floor_area_estimated: bool       # True = rba_sqft stand-in, not measured by the scan
     envelope_area_sqft: float | None
     envelope_area_estimated: bool    # True = geometric estimate, not measured by the scan
+    year_built: int | None = None    # from profile.json; drives the replacement-due rule
 
 
 def estimate_envelope_area_sqft(
@@ -113,6 +114,7 @@ def load_building(
         floor_area_estimated=floor_estimated,
         envelope_area_sqft=envelope,
         envelope_area_estimated=envelope_estimated,
+        year_built=profile.get("year_built"),
     )
 
 

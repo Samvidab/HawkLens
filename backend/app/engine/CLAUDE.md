@@ -89,6 +89,12 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 
 At most one upgrade per building per category. Savings basis per type is `savings_unit` in assumptions.json: `kwh_per_sqft_year` (cool roof, insulation: kWh = s × sqft treated), `fraction_of_building_kwh` (windows fixed; heat pump and LED scaled by coverage = size / floor area), `fraction_of_modeled_generation` (solar). Upfront cost C0 = max(unit_cost − avoided_replacement_cost_per_unit, 0) × size (incremental over like-for-like); the incentive uses the full unit_cost × size (capped at it); maintenance uses the net upfront cost when an avoided replacement applies, else the full cost. `price_inputs` raises `ValueError` if an upgrade's `size_unit` isn't its type's unit (`models.SIZE_UNIT_BY_TYPE`: solar kW, everything else sqft).
 
+Replacement-due rule: `avoided_replacement_cost_per_unit` is credited only if `global.analysis_year` − `year_built` ≥ `upgrades.<type>.replacement_due_age_years` (null or unknown year → no credit; key absent → legacy, always credit). `monte_carlo.replacement_due()`.
+
+Incentive if received (per scenario) = min(incentive_fraction × full cost + incentive_usd_per_kwh_saved × year-1 kWh saved [only if ≥ incentive_min_kwh_saved], incentive_cap_frac_of_cost × full cost). Missing fields default to 0 / 1.0 / 0, which is the old behavior.
+
+Estimate spreads: optional `assumptions["uncertainty"]` maps a fixed field's dotted path to a relative half-width h (95% range ±h); each scenario multiplies it by Normal(1, h/2), one shared draw per field, seeded by the field name. Allowed fields and the estimate rule: ASSUMPTIONS.md "Estimates and spreads". `monte_carlo.check_uncertainty()` validates.
+
 Caps, applied in every scenario before dollars and CO2:
 - Efficiency upgrades (everything except solar): kWh saved ≤ building baseline kWh × `global.max_savings_share` (placeholder 0.5). Excess is dropped.
 - `rooftop_solar`: self-consumed kWh ≤ building baseline kWh × 1.0, valued at `electricity_rate_usd_per_kwh`. Generation above that is exported, valued at `cities.<city>.export_rate_usd_per_kwh` (placeholder 0.04; must be sourced). CO2 counts all generation, exported or not. Use the `exports_excess` flag, not `export_rate > 0`, to tell solar apart, so a $0 buyback rate still counts exported CO2.
