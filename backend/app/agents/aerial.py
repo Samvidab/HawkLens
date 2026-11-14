@@ -110,9 +110,19 @@ def _marks(boxes: list[Box], valid_ids: set[str]) -> list[Mark]:
     return out
 
 
+def _describe(i: ImageRef, images: list[ImageRef]) -> str:
+    if i.source != "vexcel_overhead":
+        return f"oblique, {i.orientation} facade"
+    overheads = [o for o in images if o.source == "vexcel_overhead"]
+    if len(overheads) > 1 and i.gsd_m and i.gsd_m == max(o.gsd_m or 0 for o in overheads):
+        # pulled by the investigator: same point, larger area (neighbours, trees) for shading
+        return ("wider overhead context, same building at the centre with its surroundings: use it for "
+                "shading from neighbouring buildings and trees")
+    return "overhead"
+
+
 def prompt_for(profile: BuildingProfile, images: list[ImageRef], question: str | None = None) -> str:
-    lines = [f"- `{i.image_id}`: {'overhead' if i.source == 'vexcel_overhead' else f'oblique, {i.orientation} facade'}"
-             for i in images]
+    lines = [f"- `{i.image_id}`: {_describe(i, images)}" for i in images]
     ctx = [f"- Name: {profile.name}", f"- Type: {profile.property_type}"]
     if profile.stories:
         ctx.append(f"- Stories above grade: {profile.stories}")
@@ -254,14 +264,18 @@ def _emitter(profile: BuildingProfile, run_id: str | None):
                                                  building_name=profile.name)
 
 
-async def inspect(profile: BuildingProfile, run_id: str | None = None) -> AerialResult:
-    """Fetch imagery, ask Gemini, build findings + claims, emit fetch/observe events. Writes nothing."""
+async def inspect(profile: BuildingProfile, run_id: str | None = None,
+                  images: list[ImageRef] | None = None) -> AerialResult:
+    """Fetch imagery (unless the investigator already pulled it: `images`, the building's own
+    overhead first), ask Gemini, build findings + claims, emit observe events. Writes nothing."""
     ev = _emitter(profile, run_id)
-    images = await fetch_images(profile)
+    pulled = images is not None
+    images = images if pulled else await fetch_images(profile)
     overhead = next(i for i in images if i.source == "vexcel_overhead")
     n_obl = sum(1 for i in images if i.source == "vexcel_oblique")
-    ev("fetch", f"overhead image ({overhead.gsd_m * 100:.0f} cm/px)" + (f" + {n_obl} obliques" if n_obl else ""),
-       overhead.image_id)
+    if not pulled:
+        ev("fetch", f"overhead image ({overhead.gsd_m * 100:.0f} cm/px)" + (f" + {n_obl} obliques" if n_obl else ""),
+           overhead.image_id)
 
     try:
         obs = await llm.vision_json(prompt_for(profile, images), images, AerialObservation)

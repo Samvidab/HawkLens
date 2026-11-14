@@ -216,8 +216,8 @@ def unknown_observation() -> InteriorObservation:
                                window=WindowObs(value="unknown", confidence=0.0))
 
 
-async def fetch_images(model_id: str) -> tuple[list[PanoramaRef], list[ImageRef]]:
-    panos = sample_panos(await mp.panoramas(model_id))
+async def fetch_images(model_id: str, k: int = MAX_PANOS) -> tuple[list[PanoramaRef], list[ImageRef]]:
+    panos = sample_panos(await mp.panoramas(model_id), k)
     images = []
     for p in panos:
         for f in FACES:

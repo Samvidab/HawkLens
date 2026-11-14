@@ -4,8 +4,11 @@ Survey subgraph:
     records → inspect (aerial ∥ interior on the hero) → site_engineer → verify ─┬─► finalize
                                                           ▲                     │ claims sent back
                                                           └──── reinspect ◄─────┘
-Control flow is deterministic; Gemini only writes the orchestrator's plan lines (checked
-for invented numbers, template fallback) and does the inspectors'/verifier's vision work.
+inspect: with AGENTIC_SURVEY (default on) the investigator agent (agents/investigator.py) chooses
+which evidence to pull per building; the fixed aerial ∥ interior pipeline is its fallback.
+Graph edges are fixed; inside `inspect` the investigator (Gemini) chooses each tool call. Gemini
+also writes the orchestrator's plan lines (checked for invented numbers, template fallback) and
+does the inspectors'/verifier's vision work.
 Concurrency: at most MAX_CONCURRENT_BUILDINGS surveys at once (semaphore per run).
 """
 from __future__ import annotations
@@ -53,6 +56,8 @@ class SurveyState(TypedDict, total=False):
     upgrades: list[FeasibleUpgrade]
     sent_back: dict[str, str]  # claim_id → verifier question (T2.2)
     _verify_round: int
+    goal: Goal  # optional: the owner's goal, for the investigator
+    investigation: list[dict]  # investigator tool calls (AGENTIC_SURVEY)
 
 
 async def records_node(s: SurveyState) -> dict:
@@ -60,6 +65,20 @@ async def records_node(s: SurveyState) -> dict:
 
 
 async def inspect_node(s: SurveyState) -> dict:
+    from app.agents import investigator
+    if investigator.enabled():
+        try:
+            return await investigator.investigate(s["profile"], s["run_id"], s.get("goal"), bool(s.get("hero")))
+        except Exception as e:  # noqa: BLE001 - the fixed pipeline below is the fallback
+            log.exception("investigator failed for %s", s["building_id"])
+            emit(s["run_id"], "Investigator", "error",
+                 f"investigator failed ({type(e).__name__}); running the fixed survey", s["building_id"],
+                 building_name=s["profile"].name)
+    return await fixed_inspect(s)
+
+
+async def fixed_inspect(s: SurveyState) -> dict:
+    """The fixed pipeline: aerial always, interior on the hero's scan."""
     profile = s["profile"]
     tasks = [aerial.inspect(profile, s["run_id"])]
     interior_mod = _interior()
@@ -250,7 +269,8 @@ async def orchestrator_plan(s: RunState) -> dict:
 
 
 def fan_out(s: RunState) -> list[Send]:
-    return [Send("survey", {"run_id": s["run_id"], "building_id": b, "hero": b == s.get("hero_id")})
+    return [Send("survey", {"run_id": s["run_id"], "building_id": b, "hero": b == s.get("hero_id"),
+                            "goal": s.get("goal")})
             for b in s["building_ids"]]
 
 
