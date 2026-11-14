@@ -103,7 +103,8 @@ async def run_finance(run_id: str, plan_id: str | None) -> dict:
             if b["bill_id"]:
                 continue
             b["bill_id"] = await asyncio.to_thread(
-                nessie.create_bill, st["account_id"], _slug(b["contractor"]), b["amount"],
+                nessie.create_bill, st["account_id"], b["contractor"], b["amount"],  # live: the bill's payee, a readable name
+
                 f"{b['contractor']} for plan {plan_id}")
             save()
             events.emit(run_id, "Finance", "act", f"billed {b['contractor']} ${b['amount']:,.0f} (bill {_short(b['bill_id'])})")

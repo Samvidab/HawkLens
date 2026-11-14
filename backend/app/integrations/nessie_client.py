@@ -5,7 +5,7 @@ NESSIE_MODE=live  thin wrapper around the Nessie teammate's code in <repo>/nessi
     - auth + base URL come from her `client.py` (NESSIE_API_KEY, https://api.nessieisreal.com);
     - `get_bills` uses her `get_bills.get_bills()` (all bills of the operating account), filtered per building;
     - her `finance.py` / `funding.py` hardcode the customer/account ids, return nothing and block all funding after one
-      allocation, so reserve account, transfer and contractor bills are our own calls (same auth, same endpoints).
+      allocation, so reserve account, transfer (withdrawal + deposit) and contractor bills are our own calls (same auth).
     Ids: NESSIE_CUSTOMER_ID (customer) and NESSIE_SOURCE_ACCOUNT_ID (the operating account funds are taken from).
 Signatures are the TRD's and do not change between modes.
 """
@@ -173,10 +173,23 @@ def _live_get_or_create_account(customer_id: str, nickname: str) -> str:
 
 
 def _live_transfer(from_account: str, to_account: str, amount: float, description: str) -> str:
-    # `medium` and `payee_id` are what makes Nessie move the money (her funding.py omits them: "balances unchanged")
-    body = {"medium": "balance", "payee_id": to_account, "transaction_date": date.today().isoformat(),
-            "status": "completed", "amount": round(amount, 2), "description": description}
-    return _created_id(_call("post", f"/accounts/{from_account}/transfers", json=body), "transfer")
+    """Record a transfer as a withdrawal on the source plus a deposit on the destination (the calls the Nessie teammate's
+    test_withdrawal.py / test_deposit.py use). This sandbox's `/transfers` rejects `medium`/`payee_id`, and it never
+    recomputes an account's `balance` from its records: the movement shows up as completed transactions, not as a new
+    balance (her funding ledger says the same: bank_transfer_completed false). Returns "<withdrawal id>:<deposit id>"."""
+    amount = round(amount, 2)
+    body = {"medium": "balance", "transaction_date": date.today().isoformat(), "status": "completed", "amount": amount,
+            "description": description}  # all of these: a stored Withdrawal without date/status/description breaks its list endpoint
+    w = _created_id(_call("post", f"/accounts/{from_account}/withdrawals", json=body), "withdrawal")
+    try:
+        d = _created_id(_call("post", f"/accounts/{to_account}/deposits", json=body), "deposit")
+    except NessieError as e:
+        try:  # put the money back so a failed transfer does not lose it
+            _call("post", f"/accounts/{from_account}/deposits", json={**body, "description": f"refund: {description}"[:120]})
+        except NessieError:
+            raise NessieError(f"deposit failed AND the refund failed (withdrawal {w} of ${amount:,.2f} is not returned): {e}") from e
+        raise NessieError(f"deposit into the reserve failed; the ${amount:,.2f} withdrawal was refunded: {e}") from e
+    return f"{w}:{d}"
 
 
 def _live_create_bill(account_id: str, merchant_id: str, amount: float, description: str) -> str:

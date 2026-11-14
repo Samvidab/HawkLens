@@ -182,7 +182,10 @@
             },
             "in_plan": true,
             "owner_included": false,
-            "highlighted": true
+            "highlighted": true,
+            "tonnes_per_year": 396.0,
+            "upfront_usd": 792000.0,
+            "exp_npv": 382681.18
           },
           {
             "upgrade": {
@@ -206,7 +209,10 @@
             },
             "in_plan": false,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 13.5,
+            "upfront_usd": 90000.0,
+            "exp_npv": -40817.26
           },
           {
             "upgrade": {
@@ -229,7 +235,10 @@
             },
             "in_plan": false,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 286.4,
+            "upfront_usd": 3750505.0,
+            "exp_npv": -2479033.82
           },
           {
             "upgrade": {
@@ -252,7 +261,10 @@
             },
             "in_plan": false,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 902.0,
+            "upfront_usd": 9840000.0,
+            "exp_npv": -5732330.78
           },
           {
             "upgrade": {
@@ -271,7 +283,10 @@
             },
             "in_plan": false,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 246.0,
+            "upfront_usd": 2460000.0,
+            "exp_npv": -933687.93
           },
           {
             "upgrade": {
@@ -294,7 +309,10 @@
             },
             "in_plan": true,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 738.0,
+            "upfront_usd": 2050000.0,
+            "exp_npv": 34160.88
           }
         ]
       }
@@ -305,7 +323,7 @@
       "title": "Evidence",
       "why": "The images behind each finding, with verifier status.",
       "size": "wide",
-      "data_ref": "buildings/*/verification.json",
+      "data_ref": "buildings/*/claims.json",
       "props": {
         "items": [
           {

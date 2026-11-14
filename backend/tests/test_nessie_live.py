@@ -66,11 +66,35 @@ def test_create_account_is_get_or_create(api):
     assert [w[1] for w in api.writes] == [f"/customers/{CUSTOMER}/accounts"] and api.writes[0][2]["nickname"] == "Another Reserve"
 
 
-def test_transfer_moves_money_with_medium_and_payee(api):
+def test_transfer_is_a_withdrawal_plus_a_deposit(api):
     tid = nes.transfer(OPERATING, RESERVE, 1234.567, "Upfront for plan p1")
-    body = api.writes[-1][2]
-    assert body["medium"] == "balance" and body["payee_id"] == RESERVE and body["amount"] == 1234.57 and body["description"] == "Upfront for plan p1"
-    assert tid == "xfer-0" and api.accounts[OPERATING]["balance"] == pytest.approx(50_000_000 - 1234.57) and api.accounts[RESERVE]["balance"] == pytest.approx(1234.57)
+    paths = [w[1] for w in api.writes]
+    assert paths == [f"/accounts/{OPERATING}/withdrawals", f"/accounts/{RESERVE}/deposits"]
+    assert set(api.writes[0][2]) == {"medium", "transaction_date", "status", "amount", "description"} and api.writes[0][2] == api.writes[1][2]
+    dep = api.writes[1][2]
+    assert dep["medium"] == "balance" and dep["amount"] == 1234.57 and dep["description"] == "Upfront for plan p1" and dep["status"] == "completed"
+    assert tid == "w-0:d-1"
+    assert api.accounts[OPERATING]["balance"] == pytest.approx(50_000_000 - 1234.57) and api.accounts[RESERVE]["balance"] == pytest.approx(1234.57)
+
+
+def test_the_sandbox_transfers_endpoint_would_have_rejected_our_old_body(api):
+    """The reason for the withdrawal+deposit design (found on the real API): /transfers rejects medium/payee_id."""
+    import requests
+    r = requests.post("https://api.nessieisreal.com" + f"/accounts/{OPERATING}/transfers", params={"key": KEY},
+                      json={"medium": "balance", "payee_id": RESERVE, "amount": 1})
+    assert r.status_code == 400 and "extra fields not permitted" in r.text
+
+
+def test_failed_deposit_refunds_the_withdrawal(api):
+    api.fail_on[rf"/accounts/{RESERVE}/deposits"] = 500
+    with pytest.raises(nes.NessieError, match="refunded"):
+        nes.transfer(OPERATING, RESERVE, 100.0, "plan p2")
+    assert api.accounts[OPERATING]["balance"] == pytest.approx(50_000_000)  # money is back
+    assert api.accounts[RESERVE]["balance"] == 0
+    api.fail_on[rf"/accounts/{RESERVE}/deposits"] = 500
+    api.fail_on[rf"/accounts/{OPERATING}/deposits"] = 500  # the refund fails too: say so loudly
+    with pytest.raises(nes.NessieError, match="refund failed"):
+        nes.transfer(OPERATING, RESERVE, 100.0, "plan p3")
 
 
 def test_transfer_errors_are_clear_and_leak_no_key(api):
@@ -119,9 +143,9 @@ def test_approve_end_to_end_live_nessie(c, data, api):
     assert api.accounts[OPERATING]["balance"] == pytest.approx(50_000_000 - p["total_upfront"], abs=0.01)
     assert sum(b["payment_amount"] for b in api.bills[RESERVE]) == pytest.approx(p["total_upfront"], abs=0.05)
     ids = fc["nessie_ids"]
-    assert ids["account"] == RESERVE and ids["transfer"] == "xfer-0"
+    assert ids["account"] == RESERVE and ids["transfer"] == "w-0:d-1"
     assert {ids[k] for k in ids if k.startswith("bill:")} == {b["_id"] for b in api.bills[RESERVE]}
-    assert all(w[1] in (f"/accounts/{OPERATING}/transfers", f"/accounts/{RESERVE}/bills") for w in api.writes)
+    assert all(w[1] in (f"/accounts/{OPERATING}/withdrawals", f"/accounts/{RESERVE}/deposits", f"/accounts/{RESERVE}/bills") for w in api.writes)
     n = len(api.writes)
     assert post(c, "approve", {"plan_id": p["plan_id"]}).status_code == 200
     assert len(api.writes) == n  # idempotent: second approve posts nothing
@@ -133,10 +157,10 @@ def test_nessie_failure_gives_502_and_the_retry_resumes_without_double_booking(c
     api.fail_on[rf"/accounts/{RESERVE}/bills"] = 500  # the first bill POST fails once... (the GET dedupe call hits it first)
     r = post(c, "approve", {"plan_id": pid})
     assert r.status_code == 502 and "Nessie could not complete" in r.text and KEY not in r.text
-    assert len(api.transfers) == 1  # the transfer already happened and is remembered
+    assert len(api.transfers) == 2  # withdrawal + deposit already happened and are remembered
     assert any(e["kind"] == "error" and e["agent"] == "Finance" for e in events_of(data))
     assert post(c, "approve", {"plan_id": pid}).status_code == 200
-    assert len(api.transfers) == 1 and api.accounts[RESERVE]["balance"] == pytest.approx(plan(data)["total_upfront"], abs=0.01)
+    assert len(api.transfers) == 2 and api.accounts[RESERVE]["balance"] == pytest.approx(plan(data)["total_upfront"], abs=0.01)
 
 
 def test_insufficient_funds_is_a_502_with_the_reason(c, data, api):

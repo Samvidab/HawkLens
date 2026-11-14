@@ -68,7 +68,7 @@ def world(tmp_path, monkeypatch):
         for bid, name, mp, roof, cl in [("b1", "Allen Center", "m1", b1_roof, claims_b1), ("b2", "Harbor Lofts", None, b2_roof, claims_b2)]:
             put(tmp_path / f"buildings/{bid}/profile.json", prof(bid, name, mp))
             put(tmp_path / f"buildings/{bid}/aerial.json", aer(bid, roof))
-            put(tmp_path / f"buildings/{bid}/verification.json", list(cl))
+            put(tmp_path / f"buildings/{bid}/claims.json", list(cl))
         put(tmp_path / "buildings/b1/interior_scan.json", SCAN_B1)
         put(tmp_path / "buildings/b1/feasibility.json", [up("b1", "rooftop_solar", "solar", 150, "kW", claims=["k1"])])
         put(tmp_path / "buildings/b2/feasibility.json", upgrades_b2 or [
