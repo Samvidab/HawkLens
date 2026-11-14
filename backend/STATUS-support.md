@@ -220,7 +220,7 @@ The backend returns a **layout** (ordered widgets with `size` full/wide/half/sid
 Money from the API is raw USD (can be negative, can be `null`); show "$1280k" client-side. Tonnes are per year. Percent fields (`p_hit_target`, `p_loss`, `usable_roof_fraction`, `glazing_ratio`) are 0-1; `target_pct` and slider values are 0-100. `confidence` in the UI ("Baseline simulation confidence 87 %") has no direct field: the closest are `p_hit_target` (chance to hit the target) and `p_loss`; decide which one the label means.
 
 ### 7. Backend gaps found while reviewing (ours, not the frontend's)
-1. `upgrade_list` rows lack per-upgrade `tonnes_per_year`, `upfront_usd`, `exp_npv` (the evidence/building screens show them); they exist in `plan.simulate` and could be added to the props.
+1. ~~`upgrade_list` rows lack per-upgrade numbers~~ **done**: rows now carry `tonnes_per_year`, `upfront_usd`, `exp_npv` (null when the engine did not price the upgrade).
 2. No endpoint for the Assumptions screen (`Assumptions.jsx`: baseline, electricity rate, grid factor, discount rate, scenarios) although the engine has them in `assumptions.json` + sources.
 3. Documents screen lists PDF/CSV files (survey, assumptions, upgrade schedule) that nothing generates; only the memo markdown exists.
 4. No per-building survey progress in `/state` until the run ends (derive from events) and no total portfolio baseline in any widget.

@@ -1296,6 +1296,42 @@
                 "default": false,
                 "title": "Highlighted",
                 "type": "boolean"
+              },
+              "tonnes_per_year": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tonnes Per Year"
+              },
+              "upfront_usd": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Upfront Usd"
+              },
+              "exp_npv": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Exp Npv"
               }
             },
             "required": [

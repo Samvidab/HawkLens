@@ -209,3 +209,10 @@ def test_malformed_optional_files_never_blank_the_workspace(data):
         except ResolveError:
             failed.add(spec.type)
     assert failed == {"plan_table"}  # the plan still selects b2's upgrades, whose file is unreadable
+
+
+def test_upgrade_list_rows_carry_the_engines_numbers(data):
+    ctx = ResolveContext.load(data, "r1", focus_building_id="b1")
+    rows = {r["upgrade"]["upgrade_id"]: r for r in widgets(resolve_layout(ctx, "building_detail"))["upgrade_list"].props["upgrades"]}
+    assert rows["b1:rooftop_solar"]["upfront_usd"] == 60000.0 and rows["b1:rooftop_solar"]["exp_npv"] == 900.0
+    assert rows["b1:window_upgrade"]["upfront_usd"] is None  # not priced by the engine: null, not a made-up number

@@ -329,9 +329,13 @@ def _floor_plan(ctx: ResolveContext) -> tuple[str, dict]:
 
 def _upgrade_list(ctx: ResolveContext) -> tuple[str, dict]:
     bids = [ctx.focus_building_id] if ctx.focus_building_id else list(ctx.upgrades)
+    sim = ctx.plan.get("simulate", {})
     rows = [dict(upgrade=u.model_dump(), in_plan=u.upgrade_id in ctx.selected,
                  owner_included=u.upgrade_id in ctx.owner_included,
-                 highlighted=u.upgrade_id in ctx.selected_upgrade_ids)
+                 highlighted=u.upgrade_id in ctx.selected_upgrade_ids,
+                 tonnes_per_year=sim.get(u.upgrade_id, {}).get("tonnes_per_year"),
+                 upfront_usd=sim.get(u.upgrade_id, {}).get("upfront_usd"),
+                 exp_npv=sim.get(u.upgrade_id, {}).get("exp_npv"))
             for b in bids for u in ctx.upgrades.get(b, [])
             if ctx.situation != "verification_issue" or u.verified == "unverified"]
     return "buildings/*/feasibility.json", dict(upgrades=rows)
