@@ -255,7 +255,7 @@ def save(profile: BuildingProfile, res: InteriorResult) -> None:
     d = store.building_dir(profile.building_id)
     write_json_atomic(d / "interior.json", res.findings.model_dump(mode="json"))
     mesh = res.scan.get("mesh")
-    scan = {**res.scan, "model_id": res.model_id,
+    scan = {**res.scan, "model_id": res.model_id, "showcase_url": profile.showcase_url,
             "mesh_url": f"/media/mesh/{res.model_id}/{mesh['obj']}" if mesh and mesh.get("obj") else None,
             "mtl_url": f"/media/mesh/{res.model_id}/{mesh['mtl']}" if mesh and mesh.get("mtl") else None}
     write_json_atomic(d / "interior_scan.json", scan)

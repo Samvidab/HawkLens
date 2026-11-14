@@ -1494,6 +1494,18 @@
                 "default": null,
                 "title": "Matterport Model Id"
               },
+              "showcase_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Showcase Url"
+              },
               "source_fields": {
                 "additionalProperties": {
                   "type": "string"

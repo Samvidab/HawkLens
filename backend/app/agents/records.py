@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from app.adapters import costar
+from app.adapters import matterport as mp
 from app.adapters.cache import write_json_atomic
 from app.adapters.geometry import SQFT_PER_M2, square_wkt
 from app.config import get_settings
@@ -114,6 +115,30 @@ def map_record(rec: dict[str, Any], *, building_id: str | None = None,
     )
 
 
+SHOWCASE = "https://my.matterport.com/show/?m={model_id}"
+
+
+async def showcase_url(model_id: str | None) -> str | None:
+    """Embeddable tour link, only for models the Showcase viewer will play (public/unlisted)."""
+    if not model_id:
+        return None
+    try:
+        visibility = (await mp.basics(model_id)).get("visibility")
+    except Exception:  # noqa: BLE001 - no tour link is fine; the 3D widget falls back
+        return None
+    return SHOWCASE.format(model_id=model_id) if visibility in ("public", "unlisted") else None
+
+
+def publish_showcase(profile: BuildingProfile) -> None:
+    """Merge the tour link into interior_scan.json, where the widget resolver looks for it."""
+    if not profile.showcase_url:
+        return
+    p = profile_path(profile.building_id).parent / "interior_scan.json"
+    scan = json.loads(p.read_text()) if p.exists() else {"model_id": profile.matterport_model_id}
+    scan["showcase_url"] = profile.showcase_url
+    write_json_atomic(p, scan)
+
+
 def summary(p: BuildingProfile) -> str:
     parts = []
     if p.stories:
@@ -135,7 +160,12 @@ async def run(building_id: str, run_id: str | None = None) -> BuildingProfile:
 
     rec = await costar.get_property(costar_id)
     profile = map_record(rec, building_id=building_id, matterport_model_id=model_id)
+    if url := await showcase_url(model_id):
+        profile = profile.model_copy(update={
+            "showcase_url": url,
+            "source_fields": {**profile.source_fields, "showcase_url": "Matterport model visibility (public) + model id"}})
     write_json_atomic(profile_path(building_id), profile.model_dump(mode="json"))
+    publish_showcase(profile)
     if run_id:
         emit(run_id, AGENT, "fetch", summary(profile), building_id, building_name=profile.name)
     return profile

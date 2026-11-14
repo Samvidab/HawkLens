@@ -30,6 +30,7 @@
           "rba_sqft": 140000.0,
           "occupancy_pct": 88.0,
           "matterport_model_id": null,
+          "showcase_url": null,
           "source_fields": {
             "stories": "NumberOfStories",
             "rba_sqft": "RBA",
