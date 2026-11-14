@@ -1,0 +1,98 @@
+{
+  "_notes": [
+    "Every value here is a PLACEHOLDER until the data/pitch owner replaces it with a sourced number and sets that block's 'source'.",
+    "Units: rates and fractions are decimals (0.07 = 7%). Money is USD. Energy is kWh per year. Carbon is kg CO2 per kWh.",
+    "savings_mu / savings_sd: fraction of the building's whole annual energy spend saved at full coverage. Exception: rooftop_solar, where it is the realized fraction of modeled generation (kW x city solar yield).",
+    "unit_cost is in cost_unit, which matches the size_unit the feasibility rules (TRD section 7) produce.",
+    "carbon_price.start_year_range is years from today; price_range_per_tonne is USD per tonne CO2.",
+    "kwh_per_sqft_year keys are benchmark types, not CoStar names. buildings.py maps CoStar property_type to them; unknown types use 'Other'.",
+    "Full field definitions and example sources: ASSUMPTIONS.md.",
+    "Houston only. The Goal schema still allows 'Los Angeles' (TRD), but there are no LA values, so the engine cannot price LA buildings."
+  ],
+  "global": {
+    "n_scenarios": 10000,
+    "n_scenarios_optimizer": 1000,
+    "seed": 20261115,
+    "discount_rate": 0.07,
+    "general_inflation": 0.025,
+    "max_savings_share": 0.5,
+    "source": "PLACEHOLDER",
+    "energy_price_growth": {"mu": 0.02, "sd": 0.015, "source": "PLACEHOLDER"},
+    "carbon_price": {
+      "p_fee_starts": 0.5,
+      "start_year_range": [3, 10],
+      "price_range_per_tonne": [25, 100],
+      "source": "PLACEHOLDER"
+    }
+  },
+  "building_estimates": {
+    "floor_height_m": 4.0,
+    "source": "PLACEHOLDER"
+  },
+  "cities": {
+    "Houston": {
+      "electricity_rate_usd_per_kwh": 0.12,
+      "grid_kg_co2_per_kwh": 0.38,
+      "solar_kwh_per_kw_year": 1450,
+      "export_rate_usd_per_kwh": 0.04,
+      "kwh_per_sqft_year": {"Office": 15.0, "Retail": 14.0, "Industrial": 10.0, "Multi-Family": 12.0, "Other": 14.0},
+      "source": "PLACEHOLDER"
+    }
+  },
+  "upgrades": {
+    "rooftop_solar": {
+      "cost_unit": "usd_per_kw", "unit_cost": 2500, "avoided_replacement_cost_per_unit": 0,
+      "savings_unit": "fraction_of_modeled_generation",
+      "savings_mu": 0.95, "savings_sd": 0.08,
+      "life_min": 20, "life_max": 30,
+      "incentive_fraction": 0.30, "incentive_p": 0.8, "incentive_lag_years": 1,
+      "maint_frac_per_year": 0.01,
+      "source": "PLACEHOLDER"
+    },
+    "cool_roof": {
+      "cost_unit": "usd_per_sqft", "unit_cost": 2.0, "avoided_replacement_cost_per_unit": 1.5,
+      "savings_unit": "kwh_per_sqft_year",
+      "savings_mu": 0.4, "savings_sd": 0.15,
+      "life_min": 15, "life_max": 20,
+      "incentive_fraction": 0.10, "incentive_p": 0.3, "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.005,
+      "source": "PLACEHOLDER"
+    },
+    "window_upgrade": {
+      "cost_unit": "usd_per_sqft", "unit_cost": 60.0, "avoided_replacement_cost_per_unit": 40.0,
+      "savings_unit": "fraction_of_building_kwh",
+      "savings_mu": 0.05, "savings_sd": 0.02,
+      "life_min": 25, "life_max": 35,
+      "incentive_fraction": 0.10, "incentive_p": 0.3, "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.002,
+      "source": "PLACEHOLDER"
+    },
+    "insulation": {
+      "cost_unit": "usd_per_sqft", "unit_cost": 3.0, "avoided_replacement_cost_per_unit": 0,
+      "savings_unit": "kwh_per_sqft_year",
+      "savings_mu": 0.3, "savings_sd": 0.15,
+      "life_min": 25, "life_max": 40,
+      "incentive_fraction": 0.10, "incentive_p": 0.4, "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.0,
+      "source": "PLACEHOLDER"
+    },
+    "heat_pump": {
+      "cost_unit": "usd_per_sqft", "unit_cost": 20.0, "avoided_replacement_cost_per_unit": 12.0,
+      "savings_unit": "fraction_of_building_kwh",
+      "savings_mu": 0.15, "savings_sd": 0.05,
+      "life_min": 15, "life_max": 20,
+      "incentive_fraction": 0.20, "incentive_p": 0.5, "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.02,
+      "source": "PLACEHOLDER"
+    },
+    "led_retrofit": {
+      "cost_unit": "usd_per_sqft", "unit_cost": 1.5, "avoided_replacement_cost_per_unit": 0,
+      "savings_unit": "fraction_of_building_kwh",
+      "savings_mu": 0.06, "savings_sd": 0.02,
+      "life_min": 10, "life_max": 15,
+      "incentive_fraction": 0.10, "incentive_p": 0.6, "incentive_lag_years": 0,
+      "maint_frac_per_year": 0.0,
+      "source": "PLACEHOLDER"
+    }
+  }
+}
