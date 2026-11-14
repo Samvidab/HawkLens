@@ -10,12 +10,13 @@ from app.engine.monte_carlo import simulate
 from app.engine.optimizer import build_problem, solve, solve_with_min_p_hit
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 
 
 @pytest.fixture(scope="module")
 def setup():
-    a = load_assumptions()
+    a = load_assumptions(TEST_ASSUMPTIONS)   # frozen placeholders: mechanics, not data
     buildings = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
     upgrades = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
     sim = simulate(upgrades, buildings, a, n_scenarios=10_000)

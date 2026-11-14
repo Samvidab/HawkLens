@@ -100,6 +100,10 @@ class UpgradeRow(Props):
     in_plan: bool
     owner_included: bool = False
     highlighted: bool = False
+    # engine numbers for this upgrade (also for upgrades outside the plan); null when the engine did not price it
+    tonnes_per_year: float | None = None
+    upfront_usd: float | None = None
+    exp_npv: float | None = None
 
 
 class Bill(Props):

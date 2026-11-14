@@ -89,7 +89,7 @@ def build_world(root: Path, *, issue: bool = False) -> None:
         from app.rules.feasibility import apply_verification
         ups = apply_verification(ups, claims)
         write_json(d / "profile.json", prof); write_json(d / "aerial.json", aer)
-        write_json(d / "verification.json", claims); write_json(d / "feasibility.json", ups)
+        write_json(d / "claims.json", claims); write_json(d / "feasibility.json", ups)
     write_json(root / "portfolio.json", {"city": "Houston", "buildings": [{"building_id": b[0], "name": b[1], "hero": b[7]} for b in BUILDINGS]})
 
 

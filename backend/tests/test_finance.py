@@ -49,7 +49,7 @@ async def test_books_reserve_transfer_and_bill_per_contractor(data):
     contractors = {finance.CONTRACTOR[types[u]] for u in plan["selected"]}
     assert st["state"] == "executed" and len(st["bills"]) == len(contractors)
     assert ledger() == {"accounts": 1, "transfers": 1, "bills": len(contractors)}
-    assert nes._ledger["accounts"][0]["nickname"] == "Retrofit Reserve"
+    assert nes._ledger["accounts"][0]["nickname"] == finance.RESERVE_NICKNAME
     assert nes._ledger["transfers"][0]["amount"] == round(plan["total_upfront"], 2)
     assert nes._ledger["transfers"][0]["to"] == st["account_id"]
     assert sum(b["amount"] for b in st["bills"]) == pytest.approx(plan["total_upfront"], abs=0.05)

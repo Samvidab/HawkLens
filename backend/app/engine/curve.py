@@ -1,5 +1,8 @@
 """Marginal abatement cost curve (engine/CLAUDE.md "Abatement curve", TRD §8.1).
 
+Named curve.py, not macc.py, so that `app.engine.macc` is always the contract
+function and never this module.
+
 cost_per_tonne = -exp_npv / mean(tonnes_lifetime)
 Negative = the upgrade cuts carbon AND makes money. Bars are sorted cheapest first.
 

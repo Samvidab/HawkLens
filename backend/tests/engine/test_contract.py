@@ -9,6 +9,7 @@ from app.engine import state
 from app.engine.models import load_feasibility
 
 FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"   # frozen placeholders
 BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 
 TRD_SIM_KEYS = {"exp_npv", "p_loss", "cvar5", "tonnes_lifetime", "cost_per_tonne", "hist_bins"}
@@ -18,7 +19,7 @@ TRD_PLAN_KEYS = {"plan_id", "selected", "exp_npv", "cvar5", "p_hit_target", "tot
                  "tonnes_per_year"}
 EXTRA_PLAN_KEYS = {"status", "p_loss", "hist_bins", "tonnes_needed", "shortfall_tonnes",
                    "cheapest_extra", "internal_target_pct", "min_p_hit", "met_min_p_hit",
-                   "p_hit_retries"}
+                   "p_hit_retries", "risk_supported"}
 
 
 @pytest.fixture
@@ -29,13 +30,14 @@ def upgrades():
 @pytest.fixture(autouse=True)
 def fresh_state():
     state.clear()
+    engine.configure(buildings_root=FIXTURES, assumptions_path=TEST_ASSUMPTIONS)
     yield
     state.clear()
 
 
 @pytest.fixture
 def simulated(upgrades):
-    return engine.simulate(upgrades, {}, buildings_root=FIXTURES)
+    return engine.simulate(upgrades, {})
 
 
 def is_num(x):
@@ -62,17 +64,15 @@ def test_simulate_keys_and_types(simulated, upgrades):
 
 def test_simulate_accepts_dicts_and_caches(upgrades):
     as_dicts = [u.model_dump() for u in upgrades]
-    out = engine.simulate(as_dicts, {}, buildings_root=FIXTURES)
+    out = engine.simulate(as_dicts, {})
     assert len(out) == len(upgrades)
     assert state.has_simulation() and not state.is_stale()
 
 
 def test_simulate_assumptions_arg_nested_and_dotted(upgrades):
-    base = engine.simulate(upgrades, {}, buildings_root=FIXTURES)
-    nested = engine.simulate(upgrades, {"upgrades": {"led_retrofit": {"unit_cost": 0.5}}},
-                             buildings_root=FIXTURES)
-    dotted = engine.simulate(upgrades, {"upgrades.led_retrofit.unit_cost": 0.5},
-                             buildings_root=FIXTURES)
+    base = engine.simulate(upgrades, {})
+    nested = engine.simulate(upgrades, {"upgrades": {"led_retrofit": {"unit_cost": 0.5}}})
+    dotted = engine.simulate(upgrades, {"upgrades.led_retrofit.unit_cost": 0.5})
     led = "hou-001-led_retrofit"
     assert nested[led]["exp_npv"] > base[led]["exp_npv"]
     assert dotted[led]["exp_npv"] == pytest.approx(nested[led]["exp_npv"])
@@ -81,7 +81,7 @@ def test_simulate_assumptions_arg_nested_and_dotted(upgrades):
 
 def test_simulate_rejects_unknown_assumption(upgrades):
     with pytest.raises(KeyError):
-        engine.simulate(upgrades, {"global.not_a_field": 1}, buildings_root=FIXTURES)
+        engine.simulate(upgrades, {"global.not_a_field": 1})
 
 
 # --- macc ----------------------------------------------------------------------------------
@@ -113,6 +113,7 @@ def test_optimize_keys_and_types(simulated):
         assert is_num(r[k]), k
     assert r["status"] in ("ok", "infeasible")
     assert isinstance(r["met_min_p_hit"], bool) and isinstance(r["p_hit_retries"], int)
+    assert r["risk_supported"] is True      # the agent's client reads this; missing means "not modelled"
     assert_hist(r["hist_bins"])
     json.dumps(r, allow_nan=False)
 
@@ -128,11 +129,13 @@ def test_optimize_is_deterministic(simulated):
 
 
 def test_infeasible_has_cheapest_extra_with_fits_budget(simulated):
-    r = engine.optimize(40, 0, None, ["hou-002-rooftop_solar"], min_p_hit=0)
+    engine.set_assumption("min_p_hit", 0)
+    r = engine.optimize(40, 0, None, ["hou-002-rooftop_solar"])
     assert r["status"] == "infeasible" and r["shortfall_tonnes"] > 0
     assert r["cheapest_extra"]
     for e in r["cheapest_extra"]:
-        assert set(e) == TRD_BAR_KEYS | {"fits_budget"}
+        assert set(e) == TRD_BAR_KEYS | {"verified", "fits_budget"}
+        assert isinstance(e["verified"], bool) and isinstance(e["fits_budget"], bool)
 
 
 # --- set_assumption --------------------------------------------------------------------------
@@ -154,9 +157,10 @@ def test_set_assumption_bare_global_key(simulated):
 
 def test_set_assumption_survives_a_new_simulate(upgrades):
     engine.set_assumption("upgrades.led_retrofit.unit_cost", 0.5)     # before any simulate
-    cheap = engine.simulate(upgrades, {}, buildings_root=FIXTURES)["hou-001-led_retrofit"]
+    cheap = engine.simulate(upgrades, {})["hou-001-led_retrofit"]
     state.clear()
-    normal = engine.simulate(upgrades, {}, buildings_root=FIXTURES)["hou-001-led_retrofit"]
+    engine.configure(buildings_root=FIXTURES, assumptions_path=TEST_ASSUMPTIONS)
+    normal = engine.simulate(upgrades, {})["hou-001-led_retrofit"]
     assert cheap["upfront_usd"] < normal["upfront_usd"]
 
 
@@ -181,6 +185,155 @@ def test_baseline_hand_check(simulated):
                                                          "tonnes_per_year": 684.0})
 
 
-def test_baseline_without_simulation_uses_root():
-    r = engine.baseline("hou-002", buildings_root=FIXTURES)
+def test_baseline_without_simulation_uses_configured_root():
+    r = engine.baseline("hou-002")
     assert r["annual_spend_usd"] == pytest.approx(14 * 45_000 * 0.12)
+
+
+# --- agent-side integration (from STATUS-support.md) -------------------------------------------
+
+def test_app_engine_macc_is_always_the_function():
+    """curve.py, not macc.py: importing every engine module must never turn app.engine.macc
+    into a module."""
+    import importlib
+    for mod in ("curve", "optimizer", "monte_carlo", "state", "risk", "npv", "buildings"):
+        importlib.import_module(f"app.engine.{mod}")
+    import app.engine
+    assert callable(app.engine.macc) and app.engine.macc is engine.macc
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("app.engine.macc")
+    for name in ("simulate", "macc", "optimize", "set_assumption", "baseline"):
+        assert callable(getattr(app.engine, name)), name
+
+
+def test_simulate_accepts_the_agents_own_pydantic_model(upgrades):
+    """The agent passes app.schemas.upgrades.FeasibleUpgrade (a different class with the same
+    fields, ids like 'hou-001:led_retrofit'); pydantic refuses foreign instances directly."""
+    from pydantic import BaseModel
+
+    class AgentFeasibleUpgrade(BaseModel):          # same fields as the agent branch's schema
+        upgrade_id: str; building_id: str; category: str; type: str; size_value: float
+        size_unit: str; reason: str; confidence: float; claim_ids: list[str]
+        evidence_ids: list[str]; verified: str; include_in_optimizer: bool
+
+    theirs = [AgentFeasibleUpgrade(**{**u.model_dump(),
+                                      "upgrade_id": f"{u.building_id}:{u.type}"}) for u in upgrades]
+    out = engine.simulate(theirs, {"discount_rate": 0.07})
+    assert "hou-001:led_retrofit" in out and len(out) == len(upgrades)
+    assert engine.optimize(25, 0.5, None, ["hou-002"])["status"] == "ok"
+
+
+def test_simulate_assumptions_bare_discount_rate(upgrades):
+    """The agent sends assumptions={'discount_rate': Goal.discount_rate}: a bare global key."""
+    low = engine.simulate(upgrades, {"discount_rate": 0.03})
+    high = engine.simulate(upgrades, {"discount_rate": 0.12})
+    solar = "hou-002-rooftop_solar"
+    assert low[solar]["exp_npv"] > high[solar]["exp_npv"]     # lower discount rate -> worth more
+
+
+def test_excluded_building_stays_in_the_targets_denominator(simulated):
+    """Target = X% of the WHOLE simulated portfolio (1,379.4 t/yr), even with hou-002 excluded."""
+    engine.set_assumption("min_p_hit", 0)
+    full = engine.optimize(25, 0, None, [])
+    without = engine.optimize(25, 0, None, ["hou-002"])
+    assert without["tonnes_needed"] == pytest.approx(full["tonnes_needed"])
+    assert full["tonnes_needed"] == pytest.approx(0.25 * (684.0 + 239.4 + 456.0))
+
+
+def test_cheapest_extra_includes_unverified_with_verified_false(simulated):
+    """At 50% every verified slot is used; the unverified hou-003 window upgrade is suggested."""
+    engine.set_assumption("min_p_hit", 0)
+    r = engine.optimize(50, 0, None, [])
+    assert r["status"] == "infeasible"
+    unverified = [e for e in r["cheapest_extra"] if e["upgrade_id"] == "hou-003-window_upgrade"]
+    assert unverified and unverified[0]["verified"] is False
+    assert all(e["verified"] is True for e in r["cheapest_extra"] if e is not unverified[0])
+
+
+
+TRD_SIGNATURES = {
+    "simulate": ["upgrades", "assumptions"],
+    "macc": ["exclusions"],
+    "optimize": ["target_pct", "risk_lambda", "budget_usd", "exclusions"],
+    "set_assumption": ["key", "value"],
+    "baseline": ["building_id"],
+}
+
+
+def test_signatures_match_trd_exactly():
+    """The agent's engine_client.live_contract_drift() compares parameter names exactly."""
+    import inspect
+    for name, want in TRD_SIGNATURES.items():
+        assert list(inspect.signature(getattr(engine, name)).parameters) == want, name
+
+
+def test_min_p_hit_is_an_assumption(simulated):
+    assert engine.optimize(25, 0, None, [])["min_p_hit"] == 0.8          # assumptions.json default
+    assert engine.set_assumption("min_p_hit", 0.5) == {"ok": True}
+    assert engine.optimize(25, 0, None, [])["min_p_hit"] == 0.5
+    bad = engine.set_assumption("min_p_hit", 80)
+    assert bad["ok"] is False and "probability" in bad["error"]
+
+
+
+def test_contract_simulate_rejects_wrong_size_unit(upgrades):
+    """A mis-sized upgrade from the agent fails loudly instead of being priced 60-100x wrong."""
+    bad = [u.model_copy(update={"size_unit": "fixtures"}) if u.type == "led_retrofit" else u for u in upgrades]
+    with pytest.raises(ValueError, match="led_retrofit must be sized in 'sqft'"):
+        engine.simulate(bad, {})
+
+
+
+# --- plan cache and precompute (build step 9) --------------------------------------------------
+
+def _uncached(target, lam, budget=None, excl=()):
+    """Solve directly, bypassing the cache, for comparison."""
+    return engine._solve(target, engine._context(lam, budget, list(excl)))
+
+
+def test_precompute_fills_every_slider_step_and_matches_live_solves(simulated):
+    engine.precompute(0.5, None, [], background=False)
+    gen = state.generation()
+    for t in engine.PRECOMPUTE_TARGETS:
+        assert state.get_plan((gen, float(t), 0.5, None, ())) is not None, t
+    for t in (0, 25, 40, 80):
+        assert engine.optimize(t, 0.5, None, []) == _uncached(t, 0.5), t
+
+
+def test_optimize_starts_background_precompute_for_risk_settings(simulated):
+    engine.optimize(25, 0.5, None, ["hou-002"])
+    engine.wait_for_precompute(60)
+    gen = state.generation()
+    cached = [t for t in engine.PRECOMPUTE_TARGETS
+              if state.get_plan((gen, float(t), 0.5, None, ("hou-002",))) is not None]
+    assert cached == list(engine.PRECOMPUTE_TARGETS)
+
+
+def test_off_grid_target_still_solved_exactly(simulated):
+    engine.precompute(0.5, None, [], background=False)
+    assert engine.optimize(27.5, 0.5, None, []) == _uncached(27.5, 0.5)
+
+
+def test_new_simulation_invalidates_cached_plans(simulated):
+    before = engine.optimize(25, 0.0, None, [])
+    gen = state.generation()
+    assert engine.set_assumption("upgrades.led_retrofit.unit_cost", 0.5)["ok"]
+    after = engine.optimize(25, 0.0, None, [])        # re-simulates: new generation, fresh solve
+    assert state.generation() > gen
+    assert after["plan_id"] != before["plan_id"]
+    assert state.get_plan((gen, 25.0, 0.0, None, ())) is None
+
+
+def test_cached_result_is_a_copy(simulated):
+    a = engine.optimize(25, 0.0, None, [])
+    a["selected"].append("tampered")
+    assert "tampered" not in engine.optimize(25, 0.0, None, [])["selected"]
+
+
+def test_stale_background_results_are_never_stored(simulated):
+    """A worker started on generation g must not store into a newer generation's cache."""
+    gen = state.generation()
+    context = engine._context(0.5, None, [])
+    state.clear()                                     # bumps the generation
+    engine._precompute_worker(context, [25], gen)     # returns at once: generation changed
+    assert state.get_plan((gen, 25.0, *context)) is None

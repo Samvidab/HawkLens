@@ -12,7 +12,12 @@ from dotenv import dotenv_values
 from app.config import BACKEND_DIR
 
 
+def env_file() -> str:
+    """backend/.env, or RETROALPHA_ENV_FILE (tests point it at a nonexistent file to be independent of the machine's .env)."""
+    return os.environ.get("RETROALPHA_ENV_FILE") or str(BACKEND_DIR / ".env")
+
+
 def env_value(name: str) -> str | None:
     if os.environ.get(name):
         return os.environ[name]
-    return dotenv_values(BACKEND_DIR / ".env").get(name) or None
+    return dotenv_values(env_file()).get(name) or None

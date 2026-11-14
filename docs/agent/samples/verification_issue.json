@@ -11,7 +11,7 @@
       "title": "Evidence to review",
       "why": "Claims the verifier could not confirm come first.",
       "size": "wide",
-      "data_ref": "buildings/*/verification.json",
+      "data_ref": "buildings/*/claims.json",
       "props": {
         "items": [
           {
@@ -401,7 +401,10 @@
             },
             "in_plan": false,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 246.0,
+            "upfront_usd": 2460000.0,
+            "exp_npv": -933687.93
           },
           {
             "upgrade": {
@@ -424,7 +427,10 @@
             },
             "in_plan": false,
             "owner_included": false,
-            "highlighted": false
+            "highlighted": false,
+            "tonnes_per_year": 46.67,
+            "upfront_usd": 611094.0,
+            "exp_npv": -403924.99
           }
         ]
       }
