@@ -1,26 +1,27 @@
 # Lane A (critical path), branch `lane-data`
 
-Tasks: T0.3 → T0.4 → T1.1 → T1.5 → T1.6 → T1.8
+Tasks: T0.3 → T0.4 → T1.1 → T1.5 → T1.6 → T1.8. **All done; AC-1 passes** (Vexcel obliques pending).
 
 ## Done
 - T0.1, T0.2 (before this session)
-- T0.3 **partial** (`f5a16ce`): kit read; `scripts/explore_toolkit.py`; `app/adapters/README.md`. CoStar record + Matterport model list cached for 23347.
-- T0.4 **partial** (`d711f9f`): `adapters/costar.py` (`search_properties`, `get_property`, `matterport_model_ids`) over the local kit, streamed, cached; `tests/test_adapters.py` (6 tests incl. read_only cache hits).
-- T1.1 (`a51e025`): `scripts/pick_portfolio.py` → `data/portfolio.json`: 8 Houston offices, hero 23551 Harwin Plaza II (10 Matterport models). Vexcel coverage = "unchecked".
+- T0.3/T0.4 (`f5a16ce`, `d711f9f`, `0a1e311`): `adapters/README.md`; `costar.py` (local kit, streamed), `matterport.py` (GraphQL: key check, basics, panos + face download, rooms, MatterPak), `vexcel.py` (ortho/extract overhead), `types.py`. Live test (`-m live`) passes.
+- T1.1 (`a51e025`, `0a1e311`): `data/portfolio.json`, 8 Houston offices, all with Vexcel overhead. Hero 23551 Harwin Plaza II: all 10 MatterPaks unlocked; hero model `hu9LX64osUN` (17 panos, 3 rooms).
+- Merged `agent` (Lane B schemas + costar-quickstart.md) at `30adcdf`.
+- T1.5 (`93f652f`): `agents/records.py` → `profile.json` with `source_fields`, estimated footprint (typical floor plate), `fetch` event.
+- T1.6 (`dc629c7`): `agents/aerial.py` + `prompts/aerial.md`: Vexcel overhead → Gemini structured observations → Claims with marks; `usable_roof_m2` in code; `aerial.json`, `claims.json`, `images.json`, `aerial_debug.png`; fallback to unknowns on LLM failure. Debug PNGs checked for 23551 and 239601.
+- T1.8: `scripts/survey_one.py`. **AC-1:** 23551 → 3 upgrades (rooftop_solar 417.4 kW with Vexcel evidence, heat_pump, led_retrofit); 2nd run with `CACHE_MODE=read_only` prints identical JSON.
 
 ## In progress
-- none (everything left is blocked)
+- none
 
-## Blocked
-- **Imagery (T0.3 pulls 3–4, T0.4 vexcel.py, T1.6, T1.8):** no Vexcel docs/endpoints in the kit; CoStar aerial photo URLs on the CDN return 403 to a plain GET (header workaround not attempted: treated as an access control).
-- **Matterport API (T0.4 matterport.py):** kit says connection details come in a separate zip; not received.
-- **T1.5:** waits on Lane B schemas (`git merge agent` when told). Lane B's `BuildingProfile` on `agent` matches TRD §5.
-- `app/agents/prompts/aerial.md` drafted (uncommitted until T1.6).
+## Blocked / open
+- **Vexcel obliques + roof attributes:** `backend/toolkit/` (Vexcel quickstart, models_index.csv, AGENTS.md, matterport_quickstart.py) was not in the `agent` branch; only `docs/agent/costar-quickstart.md` came through. `vexcel.oblique` raises NotImplementedError; facades empty, so `window_upgrade` is never proposed.
+- `/media/{image_id}` route: not in my scope (main.py). Evidence files are indexed per building in `data/buildings/<id>/images.json` (image_id → local_path) for whoever adds the route.
+- Solar/cool-roof upgrades stay `unverified` / `include_in_optimizer=False` until the verifier (T2.2) runs.
 
 ## Notes
-- venv: main checkout `backend/.venv` (Python 3.11.9). Tests: 20 pass.
+- venv: main checkout `backend/.venv` (Python 3.11.9). Tests: 126 pass + 1 live.
 - `COSTAR_KIT_DIR` was only in the main checkout root `.env`; added to this worktree's `backend/.env`.
-- No `models_index.csv` in the kit; `commercial-properties.csv` already carries `MatterportModelId`.
-- City in CSV isn't normalized; use `primaryAddress.researchMarketId` (14 Houston, 20 LA).
-- No building footprint in CoStar records; all footprints will be `estimated` (rba / stories square).
-- `occupancy_pct` isn't in the property record (would need `location-occupancy.jsonl`); left null.
+- CoStar CDN photos (403): skipped by decision.
+- Estimated footprints run ~20% under real roofs (hero); `usable_roof_m2` inherits that. Overhead crop = 2.2× estimated side to keep the whole roof in view.
+- `occupancy_pct` not in the CoStar property record; null.
