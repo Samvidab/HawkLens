@@ -10,11 +10,12 @@
 
 - llm.py: vision falls back once to GEMINI_MODEL_VISION_FALLBACK (=gemini-3.5-flash, set in all 3 .env) on 5xx/timeout after retries; cached under primary key
 
+- main.py: events router mounted, GET /registry, GET /portfolio (returns portfolio.json as-is)
+
 ## In progress
 - nothing
 
 ## Blocked / needs others
-- main.py must `include_router(events.router)` and expose `GET /registry` -> `widgets.registry.json_schemas()`
 - pricing owner must match the plans/current.json shape in `app/widgets/resolver.py` docstring (incl. per-upgrade `upfront_usd`)
 - aerial/interior authors must use claim field prefixes in `app/rules/feasibility.yaml`
 - (model names: resolved, see below)
