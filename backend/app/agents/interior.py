@@ -11,6 +11,13 @@ Areas (code, from Matterport room dimensions):
 - envelope_area_sqft needs the wall graph (exterior walls × floor height × stories). Models with an
   empty wall graph (the hero's) leave it null.
 The MatterPak (OBJ mesh) is downloaded when Matterport has it available; otherwise an event says so.
+
+Room annotation (commercial interiors are unlabelled in Matterport): for each room, up to
+MAX_PANOS_PER_ROOM of its own panoramas (ModelRoom.panoLocations) go to Gemini in one call, which
+labels every room with a commercial type, a confidence and a short evidence note. Each label is a
+claim `interior.room.<room_id>` that the verifier checks (and sends back when unsure); each room
+gets a pin at the mean scan position of its panoramas. rooms.json (widget Room shape) carries the
+types to the floor_plan and hero_3d widgets.
 """
 from __future__ import annotations
 
@@ -28,17 +35,25 @@ from app.adapters.types import ImageRef, PanoramaRef
 from app.agents import llm, store
 from app.agents.aerial import Box, _clip01, _marks
 from app.events import emit
+from app.guardrails import check_numbers
 from app.schemas.claims import Claim
-from app.schemas.interior import InteriorFindings, Pin
+from app.schemas.interior import InteriorFindings, Pin, RoomLabel, RoomType
 from app.schemas.profile import BuildingProfile
 
 log = logging.getLogger(__name__)
 AGENT = "Interior"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "interior.md"
+ROOMS_PROMPT_PATH = Path(__file__).parent / "prompts" / "interior_rooms.md"
 MAX_PANOS = 5
 FACES = (0, 1, 3)  # up, and two opposite horizon faces
 MIN_COVERAGE = 0.5
 MAX_PINS_PER_CLAIM = 3
+MAX_PANOS_PER_ROOM = 4
+M2_PER_ROOM_PANO = 20.0  # big Matterport "rooms" are often merged regions: show more of them
+ROOM_FACES = ((1, 2, 3, 4), (1, 3), (1, 3), (1, 3))  # first pano: all four horizon faces; others: two opposite
+TYPE_LABEL = {"open_office": "Open office", "private_office": "Private office", "conference": "Conference room",
+              "corridor": "Corridor", "lobby": "Lobby", "restroom": "Restroom", "mechanical_it": "Mechanical / IT",
+              "storage": "Storage", "kitchen_break": "Kitchen / break room", "unknown": "Unlabelled room"}
 
 HvacItem = Literal["vav_diffuser", "split_system", "fan_coil", "window_unit", "packaged_terminal",
                    "boiler", "radiator", "exposed_ductwork", "thermostat"]
@@ -68,6 +83,19 @@ class InteriorObservation(BaseModel):
     window: WindowObs
 
 
+class RoomObs(BaseModel):
+    room_id: str
+    type: RoomType
+    also_contains: list[RoomType] = []
+    confidence: float
+    evidence_note: str = ""
+    marks: list[Box] = []
+
+
+class RoomLabelsObservation(BaseModel):
+    rooms: list[RoomObs]
+
+
 class InteriorResult(BaseModel):
     model_id: str
     images: list[ImageRef]
@@ -76,6 +104,10 @@ class InteriorResult(BaseModel):
     findings: InteriorFindings
     claims: list[Claim]
     scan: dict
+    room_info: list[dict] = []  # matterport.room_panos()
+    room_images: dict[str, list[str]] = {}  # room_id → image ids shown for that room
+    room_obs: RoomLabelsObservation | None = None
+    all_panos: list[PanoramaRef] = []
 
 
 def image_id(model_id: str, pano_id: str, face: int) -> str:
@@ -104,9 +136,8 @@ def scan_areas(rooms: dict, profile: BuildingProfile) -> dict:
         dims = r.get("dimensions") or {}
         area = dims.get("areaFloor")
         labels = [c["label"] for c in r.get("classifications") or []]
-        room_rows.append({"room_id": r["id"], "type": labels[0] if labels else None,
-                          "area_sqft": round(area * SQFT_PER_M2, 1) if area else None,
-                          "height_m": dims.get("height")})
+        room_rows.append({"room_id": r["id"], "type": labels[0] if labels else None, "polygon": [],
+                          "area_sqft": round(area * SQFT_PER_M2, 1) if area else None})
     scanned = round(sum(x["area_sqft"] or 0 for x in room_rows), 1)
     coverage = scanned / profile.rba_sqft if profile.rba_sqft else None
     walls = sum(len(f.get("edges") or []) for f in rooms.get("floors") or [])
@@ -190,6 +221,122 @@ async def fetch_images(model_id: str) -> tuple[list[PanoramaRef], list[ImageRef]
     return panos, images
 
 
+# --------------------------------------------------------------------------- room annotation
+
+def short_id(room_id: str) -> str:
+    return room_id[:4]
+
+
+async def fetch_room_images(model_id: str, room_info: list[dict], all_panos: list[PanoramaRef]
+                            ) -> tuple[dict[str, list[str]], list[ImageRef]]:
+    """Up to MAX_PANOS_PER_ROOM panoramas per room (spread out), horizontal faces only."""
+    by_id = {p.pano_id: p for p in all_panos}
+    room_images: dict[str, list[str]] = {}
+    images: list[ImageRef] = []
+    for r in room_info:
+        area = (r.get("dimensions") or {}).get("areaFloor") or 0
+        k = max(1, min(MAX_PANOS_PER_ROOM, math.ceil(area / M2_PER_ROOM_PANO)))
+        panos = sample_panos([by_id[i] for i in r["pano_ids"] if i in by_id], k)
+        ids = []
+        for p, faces in zip(panos, ROOM_FACES):
+            for f in faces:
+                path = await mp.pano_face(p, f)
+                iid = image_id(model_id, p.pano_id, f)
+                ids.append(iid)
+                images.append(ImageRef(image_id=iid, source="matterport_pano", local_path=str(path)))
+        room_images[r["room_id"]] = ids
+    return room_images, images
+
+
+def rooms_prompt(profile: BuildingProfile, room_info: list[dict], room_images: dict[str, list[str]],
+                 question: str | None = None) -> str:
+    lines = []
+    for n, r in enumerate(room_info, start=1):
+        if not room_images.get(r["room_id"]):
+            continue
+        dims = r.get("dimensions") or {}
+        size = (f"floor area about {dims['areaFloor']:.0f} m², ceiling about {dims['height']:.1f} m"
+                if dims.get("areaFloor") and dims.get("height") else "size unknown")
+        imgs = ", ".join(f"`{i}`" for i in room_images[r["room_id"]])
+        lines.append(f"- Room {n}, room_id `{r['room_id']}`: {size}; {len(r['pano_ids'])} panoramas captured "
+                     f"inside. Images: {imgs}")
+    ctx = [f"- Name: {profile.name}", f"- Type: {profile.property_type}"]
+    q = (f"\n## Verifier questions\nThe verifier doubted some of your room labels. Look again at those rooms "
+         f"and answer:\n{question}\n" if question else "")
+    return (ROOMS_PROMPT_PATH.read_text().replace("{{rooms}}", "\n".join(lines))
+            .replace("{{building_context}}", "\n".join(ctx)).replace("{{verifier_question}}", q))
+
+
+async def label_rooms(profile: BuildingProfile, room_info: list[dict], room_images: dict[str, list[str]],
+                      images_by_id: dict[str, ImageRef], question: str | None = None) -> RoomLabelsObservation:
+    imgs = [images_by_id[i] for r in room_info for i in room_images.get(r["room_id"], []) if i in images_by_id]
+    return await llm.vision_json(rooms_prompt(profile, room_info, room_images, question), imgs,
+                                 RoomLabelsObservation)
+
+
+def _note(text: str, room: dict) -> str | None:
+    """Inspector's evidence note: shown to users, so no invented numbers (guardrail) and short."""
+    text = " ".join((text or "").split())[:160]
+    if not text or check_numbers(text, {"room": room}):
+        return None
+    return text
+
+
+def add_rooms(profile: BuildingProfile, findings: InteriorFindings, claims: list[Claim], room_info: list[dict],
+              room_images: dict[str, list[str]], room_obs: RoomLabelsObservation | None,
+              all_panos: list[PanoramaRef]) -> tuple[InteriorFindings, list[Claim]]:
+    """One claim, one pin and one RoomLabel per Matterport room."""
+    bid = profile.building_id
+    by_pano = {p.pano_id: p for p in all_panos}
+    answers = {o.room_id: o for o in (room_obs.rooms if room_obs else [])}
+    claims = [c for c in claims if not c.field.startswith("interior.room.")]
+    pins = [p for p in findings.pins if ".interior.room." not in p.claim_id]
+    labels: list[RoomLabel] = []
+    for r in room_info:
+        rid = r["room_id"]
+        shown = set(room_images.get(rid, []))
+        o = answers.get(rid)
+        rtype = o.type if o else "unknown"
+        also = sorted({t for t in (o.also_contains if o else []) if t not in (rtype, "unknown")})
+        conf = _clip01(o.confidence) if o and rtype != "unknown" else 0.0
+        marks = _marks(o.marks, shown) if o else []
+        claim_id = f"{bid}.interior.room.{rid}"
+        value = " + ".join([rtype, *also])  # the verifier judges the whole label, incl. merged spaces
+        c = Claim(claim_id=claim_id, building_id=bid, agent="interior", field=f"interior.room.{rid}",
+                  value=value, confidence=conf, evidence_ids=sorted(shown), marks=marks)
+        claims.append(c)
+        pts = [by_pano[i].xyz for i in r["pano_ids"] if i in by_pano]
+        xyz = tuple(sum(v[k] for v in pts) / len(pts) for k in range(3)) if pts else None
+        note = _note(o.evidence_note, r) if o else None
+        area = (r.get("dimensions") or {}).get("areaFloor")
+        labels.append(RoomLabel(room_id=rid, type=rtype, also_contains=also, confidence=conf, evidence_note=note,
+                                claim_id=claim_id,
+                                status=c.status, area_sqft=round(area * SQFT_PER_M2, 1) if area else None,
+                                pano_ids=r["pano_ids"], xyz=xyz, matterport_tags=r.get("tags") or []))
+        if xyz:
+            label = room_title(rtype, also) + (f": {note}" if note else "")
+            pins.append(Pin(claim_id=claim_id, label=label[:120], xyz=xyz, status=c.status))
+    findings = findings.model_copy(update={"rooms": labels, "pins": pins,
+                                           "claim_ids": [c.claim_id for c in claims]})
+    return findings, claims
+
+
+PLURAL = {"open_office": "open offices", "private_office": "private offices", "conference": "conference rooms",
+          "corridor": "corridors", "lobby": "lobby", "restroom": "restrooms", "mechanical_it": "mechanical / IT",
+          "storage": "storage", "kitchen_break": "kitchen / break"}
+
+
+def room_title(rtype: str, also: list[str]) -> str:
+    """'Corridor + private offices' for a merged Matterport region; else the plain type."""
+    return TYPE_LABEL[rtype] + "".join(f" + {PLURAL[t]}" for t in also)
+
+
+def widget_rooms(findings: InteriorFindings) -> list[dict]:
+    """rooms.json for widgets/resolver.py: registry Room shape (room_id, type, polygon, area_sqft)."""
+    return [{"room_id": r.room_id, "type": room_title(r.type, r.also_contains), "polygon": [], "area_sqft": r.area_sqft}
+            for r in findings.rooms]
+
+
 async def inspect(profile: BuildingProfile, run_id: str | None = None) -> InteriorResult:
     bid, model_id = profile.building_id, profile.matterport_model_id
     ev = (lambda kind, msg, evidence=None: emit(run_id, AGENT, kind, msg, bid, evidence, building_name=profile.name)
@@ -214,6 +361,23 @@ async def inspect(profile: BuildingProfile, run_id: str | None = None) -> Interi
     ev("observe", f"lighting {findings.lighting_type}; HVAC {hv}"[:90], images[0].image_id if images else None)
     ev("observe", f"windows {findings.window_type}; {len(findings.pins)} findings pinned in 3D")
 
+    # Room annotation
+    room_info, room_images, room_obs = [], {}, None
+    try:
+        room_info = await mp.room_panos(model_id)
+        room_images, room_imgs = await fetch_room_images(model_id, room_info, all_panos)
+        known = {i.image_id for i in images}
+        images = images + [i for i in room_imgs if i.image_id not in known and not known.add(i.image_id)]
+        room_obs = await label_rooms(profile, room_info, room_images, {i.image_id: i for i in images})
+    except Exception as e:  # noqa: BLE001 - rooms stay unlabelled; the rest of the interior stands
+        log.warning("room annotation failed for %s: %s", bid, e)
+        ev("error", f"room labelling failed ({type(e).__name__}); rooms left unlabelled")
+    findings, claims = add_rooms(profile, findings, claims, room_info, room_images, room_obs, all_panos)
+    findings = findings.model_copy(update={"evidence_ids": sorted({i.image_id for i in images})})
+    for n, r in enumerate(findings.rooms, start=1):
+        ev("observe", f"room {n} ({short_id(r.room_id)}): {room_title(r.type, r.also_contains).lower()}",
+           room_images.get(r.room_id, [None])[0])
+
     try:
         paths = await mp.matterpak(model_id)
         scan["mesh"] = {"obj": Path(paths.obj).name if paths.obj else None,
@@ -224,31 +388,51 @@ async def inspect(profile: BuildingProfile, run_id: str | None = None) -> Interi
         scan["mesh_error"] = str(e)[:200]
         ev("error", "3D mesh not available from Matterport yet")
     return InteriorResult(model_id=model_id, images=images, panos=panos, obs=obs, findings=findings,
-                          claims=claims, scan=scan)
+                          claims=claims, scan=scan, room_info=room_info, room_images=room_images,
+                          room_obs=room_obs, all_panos=all_panos)
 
 
 def with_statuses(res: InteriorResult, by_id: dict[str, Claim]) -> InteriorResult:
     claims = [by_id.get(c.claim_id, c) for c in res.claims]
     status = {c.claim_id: c.status for c in claims}
     pins = [p.model_copy(update={"status": status.get(p.claim_id, p.status)}) for p in res.findings.pins]
-    return res.model_copy(update={"claims": claims, "findings": res.findings.model_copy(update={"pins": pins})})
+    rooms = [r.model_copy(update={"status": status.get(r.claim_id, r.status)}) for r in res.findings.rooms]
+    return res.model_copy(update={"claims": claims,
+                                  "findings": res.findings.model_copy(update={"pins": pins, "rooms": rooms})})
 
 
 async def reinspect(profile: BuildingProfile, res: InteriorResult, asks: list[tuple[Claim, str]]) -> InteriorResult:
-    questions = "\n".join(f"- about `{c.field}`: {q}" for c, q in asks)
-    try:
-        new = await llm.vision_json(prompt_for(profile, res.images, res.panos, questions), res.images,
-                                    InteriorObservation)
-    except Exception as e:  # noqa: BLE001
-        log.warning("interior reinspect failed: %s", e)
-        return res
-    obs = res.obs
-    for c, _ in asks:
-        attr = c.field.split(".", 1)[1]
-        if attr in ("lighting", "hvac", "window"):
-            obs = obs.model_copy(update={attr: getattr(new, attr)})
+    """Re-answer sent-back claims: lighting/HVAC/window in one call, room labels in another."""
+    base = [(c, q) for c, q in asks if not c.field.startswith("interior.room.")]
+    room_asks = [(c, q) for c, q in asks if c.field.startswith("interior.room.")]
+    obs, room_obs = res.obs, res.room_obs
+    if base:
+        questions = "\n".join(f"- about `{c.field}`: {q}" for c, q in base)
+        try:
+            new = await llm.vision_json(prompt_for(profile, res.images, res.panos, questions), res.images,
+                                        InteriorObservation)
+            for c, _ in base:
+                attr = c.field.split(".", 1)[1]
+                if attr in ("lighting", "hvac", "window"):
+                    obs = obs.model_copy(update={attr: getattr(new, attr)})
+        except Exception as e:  # noqa: BLE001
+            log.warning("interior reinspect failed: %s", e)
+    if room_asks:
+        asked = {c.field.split(".")[2]: q for c, q in room_asks}
+        subset = [r for r in res.room_info if r["room_id"] in asked]
+        questions = "\n".join(f"- room_id `{rid}`: {q}" for rid, q in asked.items())
+        try:
+            new_rooms = await label_rooms(profile, subset, res.room_images, {i.image_id: i for i in res.images},
+                                          questions)
+            fresh = {o.room_id: o for o in new_rooms.rooms if o.room_id in asked}
+            kept = [o for o in (room_obs.rooms if room_obs else []) if o.room_id not in fresh]
+            room_obs = RoomLabelsObservation(rooms=kept + list(fresh.values()))
+        except Exception as e:  # noqa: BLE001
+            log.warning("room reinspect failed: %s", e)
     findings, claims = build_findings(profile, res.model_id, obs, res.images, res.panos, res.scan)
-    return res.model_copy(update={"obs": obs, "findings": findings, "claims": claims})
+    findings, claims = add_rooms(profile, findings, claims, res.room_info, res.room_images, room_obs, res.all_panos)
+    findings = findings.model_copy(update={"evidence_ids": res.findings.evidence_ids})
+    return res.model_copy(update={"obs": obs, "room_obs": room_obs, "findings": findings, "claims": claims})
 
 
 def save(profile: BuildingProfile, res: InteriorResult) -> None:
@@ -258,5 +442,9 @@ def save(profile: BuildingProfile, res: InteriorResult) -> None:
     scan = {**res.scan, "model_id": res.model_id, "showcase_url": profile.showcase_url,
             "mesh_url": f"/media/mesh/{res.model_id}/{mesh['obj']}" if mesh and mesh.get("obj") else None,
             "mtl_url": f"/media/mesh/{res.model_id}/{mesh['mtl']}" if mesh and mesh.get("mtl") else None}
+    if res.findings.rooms:
+        rooms = widget_rooms(res.findings)
+        write_json_atomic(d / "rooms.json", rooms)  # widgets/resolver.py: list[Room] → floor_plan, hero_3d
+        scan["rooms"] = rooms
     write_json_atomic(d / "interior_scan.json", scan)
     store.add_images(profile.building_id, res.images)

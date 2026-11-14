@@ -50,6 +50,12 @@ Q_ROOMS = """query Rooms($id: ID!) { model(id: $id) {
   panoLocations { label position { x y } }
 } }"""
 
+# Room ↔ pano membership (found by schema introspection: ModelRoom.panoLocations, tags, keywords).
+Q_ROOM_PANOS = """query RoomPanos($id: ID!) { model(id: $id) { rooms {
+  id tags keywords classifications { label confidence }
+  dimensions(units: metric) { areaFloor width depth height }
+  panoLocations { id label position { x y z } } } } }"""
+
 Q_MATTERPAK = """query MatterPak($id: ID!) { model(id: $id) {
   bundle(id: "mp:matterpak") { availability }
   assets { resources(format: "matterpak") { status filename url } }
@@ -154,6 +160,16 @@ async def defurnished_view(model_id: str) -> str | None:
     except MatterportError:
         return None
     return (m.get("view") or {}).get("id")
+
+
+async def room_panos(model_id: str) -> list[dict]:
+    """Per room: id, Matterport tags/keywords/classifications, metric dimensions and the ids of the
+    panoramas captured inside it."""
+    rooms = (await graph("room_panos", Q_ROOM_PANOS, {"id": model_id}))["model"]["rooms"] or []
+    return [{"room_id": r["id"], "tags": r.get("tags") or [], "keywords": r.get("keywords") or [],
+             "classifications": [c["label"] for c in r.get("classifications") or []],
+             "dimensions": r.get("dimensions") or {},
+             "pano_ids": [p["id"] for p in r.get("panoLocations") or []]} for r in rooms]
 
 
 async def pano_face(pano: PanoramaRef, face: int) -> Path:
