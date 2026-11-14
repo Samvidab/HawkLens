@@ -17,17 +17,12 @@ export default function Navigation({ active = 'portfolio' }) {
       <button
         type="button"
         onClick={() => navigate('/')}
-        aria-label="Hawk Lens home"
-        className="absolute left-[56px] top-[16px] w-[72px] h-[48px]"
+        aria-label="Back to portfolio dashboard"
+        title="Back to dashboard"
+        className="absolute left-[56px] top-[16px] w-[72px] h-[48px] rounded hover:opacity-80 transition-opacity"
       >
-        <img src={logo} alt="" className="w-full h-full object-contain pointer-events-none" />
+        <img src={logo} alt="Hawk Lens" className="w-full h-full object-contain pointer-events-none" />
       </button>
-      <Link
-        to="/"
-        className="absolute left-[142px] top-[26px] whitespace-nowrap font-semibold text-ink text-[23px]"
-      >
-        Hawk Lens
-      </Link>
 
       {TABS.map((tab) => {
         const isActive = tab.key === active
