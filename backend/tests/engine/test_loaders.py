@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from app.engine.monte_carlo import SAVINGS_UNITS
 from app.engine.models import (
     ASSUMPTIONS_PATH,
     CATEGORY_BY_TYPE,
@@ -19,11 +20,11 @@ BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
 ALL_TYPES = set(CATEGORY_BY_TYPE)
 
 UPGRADE_KEYS = {
-    "cost_unit", "unit_cost", "savings_mu", "savings_sd", "life_min", "life_max",
+    "cost_unit", "unit_cost", "avoided_replacement_cost_per_unit", "savings_unit", "savings_mu", "savings_sd", "life_min", "life_max",
     "incentive_fraction", "incentive_p", "incentive_lag_years", "maint_frac_per_year", "source",
 }
 CITY_KEYS = {
-    "electricity_rate_usd_per_kwh", "grid_kg_co2_per_kwh", "solar_kwh_per_kw_year",
+    "electricity_rate_usd_per_kwh", "grid_kg_co2_per_kwh", "solar_kwh_per_kw_year", "export_rate_usd_per_kwh",
     "kwh_per_sqft_year", "source",
 }
 
@@ -85,6 +86,8 @@ def test_assumptions_cover_every_type_and_city():
         assert 0 <= block["incentive_p"] <= 1, t
         assert block["savings_sd"] >= 0, t
         assert isinstance(block["incentive_lag_years"], int) and block["incentive_lag_years"] >= 0, t
+        assert 0 <= block["avoided_replacement_cost_per_unit"], t
+        assert block["savings_unit"] in SAVINGS_UNITS, t
     assert set(a["cities"]) == {"Houston"}   # Houston only; no LA values on purpose
     for c, block in a["cities"].items():
         assert set(block) == CITY_KEYS, c
@@ -97,6 +100,7 @@ def test_assumptions_globals_and_rates_are_decimals():
     # "7 instead of 0.07" guard.
     assert 0 < g["discount_rate"] < 1
     assert 0 <= g["general_inflation"] < 1
+    assert 0 < g["max_savings_share"] <= 1
     assert {"mu", "sd", "source"} <= set(g["energy_price_growth"])
     assert {"p_fee_starts", "start_year_range", "price_range_per_tonne", "source"} <= set(g["carbon_price"])
 
@@ -147,3 +151,11 @@ def test_goal_defaults_match_trd():
 
 def test_goal_still_accepts_los_angeles_per_trd():
     assert Goal(city="Los Angeles", building_ids=None, target_pct=40, budget_usd=None).city == "Los Angeles"
+
+
+def test_savings_basis_per_type():
+    u = load_assumptions()["upgrades"]
+    assert u["rooftop_solar"]["savings_unit"] == "fraction_of_modeled_generation"
+    assert u["cool_roof"]["savings_unit"] == u["insulation"]["savings_unit"] == "kwh_per_sqft_year"
+    for t in ("window_upgrade", "heat_pump", "led_retrofit"):
+        assert u[t]["savings_unit"] == "fraction_of_building_kwh", t

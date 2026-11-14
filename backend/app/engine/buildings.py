@@ -114,3 +114,23 @@ def load_building(
         envelope_area_sqft=envelope,
         envelope_area_estimated=envelope_estimated,
     )
+
+
+def roof_area_sqft(b: BuildingFacts) -> float | None:
+    """Roof area = footprint = rba_sqft / stories (flat-roof assumption, same as TRD section 7)."""
+    if not b.rba_sqft or not b.stories or b.rba_sqft <= 0 or b.stories <= 0:
+        return None
+    return b.rba_sqft / b.stories
+
+
+def baseline_kwh_per_year(b: BuildingFacts, assumptions: dict[str, Any]) -> float:
+    """Annual electricity use from the city benchmark: kWh/sqft/yr for the building type x rba_sqft.
+
+    TODO(step 6): when NESSIE_MODE=live, use the trailing 12 months of bills instead.
+    """
+    city = assumptions["cities"].get(b.city)
+    if city is None:
+        raise ValueError(f"no assumptions for city {b.city!r}; the engine is Houston only")
+    if not b.rba_sqft or b.rba_sqft <= 0:
+        raise ValueError(f"building {b.building_id!r} has no rba_sqft, so no benchmark baseline")
+    return city["kwh_per_sqft_year"][b.benchmark_type] * b.rba_sqft

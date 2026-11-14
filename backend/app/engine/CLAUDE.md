@@ -70,20 +70,24 @@ baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for buil
 | type | category | size_unit | cost basis |
 | --- | --- | --- | --- |
 | rooftop_solar | solar | kW | $/kW; generation = kW × kWh/kW/yr (city yield) |
-| cool_roof | roof | sqft | $/sqft; `savings_mu` is already a share of the whole building (cooling share folded in, see ASSUMPTIONS.md) |
+| cool_roof | roof | sqft | $/sqft; savings in kWh per sqft of roof per year (`savings_unit: kwh_per_sqft_year`) |
 | window_upgrade | envelope | sqft | $/sqft |
-| insulation | envelope | sqft | $/sqft |
+| insulation | envelope | sqft | $/sqft; savings in kWh per sqft of wall per year (`kwh_per_sqft_year`) |
 | heat_pump | hvac | sqft (served area) | $/sqft |
 | led_retrofit | lighting | sqft (floor area, TRD §7) | $/sqft |
 
-At most one upgrade per building per category. Scale envelope and roof savings by coverage = size / relevant area (envelope or roof area) where known.
+At most one upgrade per building per category. Savings basis per type is `savings_unit` in assumptions.json: `kwh_per_sqft_year` (cool roof, insulation: kWh = s × sqft treated), `fraction_of_building_kwh` (windows fixed; heat pump and LED scaled by coverage = size / floor area), `fraction_of_modeled_generation` (solar). Upfront cost C0 = max(unit_cost − avoided_replacement_cost_per_unit, 0) × size (incremental over like-for-like); incentive and maintenance use the full unit_cost × size, and the incentive is capped at that full cost.
+
+Caps, applied in every scenario before dollars and CO2:
+- Efficiency upgrades (everything except solar): kWh saved ≤ building baseline kWh × `global.max_savings_share` (placeholder 0.5). Excess is dropped.
+- `rooftop_solar`: self-consumed kWh ≤ building baseline kWh × 1.0, valued at `electricity_rate_usd_per_kwh`. Generation above that is exported, valued at `cities.<city>.export_rate_usd_per_kwh` (placeholder 0.04; must be sourced). CO2 counts all generation, exported or not. Use the `exports_excess` flag, not `export_rate > 0`, to tell solar apart, so a $0 buyback rate still counts exported CO2.
 
 ## assumptions.json (`backend/app/engine/assumptions.json`)
 The data/pitch owner fills in sourced values; every field's unit and definition is in `ASSUMPTIONS.md`. Until then, use placeholders and mark each with `"source": "PLACEHOLDER"`.
 - Global: `n_scenarios` 10000, `n_scenarios_optimizer` 1000, `seed`, `discount_rate` 0.07 (overridden by `Goal.discount_rate`), `energy_price_growth` {mu, sd}, `carbon_price` {p_fee_starts, start_year_range, price_range_per_tonne}.
 - Building estimates: `floor_height_m` (for the envelope fallback).
 - Per city (Houston only): `electricity_rate_usd_per_kwh`, `grid_kg_co2_per_kwh`, `solar_kwh_per_kw_year`, benchmark `kwh_per_sqft_year` by benchmark type (incl. `"Other"`).
-- Per upgrade type: `cost_unit` (matches the size unit), `unit_cost`, `savings_mu`, `savings_sd`, `life_min`, `life_max`, `incentive_fraction`, `incentive_p`, `incentive_lag_years` (1 tax credit, 0 rebate), `maint_frac_per_year`, `source`.
+- Per upgrade type: `cost_unit` (matches the size unit), `unit_cost`, `avoided_replacement_cost_per_unit` (optional, default 0), `savings_unit`, `savings_mu`, `savings_sd`, `life_min`, `life_max`, `incentive_fraction`, `incentive_p`, `incentive_lag_years` (1 tax credit, 0 rebate), `maint_frac_per_year`, `source`.
 - Global also has `general_inflation` (grows maintenance).
 
 ## Math
@@ -100,7 +104,8 @@ C0 upfront cost; I incentive (paid with probability incentive_p); lag `incentive
 ### Monte Carlo (`monte_carlo.py`)
 - `rng = np.random.default_rng(seed)`.
 - Energy price growth g: ONE array of K draws shared by all upgrades (this creates correlation). Never per upgrade.
-- Per upgrade: s ~ Normal(mu, sd) floored at 0; L ~ integer uniform [life_min, life_max]; incentive ~ Bernoulli(p); carbon fee start year and price per `carbon_price`.
+- Carbon fee (whether it starts, start year, price per `carbon_price`): also ONE shared draw per scenario. A fee is market-wide, so every upgrade sees the same one.
+- Per upgrade: s ~ Normal(mu, sd) floored at 0; L ~ integer uniform [life_min, life_max]; incentive ~ Bernoulli(p). Each upgrade's stream is seeded from (seed, crc32(upgrade_id)), so excluding one upgrade never changes another's numbers.
 - Carbon fee start years count from year 1, the first year after install: start year 3 means the fee applies in years 3..L. Draw from `start_year_range` as whole years ≥ 1 and pass them straight to `npv.carbon_pv` / `npv(carbon_start_year=...)`. A start year > L earns nothing; don't clip it to L. Scenarios where the fee never starts pass price 0.
 - Keep per upgrade: `npv[K]`, `tonnes_per_year[K]`, `tonnes_lifetime[K]`.
 
