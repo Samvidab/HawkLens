@@ -1,0 +1,41 @@
+Figma screen: "Hawk Lens · Building details" (node 11:2) — route /building
+Nav: Portfolio(active)->/ , Plan->/plan , Documents->/documents , logo->/
+Links: "←  Houston portfolio"->/ , "View supporting evidence →"->/survey-evidence ,
+  "Open survey evidence →"->/survey-evidence , "Expand ↗" (model)->/expanded-building-model ,
+  "Floor plan, facades & sizing →"->/expanded-building-model , "View portfolio plan →"->/plan ,
+  "Exclude building" (danger)->/building-excluded , include toggles = local on/off state.
+Assets: logo->src/assets/logo.png ;
+  imgSchematicSixStoreyBuildingAndProposedRooftopSolar -> src/assets/building-model.svg ;
+  toggle switches: include-off (shared) -> src/assets/toggle-off.svg ;
+  include-led-on, include-solar-on, include-hvac-on -> src/assets/toggle-on.svg (all identical green "on")
+========================================================================
+HEADER (56,110): back link "←  Houston portfolio" (green 13) -> / ;
+  title "Midtown office" (32px); sub "Houston, TX · Commercial office · HOU–04" (muted 14);
+  right note "Adjust upgrades below" (green 14) @ x1144,48.
+
+BUILDING MODEL card (#e7ece3, 848x375 @ 56,262, rounded 8): label "Building model" (14 medium);
+  toggle text "Roof   /   Interior" (muted 12) @ x670; SVG building-model.svg fills card;
+  white finding card (231x58 @ 555,98): "120 kW rooftop solar" (14 medium green),
+    "View supporting evidence  →" (11) -> /survey-evidence ;
+  footer "Proposed upgrades · Schematic view" (muted 11) @ 22,346 ; "Expand ↗" @ 736,339 -> /expanded-building-model.
+
+PROPERTY PROFILE (440x375 @ 944,262): left divider #e4e7ea. "About this building" (18 semibold).
+  Rows label@x32 / value@x264 (value 14 medium ink):
+    Floor area = 96,000 sq ft ; Year built = 1992 ; Floors = 6 ;
+    Annual emissions = 420 tCO₂ ; Annual energy spend = $168,000.
+  divider @ y258; "All three data layers available" (green 14); 
+  "Records, aerial imagery and interior scans." (muted 12);
+  "Open survey evidence  →" (green 13) -> /survey-evidence.
+
+BUILDING UPGRADES table (1328x225 @ 56,682): "Upgrades for this building" (20 semibold);
+  "210 tCO₂ / year · $270k investment" (muted 13); right "Changes update your portfolio plan." (muted 12 @ x1061).
+  Column headers (muted 11 @ y77): Upgrade@0 | CO₂ avoided / year@563 | Upfront cost@756 | Lifetime net value@963 | Include@1262.
+  Rows (name 14 medium @0; values 14; net value green; toggle @ x1271 w38 h22, hotspot btn @1266 w48 h34):
+    LED retrofit | 24 tonnes | $18,000 | +$26,000 | toggle(on)
+    Rooftop solar · 120 kW | 96 tonnes | $152,000 | +$52,000 | toggle(on)
+    Heat pump conversion | 90 tonnes | $100,000 | +$14,000 | toggle(on)
+  dividers #e4e7ea at y97, y139, y181. Toggles are interactive on/off (local state); all start ON.
+
+FOOTER (y947): "Illustrative data · Not a live building survey" (muted 11 @56);
+  "View portfolio plan  →" (green 12 @1235) -> /plan.
+"Exclude building" button (#f5f7f2 bg, 162x36 @1222,183): danger text #9a493c "Exclude building" -> /building-excluded.

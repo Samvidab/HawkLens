@@ -1,0 +1,124 @@
+Figma screen: "Hawk Lens · Plan details" (node 6:2)
+Verbatim Figma MCP get_design_context export (React+Tailwind). Convert to project conventions.
+Nav links: Portfolio->/ , Plan(active)->/plan , Documents->/documents , logo->/
+  "Review & approve"->/financing-approval , "Investment memo ↗"->/investment-memo ,
+  "View survey evidence"/"↗"->/survey-evidence , "Risk & target details →"->/risk-and-target
+Assets: logo->src/assets/logo.png ; imgAerialSurveyComplete (checkmark) -> download to src/assets/icon-check.svg
+========================================================================
+
+const imgAerialSurveyComplete = "https://www.figma.com/api/mcp/asset/794922e3-a904-4675-a3d3-0dcc0a1665e7.svg";
+
+export default function HawkLensPlanDetails() {
+  return (
+    <div className="bg-white relative size-full" data-node-id="6:2" data-name="Hawk Lens · Plan details">
+      <div className="absolute bg-white border border-[#e4e7ea] border-solid h-[290px] left-[56px] overflow-clip rounded-[6px] top-[365px] w-[880px]" data-node-id="4:8" data-name="Abatement curve">
+        <p className="absolute font-semibold left-[21px] not-italic text-[#222a31] text-[16px] top-[18px] whitespace-nowrap" data-node-id="4:259">Available carbon cuts</p>
+        <p className="absolute left-[21px] not-italic text-[#67717a] text-[12px] top-[44px] whitespace-nowrap" data-node-id="4:260">Start below zero: these upgrades cut emissions and earn a return.</p>
+        <p className="absolute left-[21px] not-italic text-[#67717a] text-[10px] top-[79px] whitespace-nowrap" data-node-id="4:261">Lifetime net cost / tCO₂</p>
+        <p className="absolute left-[475px] not-italic text-[#67717a] text-[10px] top-[253px] whitespace-nowrap" data-node-id="4:262">Annual CO₂ avoided →</p>
+        <div className="absolute bg-[#e7ebe2] h-px left-[64px] top-[212px] w-[562px]" data-node-id="4:263" data-name="Chart grid -100" />
+        <p className="absolute left-[16px] text-[#67717a] text-[9px] top-[207px]" data-node-id="4:264">−$100</p>
+        <div className="absolute bg-[#9aa68f] h-px left-[64px] top-[165px] w-[562px]" data-node-id="4:265" data-name="Chart grid 0" />
+        <p className="absolute left-[16px] text-[#67717a] text-[9px] top-[160px]" data-node-id="4:266">$0</p>
+        <div className="absolute bg-[#e7ebe2] h-px left-[64px] top-[118px] w-[562px]" data-node-id="4:267" data-name="Chart grid 100" />
+        <p className="absolute left-[16px] text-[#67717a] text-[9px] top-[113px]" data-node-id="4:268">$100</p>
+        <div className="absolute bg-[#335d45] h-[34.679px] left-[65px] rounded-[2px] top-[165px] w-[37.811px]" data-node-id="4:269" data-name="LED · offices" />
+        <div className="absolute bg-[#335d45] h-[34.679px] left-[105.81px] rounded-[2px] top-[165px] w-[37.811px]" data-node-id="4:270" data-name="LED · retail" />
+        <div className="absolute bg-[#335d45] h-[10.183px] left-[146.62px] rounded-[2px] top-[165px] w-[99.027px]" data-node-id="4:271" data-name="Solar · group A" />
+        <div className="absolute bg-[#335d45] h-[10.183px] left-[248.65px] rounded-[2px] top-[165px] w-[99.027px]" data-node-id="4:272" data-name="Solar · group B" />
+        <div className="absolute bg-[#335d45] h-[4.874px] left-[350.68px] rounded-[2px] top-[165px] w-[73.52px]" data-node-id="4:273" data-name="Heat pumps · A" />
+        <div className="absolute bg-[#335d45] h-[4.874px] left-[427.2px] rounded-[2px] top-[165px] w-[73.52px]" data-node-id="4:274" data-name="Heat pumps · B" />
+        <div className="absolute bg-[#dde4d5] border border-[#b9c5ae] border-solid h-[56.4px] left-[503.72px] rounded-[2px] top-[108.6px] w-[60.767px]" data-node-id="4:275" data-name="Window upgrades" />
+        <div className="absolute bg-[#dde4d5] border border-[#b9c5ae] border-solid h-[77.55px] left-[567.48px] rounded-[2px] top-[87.45px] w-[56.516px]" data-node-id="4:276" data-name="Insulation" />
+        <div className="absolute bg-[#7a693b] h-[131px] left-[472.11px] top-[110px] w-px" data-node-id="4:277" data-name="40% target guide" />
+        <p className="absolute font-medium left-[442.11px] text-[#7a693b] text-[10px] top-[93px]" data-node-id="4:278">Reference: 40%</p>
+        <p className="absolute left-[59px] text-[#67717a] text-[9px] top-[237px]" data-node-id="4:279">0</p>
+        <p className="absolute left-[229.05px] text-[#67717a] text-[9px] top-[237px]" data-node-id="4:280">400</p>
+        <p className="absolute left-[399.09px] text-[#67717a] text-[9px] top-[237px]" data-node-id="4:281">800</p>
+        <p className="absolute left-[569.14px] text-[#67717a] text-[9px] top-[237px]" data-node-id="4:282">1200</p>
+        <div className="absolute bg-[#416b4d] left-[21px] rounded-[2px] size-[9px] top-[270px]" data-node-id="4:283" data-name="Selected plan legend" />
+        <p className="absolute left-[36px] text-[#67717a] text-[10px] top-[268px]" data-node-id="4:284">Available upgrades</p>
+        <div className="absolute bg-[#dde4d5] left-[144px] rounded-[2px] size-[9px] top-[270px]" data-node-id="4:285" data-name="Additional opportunities legend" />
+        <p className="absolute left-[159px] text-[#67717a] text-[10px] top-[268px]" data-node-id="4:286">Additional opportunities</p>
+        <div className="absolute bg-[#e7ebe2] h-[182px] left-[651px] top-[83px] w-px" data-node-id="4:287" data-name="Curve note divider" />
+        <p className="absolute font-medium left-[673px] text-[#67717a] text-[10px] top-[92px] tracking-[0.6px]" data-node-id="4:288">PROFITABLE CUTS</p>
+        <p className="absolute font-semibold left-[673px] text-[#335d45] text-[31px] top-[113px]" data-node-id="4:289">1,032</p>
+        <p className="absolute left-[673px] text-[#67717a] text-[10px] top-[153px]" data-node-id="4:290">tCO₂ / year</p>
+        <div className="absolute font-medium left-[673px] text-[#222a31] text-[12px] top-[178px]" data-node-id="4:291"><p className="leading-[20px] mb-0">Below-zero upgrades</p><p className="leading-[20px]">create net financial value.</p></div>
+        <div className="absolute left-[673px] text-[#67717a] text-[10px] top-[240px]" data-node-id="4:292"><p className="leading-[17px] mb-0">Bar width = carbon avoided</p><p className="leading-[17px]">Bar height = cost per tonne</p></div>
+      </div>
+      <div className="absolute bg-white border border-[#e4e7ea] border-solid h-[290px] left-[960px] overflow-clip rounded-[6px] top-[365px] w-[424px]" data-node-id="4:9" data-name="Survey activity">
+        <a className="absolute font-semibold left-[21px] text-[#222a31] text-[16px] top-[18px]" data-node-id="4:293">Survey activity</a>
+        <div className="absolute bg-[#edf3e6] h-[23px] left-[314px] overflow-clip rounded-[5px] top-[19px] w-[86px]" data-node-id="4:294" data-name="Survey complete badge"><p className="absolute font-medium left-[12px] text-[#335d45] text-[10px] top-[5px]" data-node-id="4:295">8 / 8 ready</p></div>
+        <p className="absolute left-[21px] text-[#67717a] text-[12px] top-[44px]" data-node-id="4:296">Latest completed survey events</p>
+        <div className="absolute left-[21px] size-[18px] top-[82px]" data-node-id="4:297"><img alt="" className="absolute inset-0 size-full" src={imgAerialSurveyComplete} /></div>
+        <p className="absolute font-medium left-[48px] text-[#222a31] text-[12px] top-[82px]" data-node-id="4:300">09:42 · Verifier</p>
+        <p className="absolute left-[48px] text-[#67717a] text-[11px] top-[100px]" data-node-id="4:301">Midtown roof verified · Confidence 0.91</p>
+        <p className="absolute left-[48px] text-[#67717a] text-[9px] top-[115px]" data-node-id="4:302">Vexcel · Evidence 12</p>
+        <div className="absolute left-[21px] size-[18px] top-[139px]" data-node-id="4:303"><img alt="" className="absolute inset-0 size-full" src={imgAerialSurveyComplete} /></div>
+        <p className="absolute font-medium left-[48px] text-[#222a31] text-[12px] top-[139px]" data-node-id="4:306">09:42 · Interior inspector</p>
+        <p className="absolute left-[48px] text-[#67717a] text-[11px] top-[157px]" data-node-id="4:307">Level 2 fluorescent fixtures flagged.</p>
+        <p className="absolute left-[48px] text-[#67717a] text-[9px] top-[172px]" data-node-id="4:308">Matterport · Panorama 04</p>
+        <div className="absolute left-[21px] size-[18px] top-[196px]" data-node-id="4:309"><img alt="" className="absolute inset-0 size-full" src={imgAerialSurveyComplete} /></div>
+        <p className="absolute font-medium left-[48px] text-[#222a31] text-[12px] top-[196px]" data-node-id="4:312">09:43 · Pricing agent</p>
+        <p className="absolute left-[48px] text-[#67717a] text-[11px] top-[214px]" data-node-id="4:313">18 upgrades across 8 buildings</p>
+        <p className="absolute left-[48px] text-[#67717a] text-[9px] top-[229px]" data-node-id="4:314">Baseline sample · 10,000 scenarios</p>
+        <div className="absolute bg-[#e7ebe2] h-px left-[21px] top-[257px] w-[380px]" data-node-id="4:315" />
+        <a className="absolute font-medium left-[21px] text-[#335d45] text-[11px] top-[269px]" data-node-id="4:316">View survey evidence</a>
+        <a className="absolute left-[388px] text-[#335d45] text-[15px] top-[266px]" data-node-id="4:317">↗</a>
+      </div>
+      <div className="absolute bg-white border border-[#e4e7ea] border-solid h-[193px] left-[56px] overflow-clip rounded-[6px] top-[709px] w-[1328px]" data-node-id="4:10" data-name="Recommended plan">
+        <p className="absolute font-semibold left-[21px] text-[#222a31] text-[16px] top-[16px]" data-node-id="4:318">Upgrade breakdown</p>
+        <p className="absolute left-[237px] text-[#67717a] text-[11px] top-[21px]" data-node-id="4:319">18 upgrades across 8 buildings</p>
+        <p className="absolute left-[919px] text-[#67717a] text-[11px] top-[20px]" data-node-id="4:320">Baseline downside: −$94k NPV</p>
+        <div className="absolute bg-[#f1f4ed] h-[31px] left-[1149px] overflow-clip rounded-[5px] top-[11px] w-[156px]" data-node-id="4:321"><a className="absolute font-medium left-[12px] text-[#335d45] text-[11px] top-[9px]" data-node-id="4:322">Investment memo  ↗</a></div>
+        <div className="absolute bg-[#f6f7f3] h-[29px] left-0 top-[54px] w-[1326px]" data-node-id="4:323" />
+        <p className="absolute font-medium left-[21px] text-[#67717a] text-[9px] top-[63px] tracking-[0.6px]" data-node-id="4:324">UPGRADE BUNDLE</p>
+        <p className="absolute font-medium left-[417px] text-[#67717a] text-[9px] top-[63px] tracking-[0.6px]" data-node-id="4:325">COVERAGE</p>
+        <p className="absolute font-medium left-[655px] text-[#67717a] text-[9px] top-[63px] tracking-[0.6px]" data-node-id="4:326">UPFRONT COST</p>
+        <p className="absolute font-medium left-[895px] text-[#67717a] text-[9px] top-[63px] tracking-[0.6px]" data-node-id="4:327">ANNUAL CO₂ CUT</p>
+        <p className="absolute font-medium left-[1135px] text-[#67717a] text-[9px] top-[63px] tracking-[0.6px]" data-node-id="4:328">EXPECTED NPV</p>
+        <a className="absolute font-medium left-[21px] text-[#222a31] text-[12px] top-[90px]" data-node-id="4:329">LED retrofit</a>
+        <p className="absolute left-[417px] text-[#67717a] text-[12px] top-[90px]" data-node-id="4:330">8 buildings · 8 bills</p>
+        <p className="absolute left-[655px] text-[#222a31] text-[12px] top-[90px]" data-node-id="4:331">$120k</p>
+        <p className="absolute left-[895px] text-[#222a31] text-[12px] top-[90px]" data-node-id="4:332">192 tCO₂</p>
+        <p className="absolute font-medium left-[1135px] text-[#335d45] text-[12px] top-[90px]" data-node-id="4:333">+$170k</p>
+        <div className="absolute bg-[#e7ebe2] h-px left-[21px] top-[116px] w-[1284px]" data-node-id="4:334" />
+        <a className="absolute font-medium left-[21px] text-[#222a31] text-[12px] top-[123px]" data-node-id="4:335">Rooftop solar</a>
+        <p className="absolute left-[417px] text-[#67717a] text-[12px] top-[123px]" data-node-id="4:336">6 buildings · 6 bills</p>
+        <p className="absolute left-[655px] text-[#222a31] text-[12px] top-[123px]" data-node-id="4:337">$760k</p>
+        <p className="absolute left-[895px] text-[#222a31] text-[12px] top-[123px]" data-node-id="4:338">480 tCO₂</p>
+        <p className="absolute font-medium left-[1135px] text-[#335d45] text-[12px] top-[123px]" data-node-id="4:339">+$260k</p>
+        <div className="absolute bg-[#e7ebe2] h-px left-[21px] top-[149px] w-[1284px]" data-node-id="4:340" />
+        <a className="absolute font-medium left-[21px] text-[#222a31] text-[12px] top-[156px]" data-node-id="4:341">Heat pump conversion</a>
+        <p className="absolute left-[417px] text-[#67717a] text-[12px] top-[156px]" data-node-id="4:342">4 buildings · 4 bills</p>
+        <p className="absolute left-[655px] text-[#222a31] text-[12px] top-[156px]" data-node-id="4:343">$400k</p>
+        <p className="absolute left-[895px] text-[#222a31] text-[12px] top-[156px]" data-node-id="4:344">360 tCO₂</p>
+        <p className="absolute font-medium left-[1135px] text-[#335d45] text-[12px] top-[156px]" data-node-id="4:345">+$56k</p>
+      </div>
+      {/* NAV: shared <Navigation active="plan" /> ; underline on Plan (x389 w31) */}
+      <p className="absolute font-semibold left-[56px] text-[#222a31] text-[32px] top-[127px]" data-node-id="6:72">What’s in your plan</p>
+      <p className="absolute left-[57px] text-[#67717a] text-[14px] top-[176px]" data-node-id="6:73">18 upgrades · 40% reduction goal</p>
+      <button className="absolute bg-[#335d45] h-[47px] left-[1206px] overflow-clip rounded-[6px] top-[139px] w-[178px]" data-node-id="6:74"><p className="absolute font-medium left-[31px] text-[14px] text-white top-[15px]">Review &amp; approve</p></button>
+      <div className="absolute h-[94px] left-[56px] overflow-clip top-[230px] w-[1328px]" data-node-id="6:76" data-name="Plan outcomes">
+        <p className="absolute left-0 text-[#67717a] text-[12px] top-0" data-node-id="6:77">Annual CO₂ reduction</p>
+        <p className="absolute font-semibold left-0 text-[#222a31] text-[27px] top-[24px]" data-node-id="6:78">1032 tonnes / year</p>
+        <p className="absolute left-0 text-[#67717a] text-[12px] top-[65px]" data-node-id="6:79">Your goal is covered</p>
+        <div className="absolute bg-[#e4e7ea] h-[86px] left-[318px] top-0 w-px" data-node-id="6:80" />
+        <p className="absolute left-[338px] text-[#67717a] text-[12px] top-0" data-node-id="6:81">Lifetime net value</p>
+        <p className="absolute font-semibold left-[338px] text-[#222a31] text-[27px] top-[24px]" data-node-id="6:82">+$486k</p>
+        <p className="absolute left-[338px] text-[#67717a] text-[12px] top-[65px]" data-node-id="6:83">After retrofit costs</p>
+        <div className="absolute bg-[#e4e7ea] h-[86px] left-[656px] top-0 w-px" data-node-id="6:84" />
+        <p className="absolute left-[676px] text-[#67717a] text-[12px] top-0" data-node-id="6:85">Upfront investment</p>
+        <p className="absolute font-semibold left-[676px] text-[#222a31] text-[27px] top-[24px]" data-node-id="6:86">$1280k</p>
+        <p className="absolute left-[676px] text-[#67717a] text-[11px] top-[65px]" data-node-id="6:87">Budget $1500k · Balanced risk</p>
+        <div className="absolute bg-[#e4e7ea] h-[86px] left-[994px] top-0 w-px" data-node-id="6:88" />
+        <p className="absolute left-[1014px] text-[#67717a] text-[12px] top-0" data-node-id="6:89">Baseline simulation confidence</p>
+        <p className="absolute font-semibold left-[1014px] text-[#222a31] text-[27px] top-[24px]" data-node-id="6:90">87%</p>
+        <p className="absolute left-[1014px] text-[#67717a] text-[12px] top-[65px]" data-node-id="6:91">Baseline sample · 10,000 scenarios</p>
+      </div>
+      <p className="absolute left-[56px] text-[#67717a] text-[11px] top-[947px]" data-node-id="6:92">Illustrative data · Review assumptions before approval</p>
+      <a className="absolute font-medium left-[1174px] text-[13px] text-[#335d45] top-[947px]" data-node-id="30:1259">Risk &amp; target details  →</a>
+    </div>
+  );
+}
