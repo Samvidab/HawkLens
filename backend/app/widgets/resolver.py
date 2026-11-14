@@ -129,7 +129,8 @@ def _target_control(ctx: ResolveContext) -> tuple[str, dict]:
 
 def _overlays(ctx: ResolveContext, bid: str) -> list[dict]:
     prof, out = ctx.profiles[bid], []
-    in_plan = {u.type for u in ctx.upgrades.get(bid, []) if u.upgrade_id in ctx.selected}
+    in_plan = {u.type for u in ctx.upgrades.get(bid, [])
+               if u.upgrade_id in ctx.selected or u.upgrade_id in ctx.selected_upgrade_ids}  # highlighted counts
     if "rooftop_solar" in in_plan:
         out.append({"type": "solar", "polygon_wkt": prof.footprint_wkt})
     if "cool_roof" in in_plan:
