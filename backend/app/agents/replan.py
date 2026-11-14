@@ -110,8 +110,9 @@ async def replan(action: OwnerAction) -> Layout:
             goal = Goal.model_validate({**need_goal(), key: p.get(key)})
         except ValidationError as e:
             raise ReplanError(422, str(e)) from e
+        risk = f"risk appetite {goal.risk_lambda:g}" + ("" if plan.get("risk_supported", True) else " (not modelled yet)")
         label = {"target_pct": f"target {goal.target_pct:g}%", "budget_usd": f"budget {goal.budget_usd or 'cleared'}",
-                 "risk_lambda": f"risk appetite {goal.risk_lambda:g}"}[key]
+                 "risk_lambda": risk}[key]
         events.emit(rid, "Orchestrator", "plan", f"re-plan: {label}")
         view = View(issues_shown=view.issues_shown)
     elif t in ("exclude_building", "include_building"):

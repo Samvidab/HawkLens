@@ -27,8 +27,8 @@ _memo: dict[str, Any] = {"key": None, "result": None}  # last simulate() inputs 
 
 
 def _live():
-    from app import engine  # noqa: PLC0415 - only exists once the quant-engine branch is merged
-    return engine
+    import importlib  # noqa: PLC0415 - resolved through sys.modules, so a test can substitute the engine
+    return importlib.import_module("app.engine")
 
 
 def _live_fn(*names: str):
@@ -65,7 +65,9 @@ def live_contract_drift(engine_module=None) -> list[str]:
         if fn is None:
             out.append(f"missing function {name}")
             continue
-        got = list(inspect.signature(fn).parameters)
+        # keyword-only extras (e.g. min_p_hit, buildings_root) are additions to the contract, not drift
+        got = [n for n, prm in inspect.signature(fn).parameters.items()
+               if prm.kind in (prm.POSITIONAL_ONLY, prm.POSITIONAL_OR_KEYWORD)]
         if got != want:
             out.append(f"{name}{tuple(got)} != TRD {tuple(want)}")
     return out
@@ -156,7 +158,8 @@ def simulate(upgrades: list[FeasibleUpgrade], assumptions: dict | None = None) -
     if _memo["key"] == key:
         return dict(_memo["result"])
     if _live_mode():
-        result = _live().simulate(upgrades, assumptions or {})
+        # plain dicts: the engine validates into its own FeasibleUpgrade class and rejects ours
+        result = _live().simulate([u.model_dump(mode="json") for u in upgrades], assumptions or {})
     else:
         if assumptions:
             _assumptions.update(assumptions)
@@ -204,9 +207,14 @@ def baseline(building_id: str) -> dict:
 
 def optimize(target_pct: float, risk_lambda: float, budget_usd: float | None, exclusions: list[str]) -> dict:
     """Stub optimizer: greedy by cost per tonne, one upgrade per building per category, within budget.
-    target_pct is 0-100."""
+    target_pct is 0-100. Result flag `risk_supported`: False when risk_lambda has no effect on the plan, so the UI
+    can disable the risk slider."""
     if _live_mode():
-        return _live().optimize(target_pct, risk_lambda, budget_usd, exclusions)
+        # risk_lambda is passed through, but the engine reports whether it is applied (CVaR objective, its build
+        # step 7) in `risk_supported`; an engine that does not say so is treated as not supporting it.
+        out = dict(_live().optimize(target_pct, risk_lambda, budget_usd, exclusions))
+        out.setdefault("risk_supported", False)
+        return out
     p = _params()
     buildings = sorted({u.building_id for u in _state["upgrades"].values()})
     needed = round(sum(baseline(b)["tonnes_per_year"] for b in buildings) * target_pct / 100, 2)
@@ -239,6 +247,7 @@ def optimize(target_pct: float, risk_lambda: float, budget_usd: float | None, ex
         "tonnes_needed": needed, "shortfall_tonnes": 0.0 if ok else round(needed - tonnes, 2),
         "cheapest_extra": [] if ok else [{k: b[k] for k in ("upgrade_id", "cost_per_tonne", "tonnes_per_year")} for b in extra],
         "stub": True,
+        "risk_supported": False,  # the stub ignores risk_lambda
     }
 
 

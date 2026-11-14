@@ -11,7 +11,7 @@ useradd -m -s /bin/bash retro && mkdir -p /opt/retroalpha && chown retro: /opt/r
 sudo -u retro git clone <repo-url> /opt/retroalpha && cd /opt/retroalpha && git checkout <branch-or-tag>   # main or tag `demo`
 cd backend && sudo -u retro python3.11 -m venv .venv && sudo -u retro .venv/bin/pip install -r requirements.txt
 ```
-`pulp[cbc]` is needed for the live engine. If the optimizer cannot find a solver (`pulp.listSolvers(onlyAvailable=True)` is empty), `apt install coinor-cbc`.
+`ENGINE_MODE=live` (the real quant engine) needs numpy and `pulp[cbc]` (both pinned in requirements.txt). If the optimizer cannot find a solver (`pulp.listSolvers(onlyAvailable=True)` is empty), `apt install coinor-cbc`.
 
 ## 2. Secrets and data (from your laptop; never via git)
 ```bash

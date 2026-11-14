@@ -41,6 +41,9 @@
 
 - Hero visibility (fixes STATUS-A item for Lane B): `hero_3d` is shown only when the building has a mesh (`interior_scan.json` `mesh_url`, or an extracted OBJ under cache/media/mesh/<model>/) or a `showcase_url`; `floor_plan` only with interior room data (`rooms.json`, or `interior_scan.json` `rooms`; polygons optional). Otherwise `portfolio_3d` stands in. **Contract for Lane A:** write `showcase_url` (Matterport 3D tour link) into `buildings/<id>/interior_scan.json`; when present `hero_3d` uses it instead of the mesh (`mode: "showcase"`, mesh urls null). Frontend: `hero_3d.props.mode` = mesh | showcase. New sample `docs/agent/samples/building_detail_showcase.json`; all samples regenerated.
 
+- **Live engine switched on (her step 6, 9df8bfc):** merged origin/quant-engine into lane-support (her code untouched; her 82 engine tests now run in our suite). `ENGINE_MODE=live` passes: drift check clean; `goal` -> layout in ~0.2 s; every action type, approve (finance books her `upfront_usd`), budget/exclusion/unverified paths and the target-gap screen are covered by `tests/test_engine_live.py` (8 tests), and `scripts/smoke_test.py --engine live` passes 103/103. **The temporary `ENGINE_MODE=bridge` adapter was not built: her wrappers landed first**, so it would only have been throw-away code; nothing was deleted (the stub stays as the default for tests/samples and as a fallback). This worktree's backend/.env now has ENGINE_MODE=live; the data worktree and the main checkout still say stub on purpose (the data worktree has no engine code until it merges).
+- Client fixes the live run exposed: plain dicts to `simulate` (her `FeasibleUpgrade` mirror rejects our class), drift check ignores keyword-only extras (`min_p_hit`, `buildings_root`), engine resolved via importlib. New flag `risk_supported` (optimize output -> plan -> `target_control.props.risk_supported`; the stub is False; live is False unless her output says True): the frontend should hide/disable the risk slider when false; `set_risk` still re-prices and its event says "(not modelled yet)". Samples regenerated (new prop).
+
 ## In progress
 - hero MatterPak check: waiting for Lane A to extract it (no cache/media/mesh/ in this worktree or the main checkout yet)
 
@@ -85,7 +88,8 @@ Written when origin/quant-engine had only `app/engine/CLAUDE.md`. Items 1-13 bel
 ## Quant engine code check for her (origin/quant-engine @ 742c68c, steps 1-5; checked 2026-11-14)
 Method: read the code, ran her 82 engine tests (all pass), then drove `optimizer.build_problem/solve` the way our pricing node would on her 3-building fixtures (13 upgrades, 10k scenarios). Read-only: nothing in her folder was touched.
 
-### MISSING (blocks `ENGINE_MODE=live`), most important first
+### MISSING at 742c68c (steps 1-5): SUPERSEDED, see "Step 6 check" below; kept for the record
+(blocked `ENGINE_MODE=live` then)
 1. **No contract functions yet.** `app/engine/__init__.py` exports nothing. `simulate(upgrades, assumptions)`, `macc(exclusions)`, `optimize(target_pct, risk_lambda, budget_usd, exclusions)`, `set_assumption(key, value)` and `baseline(building_id)` do not exist as the TRD §8.1 / her CLAUDE.md contract (step 6). `python -m app.integrations.engine_client` reports all five as missing. Her lower-level pieces are fine and fast (simulate 10k x 13 upgrades 0.04 s, solve 0.04 s), they just need wrapping.
 2. **`risk_lambda` is ignored.** `build_problem()` and `solve()` take no `risk_lambda`; the objective is E[NPV] only (CVaR term is "step 7"). Until then the Risk slider changes nothing. (`plan_id` already accepts a `risk_lambda` argument but is called without it.)
 3. **`baseline(building_id)` does not exist.** There is `buildings.baseline_kwh_per_year()` / `baseline_tonnes_per_year(BuildingFacts, assumptions)`, but nothing returns `{annual_spend_usd, tonnes_per_year}`. `annual_spend_usd` is not computed anywhere (needs kWh x `cities.<city>.electricity_rate_usd_per_kwh`, which is in assumptions.json). The building_header widget shows it. The Nessie-bills baseline is a TODO in `buildings.py`.
@@ -114,3 +118,13 @@ Method: read the code, ran her 82 engine tests (all pass), then drove `optimizer
 - `buildings.py` is Houston-only (`baseline_kwh_per_year` raises for other cities); fine if the demo city is Houston.
 - Her `FeasibleUpgrade` mirror matches ours field for field (types, categories, size units). `PROPERTY_TYPE_TO_BENCHMARK` has a TODO: real CoStar `property_type` values are in `data/buildings/*/profile.json` (lane-data) to fill it.
 - Solver: `PULP_CBC_CMD` works with the pinned `pulp[cbc]==3.3.2` (her note about deprecation is right); the Vultr box needs the same pins.
+
+
+## Step 6 check for her (origin/quant-engine @ 9df8bfc, 2026-11-14): live passes
+**Closed since the last note:** all five contract functions exist and conform (`simulate` with `upfront_usd`/`tonnes_per_year`, `macc`, `optimize` with `status/p_hit_target/tonnes_needed/shortfall_tonnes/cheapest_extra`, `set_assumption`, `baseline` with `annual_spend_usd`); the `macc` name clash is handled; `assumptions` overrides (`{"discount_rate": x}`) work. Verified end to end through our API (see above); `optimize` ~0.05 s, whole goal action ~0.2 s.
+**Still open, in order of importance:**
+1. **`risk_lambda` is accepted but not applied (your step 7).** When it is, please add `"risk_supported": True` to `optimize()`'s result. We treat a missing key as False and keep the Risk slider disabled in the UI, so without the key the slider stays off even after CVaR works.
+2. **`cheapest_extra` is `[]` when even the max-tonnes plan cannot reach the target** (live probe on a synthetic 30 % target: shortfall 407 t/yr, no suggestions) and it never suggests merely *unverified* upgrades (`include_in_optimizer == False`, not excluded). The target-gap card then shows the shortfall only. If you want it to propose them, return them with a marker (e.g. `"unverified": true`) and say so; we would show an "include" button.
+3. `min_p_hit` default 0.8 makes plans overshoot the target (internal target 12 % for a 10 % ask, etc.) and `status: "ok"` can still have `p_hit_target` 0.5 with `met_min_p_hit: false` (probe at 25 %). That is fine for us (we show `p_hit_target` and the shortfall), just be sure it is what you intend for the demo.
+4. Our `FeasibleUpgrade` is passed to you as plain dicts (your mirror class rejects our instances); once your branch imports `app.schemas.upgrades.FeasibleUpgrade` nothing changes for us.
+5. Real data check pending: your `PROPERTY_TYPE_TO_BENCHMARK` against the CoStar `property_type` values in lane-data's `data/buildings/*/profile.json`; Houston only.

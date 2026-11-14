@@ -77,6 +77,11 @@
             ],
             "default": null,
             "title": "Tonnes Planned"
+          },
+          "risk_supported": {
+            "default": true,
+            "title": "Risk Supported",
+            "type": "boolean"
           }
         },
         "required": [

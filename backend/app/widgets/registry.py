@@ -121,6 +121,7 @@ class TargetControl(Props):
     p_hit_target: float | None = None
     tonnes_needed: float | None = None
     tonnes_planned: float | None = None
+    risk_supported: bool = True  # False: the engine ignores risk_lambda; the UI should hide or disable the risk slider
 
 
 class Portfolio3D(Props):

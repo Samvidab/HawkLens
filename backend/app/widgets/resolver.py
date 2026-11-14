@@ -163,7 +163,8 @@ def _target_control(ctx: ResolveContext) -> tuple[str, dict]:
     return "plans/current.json#/goal", dict(
         target_pct=goal.get("target_pct", 0.0), budget_usd=goal.get("budget_usd"),
         risk_lambda=goal.get("risk_lambda", 0.5), p_hit_target=plan.get("p_hit_target"),
-        tonnes_needed=plan.get("tonnes_needed"), tonnes_planned=planned)
+        tonnes_needed=plan.get("tonnes_needed"), tonnes_planned=planned,
+        risk_supported=bool(plan.get("risk_supported", True)))
 
 
 def _overlays(ctx: ResolveContext, bid: str) -> list[dict]:

@@ -2,6 +2,7 @@
 
   python scripts/smoke_test.py                 # self-contained: starts the app on a free port with a synthetic
                                                # portfolio, stub engine/Nessie, Gemini OFF (deterministic, no keys)
+  python scripts/smoke_test.py --engine live   # same, priced by the real quant engine (app.engine)
   python scripts/smoke_test.py --llm           # same, but let the composer/memo call Gemini (needs backend/.env)
   python scripts/smoke_test.py --url https://api.example.com --run-id smoke_1
                                                # test a running server with ITS data (situations are not asserted)
@@ -52,7 +53,7 @@ def w_of(layout: dict, t: str) -> dict | None:
     return next((w["props"] for w in layout["widgets"] if w["type"] == t), None)
 
 
-async def run(base: str, run_id: str, strict: bool) -> Report:
+async def run(base: str, run_id: str, strict: bool, live_engine: bool = False) -> Report:
     from app.schemas.layout import Layout
     from app.widgets.registry import validate_layout
     rep = Report()
@@ -88,7 +89,9 @@ async def run(base: str, run_id: str, strict: bool) -> Report:
             rep.check(f"{name}: layout valid, feed last", valid and lay["widgets"][-1]["type"] == "activity_feed")
             rep.check(f"{name}: under {BUDGET_S:g} s", dt < BUDGET_S, f"{dt * 1000:.0f} ms")
             if situation and strict:
-                rep.check(f"{name}: situation == {situation}", lay["situation"] == situation, lay["situation"])
+                # with the real engine, whether a target is reachable depends on its numbers: overview or target_gap
+                ok_set = {situation, "target_gap"} if (live_engine and situation == "portfolio_overview") else {situation}
+                rep.check(f"{name}: situation == {situation}", lay["situation"] in ok_set, lay["situation"])
             print(f"      {lay['situation']:20s} {[w['type'] for w in lay['widgets']]}", flush=True)
             return lay
 
@@ -201,6 +204,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--url", help="test an already running server instead of starting one")
     ap.add_argument("--run-id", default=f"smoke_{int(time.time())}")
+    ap.add_argument("--engine", choices=["stub", "live"], default="stub", help="pricing engine for the self-contained server")
     ap.add_argument("--llm", action="store_true", help="allow real Gemini calls in the composer/memo (self-contained mode)")
     a = ap.parse_args()
     proc, log = None, None
@@ -209,7 +213,7 @@ def main() -> int:
     else:
         import make_samples as ms  # synthetic world; sets DATA_DIR etc. in this process's environment
         ms.build_world(ms.DATA, issue=True)
-        env = dict(os.environ)
+        env = dict(os.environ, ENGINE_MODE=a.engine)
         if not a.llm:
             env.update(GEMINI_API_KEY="", GEMINI_MODEL_FAST="", GEMINI_MODEL_VISION="")  # fall back to templates, no network
         port = free_port(); base, strict = f"http://127.0.0.1:{port}", True
@@ -219,7 +223,7 @@ def main() -> int:
         print(f"# started app on {base} (data: {ms.DATA}, log: {log.name})")
     try:
         asyncio.run(wait_ready(base, proc))
-        rep = asyncio.run(run(base, a.run_id, strict))
+        rep = asyncio.run(run(base, a.run_id, strict, live_engine=(a.engine == 'live' and not a.url)))
     finally:
         if proc:
             proc.terminate()

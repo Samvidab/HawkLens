@@ -18,7 +18,8 @@
         "risk_lambda": 0.5,
         "p_hit_target": 0.0,
         "tonnes_needed": 5832.0,
-        "tonnes_planned": 173.25
+        "tonnes_planned": 173.25,
+        "risk_supported": false
       }
     },
     {

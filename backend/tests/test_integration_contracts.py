@@ -139,7 +139,8 @@ def fake_engine(**overrides):
 
     def simulate(upgrades, assumptions):
         calls.append(("simulate", len(upgrades), assumptions))
-        return {u.upgrade_id: {k: 1 for k in eng.SIM_KEYS} | {"hist_bins": []} for u in upgrades}
+        assert all(isinstance(u, dict) for u in upgrades)  # live mode hands plain dicts to the engine
+        return {u["upgrade_id"]: {k: 1 for k in eng.SIM_KEYS} | {"hist_bins": []} for u in upgrades}
 
     def macc(exclusions):
         calls.append(("macc", exclusions)); return {"bars": [{k: 1 for k in eng.BAR_KEYS}]}
@@ -233,8 +234,32 @@ async def test_pricing_reports_drift_as_one_error_event(live, tmp_path, monkeypa
     monkeypatch.setenv("DATA_DIR", str(tmp_path)); get_settings.cache_clear(); events._seq.clear()
     m = live()
     put(tmp_path / "buildings/b1/feasibility.json", [upgrade("b1", "rooftop_solar", "solar", 300, "kW")])
-    m.simulate = lambda upgrades, assumptions: {u.upgrade_id: {"exp_npv": 1} for u in upgrades}  # lacks upfront_usd etc.
+    m.simulate = lambda upgrades, assumptions: {u["upgrade_id"]: {"exp_npv": 1} for u in upgrades}  # lacks upfront_usd etc.
     await run_pricing("r", Goal(city="Houston", target_pct=10))
     ev = [json.loads(l) for l in (tmp_path / "runs/r/events.jsonl").read_text().splitlines()]
     errs = [e for e in ev if e["kind"] == "error"]
     assert len(errs) == 1 and errs[0]["message"].startswith("engine contract drift: simulate") and len(errs[0]["message"]) <= 90
+
+
+def test_drift_check_ignores_keyword_only_extras(live):
+    """The real engine adds keyword-only args (min_p_hit, buildings_root): additions, not drift."""
+    m = live()
+    m.optimize = lambda target_pct, risk_lambda=0.0, budget_usd=None, exclusions=None, *, min_p_hit=0.8: {}
+    m.baseline = lambda building_id, *, buildings_root=None: {}
+    assert eng.live_contract_drift(m) == []
+    m.baseline = lambda building_id, extra: {}  # a real extra positional parameter is drift
+    assert any("baseline" in d for d in eng.live_contract_drift(m))
+
+
+def test_live_optimize_reports_risk_supported_false_unless_the_engine_says_otherwise(live):
+    m = live()
+    assert eng.optimize(10, 0.5, None, [])["risk_supported"] is False
+    orig = m.optimize
+    m.optimize = lambda *a: {**orig(*a), "risk_supported": True}
+    assert eng.optimize(10, 0.5, None, [])["risk_supported"] is True
+    assert eng.optimize.__doc__ and "risk_supported" in eng.optimize.__doc__
+
+
+def test_stub_flags_risk_as_unsupported():
+    eng.simulate(UPS, {})
+    assert eng.optimize(10, 0.5, None, [])["risk_supported"] is False
