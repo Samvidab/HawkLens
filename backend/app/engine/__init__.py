@@ -17,8 +17,9 @@ Assumptions, lowest to highest priority:
 Fields beyond the TRD (they only add to it; agent owner: these exist):
   simulate:  upfront_usd, tonnes_per_year per upgrade
   optimize:  status, p_loss, hist_bins, tonnes_needed, shortfall_tonnes, cheapest_extra
-             (each with fits_budget), internal_target_pct, min_p_hit, met_min_p_hit,
-             p_hit_retries
+             (each with verified, fits_budget), internal_target_pct, min_p_hit,
+             met_min_p_hit, p_hit_retries, risk_supported (True)
+  configure(buildings_root=...): setup only, outside the contract
   set_assumption: error (when ok is False)
 """
 from __future__ import annotations
@@ -28,7 +29,7 @@ import math
 from pathlib import Path
 from typing import Any, Iterable
 
-from . import macc as _macc_mod
+from . import curve as _curve
 from . import monte_carlo as _mc
 from . import optimizer as _opt
 from . import risk as _risk
@@ -36,7 +37,8 @@ from . import state
 from .buildings import BuildingFacts, baseline_kwh_per_year, baseline_tonnes_per_year, load_building
 from .models import FeasibleUpgrade, load_assumptions
 
-__all__ = ["simulate", "macc", "optimize", "set_assumption", "baseline"]
+__all__ = ["simulate", "macc", "optimize", "set_assumption", "baseline", "configure",
+           "precompute", "wait_for_precompute"]
 
 _VALIDATION_SCENARIOS = 50
 
@@ -88,7 +90,8 @@ def _apply(base: dict, changes: dict, prefix: list[str] | None = None) -> None:
 
 
 def _effective(request: dict | None) -> dict:
-    a = copy.deepcopy(load_assumptions())
+    path = state.assumptions_path()
+    a = copy.deepcopy(load_assumptions(path) if path is not None else load_assumptions())
     if request:
         _apply(a, request)
     for k, v in state.overrides().items():
@@ -103,13 +106,25 @@ def _num(x: float) -> float | None:
     return x if math.isfinite(x) else None
 
 
-def _as_upgrades(upgrades: Iterable[FeasibleUpgrade | dict]) -> list[FeasibleUpgrade]:
-    return [u if isinstance(u, FeasibleUpgrade) else FeasibleUpgrade.model_validate(u) for u in upgrades]
+def _as_upgrades(upgrades: Iterable[Any]) -> list[FeasibleUpgrade]:
+    """Accept our FeasibleUpgrade, the agent's app.schemas.upgrades.FeasibleUpgrade (or any
+    pydantic model with the same fields), or plain dicts. Pydantic refuses another class's
+    instance directly, so foreign models are validated from their fields."""
+    out = []
+    for u in upgrades:
+        if isinstance(u, FeasibleUpgrade):
+            out.append(u)
+        elif hasattr(u, "model_dump"):
+            out.append(FeasibleUpgrade.model_validate(u.model_dump()))
+        else:
+            out.append(FeasibleUpgrade.model_validate(u))
+    return out
 
 
-def _load_buildings(ids: Iterable[str], root: str | Path | None, a: dict) -> dict[str, BuildingFacts]:
-    cached = state.buildings()
-    return {b: cached[b] if b in cached and root is None else load_building(b, root=root, assumptions=a)
+def _load_buildings(ids: Iterable[str], a: dict) -> dict[str, BuildingFacts]:
+    """Facts for each building: from the cache if already loaded, else from configure()'s root."""
+    cached, root = state.buildings(), state.buildings_root()
+    return {b: cached[b] if b in cached else load_building(b, root=root, assumptions=a)
             for b in sorted(set(ids))}
 
 
@@ -129,19 +144,39 @@ def _ensure_fresh() -> _mc.SimulationResult:
     return sim
 
 
+# --- setup (not part of the TRD contract) ------------------------------------------------
+
+def configure(*, buildings_root: str | Path | None = None,
+              assumptions_path: str | Path | None = None) -> None:
+    """Setup, outside the TRD contract (so the five contract signatures stay exact; the
+    agent's engine_client checks parameter names).
+
+    buildings_root:   where <building_id>/profile.json lives (default data_dir/buildings)
+    assumptions_path: base assumptions file (default app/engine/assumptions.json). Tests
+                      point it at a frozen copy so mechanics tests don't move when the
+                      sourced values change.
+    Each call sets both; omitted = default.
+    """
+    state.set_buildings_root(buildings_root)
+    state.set_assumptions_path(assumptions_path)
+
+
 # --- contract ----------------------------------------------------------------------------
 
-def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = None, *,
-             buildings_root: str | Path | None = None) -> dict[str, dict]:
+def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = None) -> dict[str, dict]:
     """Simulate every upgrade and cache the result for macc()/optimize().
 
-    buildings_root: folder holding <building_id>/profile.json (default: data_dir/buildings).
+    Re-reads buildings from disk each time (the survey may have updated them).
     """
     ups = _as_upgrades(upgrades)
     a = _effective(assumptions)
-    buildings = _load_buildings((u.building_id for u in ups), buildings_root, a)
+    state.forget_buildings()
+    buildings = _load_buildings((u.building_id for u in ups), a)
     sim = _run(ups, buildings, a, assumptions)
-    cpt = _macc_mod.cost_per_tonne(sim.npv, sim.tonnes_lifetime)
+    last = state.last_context()
+    if last is not None and last[0] > 0:        # re-warm the slider's plans on the new simulation
+        precompute(last[0], last[1], list(last[2]))
+    cpt = _curve.cost_per_tonne(sim.npv, sim.tonnes_lifetime)
     out = {}
     for i, uid in enumerate(sim.upgrade_ids):
         r = _risk.summarize(sim.npv[i])
@@ -160,26 +195,101 @@ def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = 
 
 def macc(exclusions: list[str] | None = None) -> dict:
     _ensure_fresh()
-    return _macc_mod.macc(exclusions or [])
+    return _curve.macc(exclusions or [])
+
+
+PRECOMPUTE_TARGETS = tuple(range(0, 81, 5))   # the UI target slider runs 0-80 %
+_threads: list = []
+
+
+def _context(risk_lambda, budget_usd, exclusions) -> tuple:
+    return (float(risk_lambda), None if budget_usd is None else float(budget_usd),
+            tuple(sorted(set(exclusions or []))))
+
+
+def _solve(target_pct: float, context: tuple) -> dict:
+    """One plan on the current simulation (no cache)."""
+    risk_lambda, budget_usd, exclusions = context
+    sim, upgrades = state.current()
+    a = _effective(state.request_assumptions())
+    base = sum(baseline_tonnes_per_year(b, a) for b in state.buildings().values())
+    out = _opt.solve_with_min_p_hit(
+        sim, upgrades, baseline_tonnes_per_year=base, target_pct=target_pct,
+        min_p_hit=a["global"]["min_p_hit"], budget_usd=budget_usd, exclusions=list(exclusions),
+        risk_lambda=risk_lambda, n_risk_scenarios=a["global"]["n_scenarios_optimizer"],
+    )
+    out["risk_supported"] = True     # risk_lambda is applied (CVaR, build step 7)
+    return out
+
+
+def _key(target_pct: float, context: tuple) -> tuple:
+    return (state.generation(), float(target_pct), *context)
+
+
+def _precompute_worker(context: tuple, targets: Iterable[float], generation: int) -> None:
+    for t in targets:
+        if state.generation() != generation:
+            return                      # a newer simulation replaced this one
+        key = (generation, float(t), *context)
+        if state.get_plan(key) is None:
+            try:
+                state.put_plan(key, _solve(t, context))
+            except Exception:           # never let a background solve crash the app
+                return
+
+
+def precompute(risk_lambda: float = 0.0, budget_usd: float | None = None,
+               exclusions: list[str] | None = None, targets: Iterable[float] = PRECOMPUTE_TARGETS,
+               background: bool = True) -> None:
+    """Fill the plan cache for target steps (default 0, 5, ..., 80 %) on the current simulation.
+    Not part of the TRD contract. optimize() calls it in the background on first use of a
+    (risk_lambda, budget, exclusions) setting with risk_lambda > 0 (those solves take ~1-3 s)."""
+    _ensure_fresh()
+    context = _context(risk_lambda, budget_usd, exclusions)
+    if not state.claim_precompute(context):
+        return
+    args = (context, list(targets), state.generation())
+    if background:
+        import threading
+        th = threading.Thread(target=_precompute_worker, args=args, daemon=True, name="engine-precompute")
+        _threads.append(th); th.start()
+    else:
+        _precompute_worker(*args)
+
+
+def wait_for_precompute(timeout: float | None = None) -> None:
+    """Block until background precompute threads finish (tests, scripts)."""
+    for th in list(_threads):
+        th.join(timeout)
+    _threads[:] = [t for t in _threads if t.is_alive()]
 
 
 def optimize(target_pct: float, risk_lambda: float = 0.0, budget_usd: float | None = None,
-             exclusions: list[str] | None = None, *, min_p_hit: float = 0.8) -> dict:
+             exclusions: list[str] | None = None) -> dict:
     """Cheapest plan (max expected NPV) that hits target_pct % of the portfolio's baseline CO2.
 
-    risk_lambda is accepted and part of plan_id but not applied yet (build step 7).
-    min_p_hit: raise the internal target until the plan hits the real target in at
-    least this share of scenarios (see optimizer.solve_with_min_p_hit). 0 turns it off.
+    The target's denominator is every simulated building, excluded or not.
+    risk_lambda >= 0: maximize E[NPV] + risk_lambda x CVaR5 (worst-5% mean NPV) over
+    global.n_scenarios_optimizer scenarios. 0 = expected NPV only. Output has
+    risk_supported: True (the agent's client treats a missing flag as "not modelled").
+    global.min_p_hit (assumptions; default 0.8, set_assumption("min_p_hit", x) to change,
+    0 turns it off): raise the internal target until the plan hits the real target in at
+    least this share of scenarios (see optimizer.solve_with_min_p_hit).
+
+    Plans are cached per simulation; with risk_lambda > 0 the first call for a setting
+    starts a background precompute of targets 0, 5, ..., 80 % so slider moves are instant.
     """
-    sim = _ensure_fresh()
-    _, upgrades = state.current()
-    a = _effective(state.request_assumptions())
-    base = sum(baseline_tonnes_per_year(b, a) for b in state.buildings().values())
-    return _opt.solve_with_min_p_hit(
-        sim, upgrades, baseline_tonnes_per_year=base, target_pct=target_pct,
-        min_p_hit=min_p_hit, budget_usd=budget_usd, exclusions=exclusions or [],
-        risk_lambda=risk_lambda,
-    )
+    _ensure_fresh()
+    context = _context(risk_lambda, budget_usd, exclusions)
+    state.set_last_context(context)
+    key = _key(target_pct, context)
+    cached = state.get_plan(key)
+    if cached is None:
+        cached = _solve(target_pct, context)
+        state.put_plan(key, cached)
+    if context[0] > 0:
+        precompute(*context[:2], list(context[2]))
+    return copy.deepcopy(cached)
 
 
 def set_assumption(key: str, value: Any) -> dict:
@@ -193,6 +303,8 @@ def set_assumption(key: str, value: Any) -> dict:
     try:
         trial = _effective(state.request_assumptions())
         _apply(trial, {key: value})
+        if not 0 <= trial["global"]["min_p_hit"] <= 1:
+            raise ValueError("global.min_p_hit is a probability 0-1, e.g. 0.8")
         if state.has_simulation():      # dry run on the cached upgrades to catch bad values
             _, ups = state.current()
             _mc.simulate(ups, state.buildings(), trial, n_scenarios=_VALIDATION_SCENARIOS)
@@ -202,10 +314,10 @@ def set_assumption(key: str, value: Any) -> dict:
     return {"ok": True}
 
 
-def baseline(building_id: str, *, buildings_root: str | Path | None = None) -> dict:
+def baseline(building_id: str) -> dict:
     """Annual electricity spend and CO2 for one building (benchmark until bills are wired in)."""
     a = _effective(state.request_assumptions())
-    b = _load_buildings([building_id], buildings_root, a)[building_id]
+    b = _load_buildings([building_id], a)[building_id]
     kwh = baseline_kwh_per_year(b, a)
     return {
         "annual_spend_usd": kwh * a["cities"][b.city]["electricity_rate_usd_per_kwh"],

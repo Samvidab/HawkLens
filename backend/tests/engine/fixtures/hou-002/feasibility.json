@@ -1,0 +1,11 @@
+[
+  {"upgrade_id": "hou-002-rooftop_solar", "building_id": "hou-002", "category": "solar", "type": "rooftop_solar",
+   "size_value": 307.2, "size_unit": "kW", "reason": "Large flat roof, partial shading (0.7 derate)", "confidence": 0.8,
+   "claim_ids": ["c-hou-002-a1"], "evidence_ids": ["e-hou-002-a1"], "verified": "verified", "include_in_optimizer": true},
+  {"upgrade_id": "hou-002-cool_roof", "building_id": "hou-002", "category": "roof", "type": "cool_roof",
+   "size_value": 45000, "size_unit": "sqft", "reason": "Dark flat roof", "confidence": 0.85,
+   "claim_ids": ["c-hou-002-a2"], "evidence_ids": ["e-hou-002-a1"], "verified": "verified", "include_in_optimizer": true},
+  {"upgrade_id": "hou-002-led_retrofit", "building_id": "hou-002", "category": "lighting", "type": "led_retrofit",
+   "size_value": 45000, "size_unit": "sqft", "reason": "No interior scan; LED retrofit assumed", "confidence": 0.5,
+   "claim_ids": [], "evidence_ids": [], "verified": "assumed", "include_in_optimizer": true}
+]

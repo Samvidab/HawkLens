@@ -1,0 +1,14 @@
+[
+  {"upgrade_id": "hou-003-rooftop_solar", "building_id": "hou-003", "category": "solar", "type": "rooftop_solar",
+   "size_value": 111.5, "size_unit": "kW", "reason": "Flat roof, no shading, 743 m2 usable", "confidence": 0.8,
+   "claim_ids": ["c-hou-003-a1"], "evidence_ids": ["e-hou-003-a1"], "verified": "verified", "include_in_optimizer": true},
+  {"upgrade_id": "hou-003-window_upgrade", "building_id": "hou-003", "category": "envelope", "type": "window_upgrade",
+   "size_value": 7469, "size_unit": "sqft", "reason": "S and W glazing ratio 0.45; verifier could not confirm", "confidence": 0.4,
+   "claim_ids": ["c-hou-003-a2"], "evidence_ids": ["e-hou-003-a2"], "verified": "unverified", "include_in_optimizer": false},
+  {"upgrade_id": "hou-003-heat_pump", "building_id": "hou-003", "category": "hvac", "type": "heat_pump",
+   "size_value": 80000, "size_unit": "sqft", "reason": "Built 1978 (before 1995 cutoff)", "confidence": 0.7,
+   "claim_ids": ["c-hou-003-p1"], "evidence_ids": ["e-hou-003-p1"], "verified": "verified", "include_in_optimizer": true},
+  {"upgrade_id": "hou-003-led_retrofit", "building_id": "hou-003", "category": "lighting", "type": "led_retrofit",
+   "size_value": 80000, "size_unit": "sqft", "reason": "No interior scan; LED retrofit assumed", "confidence": 0.5,
+   "claim_ids": [], "evidence_ids": [], "verified": "assumed", "include_in_optimizer": true}
+]

@@ -1,0 +1,546 @@
+"""Step 3: monte_carlo.py + risk.py."""
+import copy
+import dataclasses
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from app.engine.buildings import load_building
+from app.engine.models import load_assumptions, load_feasibility
+from app.engine.monte_carlo import price_inputs, simulate
+from app.engine.npv import npv
+from app.engine.risk import cvar, hist_bins, summarize
+
+FIXTURES = Path(__file__).parent / "fixtures"
+TEST_ASSUMPTIONS = FIXTURES / "assumptions.json"
+BUILDING_IDS = ["hou-001", "hou-002", "hou-003"]
+
+
+@pytest.fixture(scope="module")
+def portfolio():
+    a = load_assumptions(TEST_ASSUMPTIONS)   # frozen placeholders: mechanics, not data
+    buildings = {b: load_building(b, root=FIXTURES, assumptions=a) for b in BUILDING_IDS}
+    upgrades = [u for b in BUILDING_IDS for u in load_feasibility(FIXTURES / b / "feasibility.json")]
+    return upgrades, buildings, a
+
+
+def deterministic(a):
+    """Every sd = 0, every life fixed, incentive and carbon fee certain."""
+    a = copy.deepcopy(a)
+    a["global"]["energy_price_growth"]["sd"] = 0.0
+    a["global"]["carbon_price"].update(p_fee_starts=1.0, start_year_range=[3, 3],
+                                       price_range_per_tonne=[50, 50])
+    for t in a["upgrades"].values():
+        t["savings_sd"] = 0.0
+        t["life_max"] = t["life_min"]
+        t["incentive_p"] = 1.0
+    return a
+
+
+# --- requested tests ---------------------------------------------------------------
+
+def test_zero_spread_mean_equals_npv_py(portfolio):
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    sim = simulate(upgrades, buildings, d, n_scenarios=500)
+    g = d["global"]
+    for i, u in enumerate(upgrades):
+        x = price_inputs(u, buildings[u.building_id], d)
+        t = d["upgrades"][u.type]
+        raw = t["savings_mu"] * x.kwh_basis_per_year
+        on_site = min(raw, x.kwh_cap_per_year)
+        exported = raw - on_site if x.exports_excess else 0.0
+        kwh = on_site + exported
+        expected = npv(
+            upfront_usd=x.upfront_usd, incentive_usd=x.incentive_usd,
+            incentive_lag_years=x.incentive_lag_years,
+            base_savings_usd=on_site * x.electricity_rate_usd_per_kwh + exported * x.export_rate_usd_per_kwh,
+            energy_price_growth=g["energy_price_growth"]["mu"],
+            general_inflation=g["general_inflation"], discount_rate=g["discount_rate"],
+            life_years=t["life_min"], maintenance_usd_per_year=x.maintenance_usd_per_year,
+            tonnes_per_year=kwh * x.grid_kg_co2_per_kwh / 1000,
+            carbon_price_per_tonne=50, carbon_start_year=3,
+        )
+        assert sim.npv[i].mean() == pytest.approx(expected, rel=1e-12, abs=1e-6), u.upgrade_id
+        assert np.ptp(sim.npv[i]) == pytest.approx(0, abs=1e-6)        # every scenario identical
+
+
+def test_mean_is_stable_from_1k_to_10k(portfolio):
+    upgrades, buildings, a = portfolio
+    small = simulate(upgrades, buildings, a, n_scenarios=1_000)
+    big = simulate(upgrades, buildings, a, n_scenarios=10_000)
+    for i, uid in enumerate(big.upgrade_ids):
+        se_small = big.npv[i].std() / np.sqrt(1_000)                    # standard error at K = 1,000
+        diff = abs(small.npv[i].mean() - big.npv[i].mean())
+        assert diff <= 4 * se_small, f"{uid}: means differ by {diff:.0f}, > 4 SE ({4 * se_small:.0f})"
+
+
+def test_same_seed_identical_output_and_new_seed_differs(portfolio):
+    upgrades, buildings, a = portfolio
+    one = simulate(upgrades, buildings, a, n_scenarios=2_000, seed=7)
+    two = simulate(upgrades, buildings, a, n_scenarios=2_000, seed=7)
+    other = simulate(upgrades, buildings, a, n_scenarios=2_000, seed=8)
+    for field in ("npv", "tonnes_per_year", "tonnes_lifetime", "energy_price_growth"):
+        assert np.array_equal(getattr(one, field), getattr(two, field)), field
+    assert not np.array_equal(one.npv, other.npv)
+
+
+# --- supporting checks -------------------------------------------------------------
+
+def test_energy_price_growth_is_shared(portfolio):
+    """With only g random, every upgrade's NPV moves with the same g, so they're ~perfectly correlated."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    d["global"]["energy_price_growth"]["sd"] = 0.015
+    sim = simulate(upgrades, buildings, d, n_scenarios=2_000)
+    assert sim.energy_price_growth.shape == (2_000,)
+    corr = np.corrcoef(sim.npv)
+    assert corr.min() > 0.99
+
+
+def test_excluding_an_upgrade_does_not_change_the_others(portfolio):
+    upgrades, buildings, a = portfolio
+    full = simulate(upgrades, buildings, a, n_scenarios=1_000)
+    fewer = simulate(upgrades[1:], buildings, a, n_scenarios=1_000)
+    for uid in fewer.upgrade_ids:
+        assert np.array_equal(full.npv[full.index(uid)], fewer.npv[fewer.index(uid)])
+
+
+def test_price_inputs_led_hand_check(portfolio):
+    """hou-001 LED: 112,000 sqft of 112,000 sqft floor -> coverage 1.
+    Baseline = 15 kWh/sqft (Office) x 120,000 rba = 1,800,000 kWh.
+    Upfront = 112,000 x $1.50 = $168,000; incentive if received = 10% = $16,800."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")
+    x = price_inputs(led, buildings["hou-001"], a)
+    assert x.coverage == 1.0
+    assert x.kwh_basis_per_year == pytest.approx(1_800_000)
+    assert x.upfront_usd == pytest.approx(168_000)
+    assert x.incentive_usd == pytest.approx(16_800)
+    assert x.maintenance_usd_per_year == 0
+
+
+def test_solar_kwh_basis_is_generation(portfolio):
+    """hou-002 solar: 307.2 kW x 1,450 kWh/kW/yr = 445,440 kWh."""
+    upgrades, buildings, a = portfolio
+    solar = next(u for u in upgrades if u.upgrade_id == "hou-002-rooftop_solar")
+    assert price_inputs(solar, buildings["hou-002"], a).kwh_basis_per_year == pytest.approx(445_440)
+
+
+def test_shapes_and_no_nans(portfolio):
+    upgrades, buildings, a = portfolio
+    sim = simulate(upgrades, buildings, a, n_scenarios=1_000)
+    assert sim.npv.shape == sim.tonnes_per_year.shape == (len(upgrades), 1_000)
+    assert np.isfinite(sim.npv).all() and (sim.tonnes_per_year >= 0).all()
+
+
+def test_non_houston_city_is_rejected(portfolio):
+    upgrades, buildings, a = portfolio
+    la = {**buildings, "hou-002": dataclasses.replace(buildings["hou-002"], city="Los Angeles")}
+    with pytest.raises(ValueError, match="Houston only"):
+        simulate(upgrades, la, a, n_scenarios=10)
+
+
+# --- risk.py -----------------------------------------------------------------------
+
+def test_risk_hand_case():
+    """NPVs -100, -99, ..., 99 (K = 200).
+    exp_npv = -0.5; p_loss = 100/200 = 0.5; worst 5% = 10 values -100..-91 -> mean -95.5."""
+    v = np.arange(-100, 100, dtype=float)
+    r = summarize(v)
+    assert r["exp_npv"] == pytest.approx(-0.5)
+    assert r["p_loss"] == pytest.approx(0.5)
+    assert r["cvar5"] == pytest.approx(-95.5)
+
+
+def test_hist_bins_format():
+    v = np.random.default_rng(0).normal(0, 1, 10_000)
+    bins = hist_bins(v)
+    assert len(bins) == 30
+    assert all(b["x0"] < b["x1"] for b in bins)
+    assert all(a["x1"] == pytest.approx(b["x0"]) for a, b in zip(bins, bins[1:]))
+    assert 0.98 * 10_000 <= sum(b["count"] for b in bins) <= 10_000
+
+
+def test_hist_bins_when_all_values_equal():
+    bins = hist_bins(np.full(100, 42.0))
+    assert len(bins) == 30 and sum(b["count"] for b in bins) == 100
+
+
+def test_cvar_vectorized_over_upgrades():
+    v = np.vstack([np.arange(-100, 100.0), np.arange(0, 200.0)])
+    assert cvar(v) == pytest.approx([-95.5, 4.5])
+
+
+# --- per-sqft savings and avoided replacement cost ------------------------------------
+
+def test_cool_roof_and_insulation_savings_scale_with_area_treated(portfolio):
+    """kwh_per_sqft_year: basis = sqft treated, so a 3x larger roof saves 3x more,
+    whatever the building's height or total energy use.
+    hou-001 roof 15,000 sqft, hou-002 roof 45,000 sqft; hou-001 wall 51,400 sqft."""
+    upgrades, buildings, a = portfolio
+    by_id = {u.upgrade_id: u for u in upgrades}
+    basis = lambda uid: price_inputs(by_id[uid], buildings[by_id[uid].building_id], a).kwh_basis_per_year
+    assert basis("hou-001-cool_roof") == 15_000
+    assert basis("hou-002-cool_roof") == 45_000
+    assert basis("hou-001-insulation") == 51_400
+    # With the placeholder 0.4 kWh/sqft/yr, mean kWh saved = 0.4 x sqft.
+    sim = simulate(upgrades, buildings, deterministic(a), n_scenarios=10)
+    kwh = lambda uid: sim.tonnes_per_year[sim.index(uid)][0] * 1000 / 0.38
+    assert kwh("hou-001-cool_roof") == pytest.approx(6_000)
+    assert kwh("hou-002-cool_roof") == pytest.approx(18_000)
+
+
+def test_avoided_replacement_cost_hand_check(portfolio):
+    """hou-001 heat pump, 112,000 sqft:
+    gross    = 112,000 x $20  = $2,240,000
+    avoided  = 112,000 x $12  = $1,344,000
+    upfront  = 2,240,000 - 1,344,000 = $896,000   (incremental over like-for-like)
+    incentive if received = 20% x gross = $448,000
+    maintenance = 2% x NET upfront = 2% x $896,000 = $17,920/yr (like-for-like would need upkeep too)"""
+    upgrades, buildings, a = portfolio
+    hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+    x = price_inputs(hp, buildings["hou-001"], a)
+    assert x.gross_cost_usd == pytest.approx(2_240_000)
+    assert x.avoided_replacement_usd == pytest.approx(1_344_000)
+    assert x.upfront_usd == pytest.approx(896_000)
+    assert x.incentive_usd == pytest.approx(448_000)
+    assert x.maintenance_usd_per_year == pytest.approx(17_920)
+
+
+def test_installed_cost_below_like_for_like_is_rejected(portfolio):
+    """Team rule: installed cost may never be below the like-for-like replacement cost."""
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["upgrades"]["cool_roof"]["avoided_replacement_cost_per_unit"] = 5.0     # > unit_cost 2.0
+    roof = next(u for u in upgrades if u.upgrade_id == "hou-001-cool_roof")
+    with pytest.raises(ValueError, match="below its like-for-like replacement cost"):
+        price_inputs(roof, buildings["hou-001"], d)
+
+
+def test_avoided_cost_is_optional(portfolio):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    del d["upgrades"]["heat_pump"]["avoided_replacement_cost_per_unit"]
+    hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+    x = price_inputs(hp, buildings["hou-001"], d)
+    assert x.avoided_replacement_usd == 0 and x.upfront_usd == x.gross_cost_usd
+
+
+def test_unknown_savings_unit_is_rejected(portfolio):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["upgrades"]["insulation"]["savings_unit"] = "percent"
+    ins = next(u for u in upgrades if u.upgrade_id == "hou-001-insulation")
+    with pytest.raises(ValueError, match="unknown savings_unit"):
+        price_inputs(ins, buildings["hou-001"], d)
+
+
+# --- caps ------------------------------------------------------------------------------
+
+def test_efficiency_kwh_capped_at_share_of_baseline(portfolio):
+    """hou-001 heat pump, deterministic, savings_mu raised to 0.8 by hand:
+    raw = 0.8 x 1,800,000 baseline = 1,440,000 kWh; cap = 0.5 x 1,800,000 = 900,000 kWh.
+    Excess is dropped (not exported): tonnes = 900,000 x 0.38 / 1000 = 342.0 t/yr."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    d["upgrades"]["heat_pump"]["savings_mu"] = 0.8
+    hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+    x = price_inputs(hp, buildings["hou-001"], d)
+    assert x.kwh_cap_per_year == pytest.approx(900_000)
+    assert not x.exports_excess and x.export_rate_usd_per_kwh == 0
+    sim = simulate([hp], buildings, d, n_scenarios=10)
+    assert sim.tonnes_per_year[0][0] == pytest.approx(342.0)
+
+
+def test_solar_self_consumes_up_to_baseline_and_exports_the_rest(portfolio):
+    """hou-002 solar resized to 600 kW by hand, deterministic (s = 0.95):
+    generation   = 600 x 1,450 x 0.95                 = 826,500 kWh
+    self-used    = min(826,500, 630,000 baseline x 1.0) = 630,000 kWh at $0.12 = $75,600
+    exported     = 826,500 - 630,000                   = 196,500 kWh at $0.04 = $7,860
+    savings      = $83,460 / yr at trailing-12-month prices
+    CO2 counts ALL generation: 826,500 x 0.38 / 1000   = 314.07 t/yr"""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    solar = next(u for u in upgrades if u.upgrade_id == "hou-002-rooftop_solar").model_copy(
+        update={"size_value": 600.0})
+    x = price_inputs(solar, buildings["hou-002"], d)
+    assert x.kwh_cap_per_year == pytest.approx(630_000)        # 100%, not max_savings_share
+    assert x.exports_excess and x.export_rate_usd_per_kwh == pytest.approx(0.04)
+    sim = simulate([solar], buildings, d, n_scenarios=10)
+    assert sim.tonnes_per_year[0][0] == pytest.approx(314.07)
+    g = d["global"]
+    t = d["upgrades"]["rooftop_solar"]
+    expected = npv(
+        upfront_usd=x.upfront_usd, incentive_usd=x.incentive_usd,
+        incentive_lag_years=x.incentive_lag_years, base_savings_usd=83_460,
+        energy_price_growth=g["energy_price_growth"]["mu"], general_inflation=g["general_inflation"],
+        discount_rate=g["discount_rate"], life_years=t["life_min"],
+        maintenance_usd_per_year=x.maintenance_usd_per_year, tonnes_per_year=314.07,
+        carbon_price_per_tonne=50, carbon_start_year=3,
+    )
+    assert sim.npv[0][0] == pytest.approx(expected, rel=1e-9)
+
+
+def test_fixture_solar_is_not_capped(portfolio):
+    """hou-002's real 307.2 kW system makes ~423,000 kWh, below its 630,000 kWh baseline,
+    so nothing is exported and every kWh is valued at the retail rate."""
+    upgrades, buildings, a = portfolio
+    solar = next(u for u in upgrades if u.upgrade_id == "hou-002-rooftop_solar")
+    sim = simulate([solar], buildings, a, n_scenarios=5_000)
+    kwh = sim.tonnes_per_year[0] * 1000 / 0.38
+    assert kwh.max() < 630_000
+
+
+def test_zero_export_rate_still_counts_exported_co2(portfolio):
+    """A $0 buyback rate values exports at $0 but they still displace grid power (CO2 counted)."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    d["cities"]["Houston"]["export_rate_usd_per_kwh"] = 0.0
+    solar = next(u for u in upgrades if u.upgrade_id == "hou-002-rooftop_solar").model_copy(
+        update={"size_value": 600.0})
+    sim = simulate([solar], buildings, d, n_scenarios=10)
+    assert sim.tonnes_per_year[0][0] == pytest.approx(314.07)
+
+
+def test_invalid_max_savings_share_is_rejected(portfolio):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["global"]["max_savings_share"] = 50          # percent, not decimal
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")   # efficiency, not solar
+    with pytest.raises(ValueError, match="max_savings_share"):
+        price_inputs(led, buildings["hou-001"], d)
+
+
+def test_incentive_never_exceeds_gross_cost(portfolio):
+    """incentive_fraction 1.5 by mistake -> incentive = gross cost, not 150% of it."""
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["upgrades"]["led_retrofit"]["incentive_fraction"] = 1.5
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")
+    x = price_inputs(led, buildings["hou-001"], d)
+    assert x.incentive_usd == x.gross_cost_usd == pytest.approx(168_000)
+
+
+def test_incentive_on_full_cost_even_with_avoided_replacement(portfolio):
+    """hou-001 heat pump: incentive = 20% of gross $2,240,000 = $448,000, not 20% of the $896,000 upfront."""
+    upgrades, buildings, a = portfolio
+    hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+    x = price_inputs(hp, buildings["hou-001"], a)
+    assert x.incentive_usd == pytest.approx(448_000) and x.upfront_usd == pytest.approx(896_000)
+
+
+
+# --- maintenance basis and size_unit validation ----------------------------------------------
+
+def test_maintenance_on_gross_when_no_avoided_replacement(portfolio):
+    """hou-001 solar: no avoided cost -> maintenance = 1% x gross 125.4 kW x $2,500 = $3,135/yr."""
+    upgrades, buildings, a = portfolio
+    solar = next(u for u in upgrades if u.upgrade_id == "hou-001-rooftop_solar")
+    x = price_inputs(solar, buildings["hou-001"], a)
+    assert x.upfront_usd == x.gross_cost_usd == pytest.approx(313_500)
+    assert x.maintenance_usd_per_year == pytest.approx(3_135)
+
+
+@pytest.mark.parametrize("uid,bad_unit", [
+    ("hou-001-led_retrofit", "fixtures"),     # LED counted in fixtures instead of floor sqft
+    ("hou-001-rooftop_solar", "sqft"),        # solar in sqft instead of kW
+    ("hou-001-heat_pump", "kW"),
+])
+def test_size_unit_mismatch_raises_clear_error(portfolio, uid, bad_unit):
+    upgrades, buildings, a = portfolio
+    u = next(x for x in upgrades if x.upgrade_id == uid).model_copy(update={"size_unit": bad_unit})
+    with pytest.raises(ValueError, match=rf"{uid}: .* must be sized in .* but size_unit is '{bad_unit}'"):
+        price_inputs(u, buildings["hou-001"], a)
+    with pytest.raises(ValueError, match="size_unit"):
+        simulate([u], buildings, a, n_scenarios=10)
+
+
+
+# --- replacement-due rule and estimate spreads -----------------------------------------------
+
+def _hp(upgrades):
+    return next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+
+
+@pytest.mark.parametrize("age,due", [(41, True), (40, True), (42, False), (None, False)])
+def test_replacement_due_rule(portfolio, age, due):
+    """hou-001 was built in 1985: 2026 - 1985 = 41. Credit applies only if 41 >= due age."""
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["global"]["analysis_year"] = 2026
+    d["upgrades"]["heat_pump"]["replacement_due_age_years"] = age
+    x = price_inputs(_hp(upgrades), buildings["hou-001"], d)
+    assert x.replacement_due is due
+    assert x.avoided_replacement_usd == (pytest.approx(1_344_000) if due else 0)
+    assert x.upfront_usd == pytest.approx(896_000 if due else 2_240_000)
+    # maintenance basis follows: net when the credit applies, gross when it doesn't
+    assert x.maintenance_usd_per_year == pytest.approx(0.02 * x.upfront_usd)
+
+
+def test_replacement_due_needs_a_build_year(portfolio):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["upgrades"]["heat_pump"]["replacement_due_age_years"] = 20
+    unknown = dataclasses.replace(buildings["hou-001"], year_built=None)
+    assert price_inputs(_hp(upgrades), unknown, d).avoided_replacement_usd == 0
+
+
+def test_no_due_age_key_keeps_legacy_behaviour(portfolio):
+    """The frozen test file has no replacement_due_age_years: credit always applies (as before)."""
+    upgrades, buildings, a = portfolio
+    assert "replacement_due_age_years" not in a["upgrades"]["heat_pump"]
+    assert price_inputs(_hp(upgrades), buildings["hou-001"], a).replacement_due is True
+
+
+def test_estimate_spread_widens_npv_but_keeps_its_mean(portfolio):
+    """A ±30% spread on heat-pump unit cost: multiplier ~ Normal(1, 0.15), so NPVs spread out
+    while the mean stays close (cost enters NPV linearly)."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)
+    base = simulate(upgrades, buildings, d, n_scenarios=20_000)
+    d["uncertainty"] = {"upgrades.heat_pump.unit_cost": 0.3}
+    wide = simulate(upgrades, buildings, d, n_scenarios=20_000)
+    i = wide.index("hou-001-heat_pump")
+    assert np.ptp(base.npv[i]) == pytest.approx(0, abs=1e-6) and wide.npv[i].std() > 0
+    gross = price_inputs(_hp(upgrades), buildings["hou-001"], d).gross_cost_usd
+    # The multiplier scales the FULL cost (the avoided credit has no spread here), so upfront
+    # varies by 0.15 x gross. The 20% incentive (on gross) and maintenance (2% of net upfront,
+    # ~11x annuity) also scale with it and roughly cancel: NPV std ~ 0.15 x gross x (1 - 0.2 + 0.2).
+    assert 0.9 < wide.npv[i].std() / (0.15 * gross) < 1.15
+    assert wide.npv[i].mean() == pytest.approx(base.npv[i].mean(), rel=0.02)
+    # other upgrades are untouched by a spread on heat-pump cost
+    j = wide.index("hou-001-led_retrofit")
+    assert np.array_equal(wide.npv[j], base.npv[j])
+
+
+def test_estimate_spread_is_deterministic_and_shared(portfolio):
+    """Same seed -> same draws; one draw per field, shared by every upgrade using it."""
+    upgrades, buildings, a = portfolio
+    d = deterministic(a)                       # only the shared multiplier varies
+    d["uncertainty"] = {"cities.Houston.kwh_per_sqft_year.Office": 0.3}
+    one = simulate(upgrades, buildings, d, n_scenarios=2_000)
+    two = simulate(upgrades, buildings, d, n_scenarios=2_000)
+    assert np.array_equal(one.npv, two.npv)
+    # hou-001 and hou-003 are both Office: their LED savings move together
+    l1, l3 = one.index("hou-001-led_retrofit"), one.index("hou-003-led_retrofit")
+    assert np.corrcoef(one.tonnes_per_year[l1], one.tonnes_per_year[l3])[0, 1] > 0.99
+    assert one.tonnes_per_year[l1].std() > 0
+    # hou-002 is Retail: no Office spread reaches it
+    assert np.ptp(one.tonnes_per_year[one.index("hou-002-led_retrofit")]) == pytest.approx(0, abs=1e-9)
+
+
+@pytest.mark.parametrize("bad", [{"upgrades.heat_pump.savings_mu": 0.3}, {"global.seed": 0.3},
+                                 {"upgrades.heat_pump.unit_cost": 1.5}, {"cities.Houston.nope": 0.3}])
+def test_invalid_uncertainty_rejected(portfolio, bad):
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a); d["uncertainty"] = bad
+    with pytest.raises(ValueError, match="uncertainty"):
+        simulate(upgrades, buildings, d, n_scenarios=10)
+
+
+
+# --- rebates ($/kWh, cap, minimum) and per-scenario due ages -------------------------------
+
+def _det_with(a, **upd):
+    d = deterministic(a)
+    for t, fields in upd.items():
+        d["upgrades"][t].update(fields)
+    return d
+
+
+def test_kwh_rebate_hand_check(portfolio):
+    """hou-001 LED (frozen placeholders, deterministic): kWh saved = 0.06 x 1,800,000 = 108,000.
+    Rebate = $0.06 x 108,000 = $6,480; cap 50% of $168,000 doesn't bind; minimum 100,000 met.
+    Incentive = 10% x 168,000 credit + 6,480 rebate = $23,280 (p = 1, lag 0)."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")
+    base = simulate([led], buildings, deterministic(a), n_scenarios=10).npv[0][0]
+    d = _det_with(a, led_retrofit=dict(incentive_usd_per_kwh_saved=0.06, incentive_cap_frac_of_cost=0.5,
+                                         incentive_min_kwh_saved=100_000, incentive_lag_years=0))
+    with_rebate = simulate([led], buildings, d, n_scenarios=10).npv[0][0]
+    assert with_rebate - base == pytest.approx(6_480, abs=0.01)
+
+
+def test_rebate_minimum_not_met_pays_nothing(portfolio):
+    """hou-002 LED saves 0.06 x 630,000 = 37,800 kWh < 100,000 -> no rebate."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-002-led_retrofit")
+    base = simulate([led], buildings, deterministic(a), n_scenarios=10).npv[0][0]
+    d = _det_with(a, led_retrofit=dict(incentive_usd_per_kwh_saved=0.06, incentive_min_kwh_saved=100_000))
+    assert simulate([led], buildings, d, n_scenarios=10).npv[0][0] == pytest.approx(base)
+
+
+def test_incentive_cap_binds(portfolio):
+    """$5/kWh x 108,000 = $540,000 rebate, capped at 50% of $168,000 = $84,000 total incentive."""
+    upgrades, buildings, a = portfolio
+    led = next(u for u in upgrades if u.upgrade_id == "hou-001-led_retrofit")
+    no_inc = simulate([led], buildings, _det_with(a, led_retrofit=dict(incentive_fraction=0.0)), n_scenarios=10).npv[0][0]
+    d = _det_with(a, led_retrofit=dict(incentive_fraction=0.0, incentive_usd_per_kwh_saved=5.0,
+                                         incentive_cap_frac_of_cost=0.5, incentive_lag_years=0))
+    assert simulate([led], buildings, d, n_scenarios=10).npv[0][0] - no_inc == pytest.approx(84_000, abs=0.01)
+
+
+def test_due_age_spread_makes_credit_probabilistic(portfolio):
+    """hou-001 is 41 years old. Due age 40 with a ±30% spread: due when 40 x m <= 41, i.e.
+    m <= 1.025, P = Phi(0.025 / 0.15) ~ 0.566. Without the spread it's always due."""
+    upgrades, buildings, a = portfolio
+    hp = next(u for u in upgrades if u.upgrade_id == "hou-001-heat_pump")
+    d = _det_with(a, heat_pump=dict(replacement_due_age_years=40))
+    always = simulate([hp], buildings, d, n_scenarios=20_000).npv[0]
+    d["uncertainty"] = {"upgrades.heat_pump.replacement_due_age_years": 0.3}
+    mixed = simulate([hp], buildings, d, n_scenarios=20_000).npv[0]
+    share_due = float(np.isclose(mixed, always[0]).mean())
+    assert share_due == pytest.approx(0.566, abs=0.02)
+
+
+
+# --- premium over like-for-like ---------------------------------------------------------------
+
+def _with_premium(a, t="heat_pump", premium=0.15, spread=None, due_age=None):
+    d = copy.deepcopy(a)
+    d["upgrades"][t]["premium_over_replacement"] = premium
+    if due_age is not None:
+        d["upgrades"][t]["replacement_due_age_years"] = due_age
+    if spread:
+        d["uncertainty"] = {f"upgrades.{t}.premium_over_replacement": spread}
+    return d
+
+
+def test_premium_hand_check_due_and_not_due(portfolio):
+    """hou-001 heat pump, 112,000 sqft, like-for-like $12/sqft (frozen file), premium 0.15:
+    installed = 12 x 1.15 = $13.80/sqft -> $1,545,600. Due (41 >= 40): net = 12 x 0.15 x 112,000
+    = $201,600. Not due (41 < 45): net = full $1,545,600."""
+    upgrades, buildings, a = portfolio
+    hp = _hp(upgrades)
+    due = price_inputs(hp, buildings["hou-001"], _with_premium(a, due_age=40))
+    assert due.gross_cost_usd == pytest.approx(1_545_600) and due.upfront_usd == pytest.approx(201_600)
+    not_due = price_inputs(hp, buildings["hou-001"], _with_premium(a, due_age=45))
+    assert not_due.upfront_usd == pytest.approx(1_545_600)
+
+
+@pytest.mark.parametrize("premium,bad", [(0.15, None), (0.0, "must be > 0"), (-0.1, "must be > 0")])
+def test_premium_must_be_positive(portfolio, premium, bad):
+    upgrades, buildings, a = portfolio
+    d = _with_premium(a, premium=premium)
+    if bad:
+        with pytest.raises(ValueError, match=bad):
+            price_inputs(_hp(upgrades), buildings["hou-001"], d)
+    else:
+        assert price_inputs(_hp(upgrades), buildings["hou-001"], d).upfront_usd > 0
+
+
+def test_net_upfront_always_positive_with_premium_spread(portfolio):
+    """±50% premium spread on all three like-for-like types, due everywhere: in every one of
+    20,000 scenarios every upgrade's net upfront is > 0 (premium multiplier floored above 0)."""
+    upgrades, buildings, a = portfolio
+    d = copy.deepcopy(a)
+    d["uncertainty"] = {}
+    for t in ("heat_pump", "window_upgrade", "cool_roof"):
+        d["upgrades"][t]["premium_over_replacement"] = 0.15
+        d["upgrades"][t]["replacement_due_age_years"] = 1
+        d["uncertainty"][f"upgrades.{t}.premium_over_replacement"] = 0.5
+        d["uncertainty"][f"upgrades.{t}.avoided_replacement_cost_per_unit"] = 0.3
+    sim = simulate(upgrades, buildings, d, n_scenarios=20_000)
+    assert (sim.upfront_usd > 0).all()
