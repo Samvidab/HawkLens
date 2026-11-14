@@ -12,6 +12,8 @@
 
 - main.py: events router mounted, GET /registry, GET /portfolio (returns portfolio.json as-is)
 
+- T2.4 engine + Nessie stubs (`integrations/engine_client.py`, `nessie_client.py`, `fixtures/engine/stub_params.json`) with contract tests. Stub engine returns the extras the quant-engine branch documents (upfront_usd, tonnes_per_year, status, p_loss, hist_bins, tonnes_needed, shortfall_tonnes, cheapest_extra, baseline()) and flags `stub: true`. Live mode imports `app.engine`. Nessie `Bill` shape is mine (TRD left it undefined); teammate to replace file.
+
 ## In progress
 - nothing
 
