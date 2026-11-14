@@ -85,12 +85,44 @@ def entry(h: dict, hero_id: int, city: str) -> dict:
     }
 
 
+async def best_unlocked_model(model_ids: list[str]) -> dict | None:
+    """Hero's model for interior work: MatterPak unlocked, then most panos, then most rooms."""
+    from app.adapters import matterport
+
+    best = None
+    for mid in model_ids:
+        ref = await matterport.model_ref(mid)
+        if ref.matterpak != "unlocked":
+            continue
+        if best is None or (ref.panos, ref.rooms) > (best.panos, best.rooms):
+            best = ref
+    if best is None:
+        print("WARNING: hero has no model with an unlocked MatterPak; pick another hero", file=sys.stderr)
+        return None
+    return {"model_id": best.model_id, "name": best.name, "panos": best.panos, "rooms": best.rooms,
+            "matterpak": best.matterpak}
+
+
+async def check_vexcel(buildings: list[dict], city: str) -> None:
+    """Fetch (and cache) each building's overhead ortho; record coverage."""
+    from app.adapters import geometry, vexcel
+
+    for b in buildings:
+        try:
+            await vexcel.overhead(geometry.point_wkt(b["lat"], b["lon"]),
+                                  vexcel.overhead_buffer_m(b["rba_sqft"], b["stories"]), city=city)
+            b["coverage"]["vexcel"] = "overhead"
+        except Exception as e:  # noqa: BLE001 - record and continue
+            b["coverage"]["vexcel"] = f"none ({type(e).__name__})"
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=8)
     ap.add_argument("--hero", type=int)
     ap.add_argument("--ids", type=int, nargs="*", help="use exactly these PropertyIds")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--offline", action="store_true", help="skip the Matterport hero-model check")
     args = ap.parse_args()
     if not 6 <= (len(args.ids) if args.ids else args.n) <= 10:
         ap.error("portfolio must have 6–10 buildings")
@@ -114,16 +146,25 @@ async def main() -> int:
     if hero_id not in {h["property_id"] for h in chosen}:
         ap.error(f"hero {hero_id} is not in the portfolio")
 
+    hero_model = None if args.offline else await best_unlocked_model(
+        next(h for h in chosen if h["property_id"] == hero_id)["matterport_model_ids"])
+
     doc = {
         "city": city,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "selection": {
             "property_type": "Office", "rba_sqft": [MIN_RBA, MAX_RBA], "stories": [MIN_STORIES, MAX_STORIES],
             "min_spacing_m": MIN_SPACING_M, "requires": ["year_built", "matterport_model", "costar_aerial_photo"],
-            "vexcel_coverage": "unchecked",
+            "vexcel_coverage": "overhead ortho fetched per building (obliques not yet available)",
         },
         "buildings": [entry(h, hero_id, city) for h in chosen],
     }
+    if not args.offline:
+        await check_vexcel(doc["buildings"], city)
+    if hero_model:
+        hb = next(b for b in doc["buildings"] if b["hero"])
+        hb["matterport_model_id"] = hero_model["model_id"]
+        hb["hero_model"] = hero_model
 
     for b in doc["buildings"]:
         print(f"{'★' if b['hero'] else ' '} {b['building_id']:>8}  {b['name'][:30]:30} {b['rba_sqft']:>9,.0f} sf "

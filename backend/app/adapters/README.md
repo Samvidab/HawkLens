@@ -7,11 +7,31 @@ Kit files are read in place and never copied into the repo.
 
 | Layer | Access | Status |
 |---|---|---|
-| CoStar records | Local JSON Lines files in the kit. **No API.** `schemas/openapi.yaml` has `paths: {}` (record shapes only) | ✅ working, cached |
-| CoStar photos (incl. aerials) | `attachmentUri` on CoStar's CDN (`ahprd1cdn.csgpimgs.com`) | ❌ plain GET returns **403 Forbidden** |
-| Matterport model ids | `commercial-properties.csv` `MatterportModelId`, also `attachments[].videoKey` in the record | ✅ working, cached |
-| Matterport API (panos, rooms, MatterPak) | "provided in a separate zip file" (kit `index.md`) | ❌ zip not received |
-| Vexcel overhead / oblique | Not mentioned anywhere in the kit | ❌ no docs / endpoints |
+| CoStar records | Local JSON Lines files in the kit. **No API.** `schemas/openapi.yaml` has `paths: {}` (record shapes only) | ✅ `costar.py`, cached |
+| CoStar photos (incl. aerials) | `attachmentUri` on CoStar's CDN | ⛔ 403; **skipped by decision** (Vexcel covers aerials) |
+| Matterport model ids | `commercial-properties.csv` `MatterportModelId`, also `attachments[].videoKey` in the record | ✅ `costar.matterport_model_ids` |
+| Matterport Model API | GraphQL, `POST https://api.matterport.com/api/models/graph`, basic auth `MATTERPORT_API_KEY`:`MATTERPORT_API_TOKEN` (production only) | ✅ `matterport.py`, live-tested |
+| Vexcel overhead | `POST https://api.vexcelgroup.com/v2/ortho/extract`, `X-API-KEY` header; body → JPEG | ✅ `vexcel.overhead`, live-tested on all 8 portfolio buildings |
+| Vexcel oblique / roof attributes | Documented only in the Vexcel quickstart that should be in `backend/toolkit/` | ❌ `backend/toolkit/` not in the merge; `vexcel.oblique` raises `NotImplementedError` |
+
+Sources: `docs/agent/costar-quickstart.md` (Matterport sections 1–8, Vexcel section 7).
+
+## Matterport Model API (real queries, `matterport.py`)
+
+| Function | Query | Notes |
+|---|---|---|
+| `key_check()` | `rootFolder { name modelCountSummary(includeModelsInSubfolders: true) }` | "HackPrinceton 2026", 14,944 models |
+| `basics(id)` | `model(id) { id name description created visibility address{…} geolocation{lat long} generatedDescription{summary} propertyClassifications{…} floors{id label} rooms{id} panoLocations{id} image{url} }` | lat/long come back as strings |
+| `panoramas(id)` | `panoLocations { id label position{x y z} skybox(resolution: "2k") { status children } }`, `view(type: "matterport.model.defurnished") { id }` | 6 faces: 0 up, 1–4 horizon, 5 down. Signed URLs expire → `pano_face()` downloads to cache and re-queries once on 401/403 |
+| `rooms(id)` | `floors { vertices{id position{x y}} edges{id type thickness vertices{id}} }`, `rooms { classifications{label confidence} boundary{edges{id}} dimensions(units: metric){areaFloor width depth height} }`, `assets { floorplans(provider: "matterport") {format flags url width height resolution origin{x y}} }` | wall graph in metres, model frame |
+| `matterpak_status(id)` | `bundle(id: "mp:matterpak") { availability }`, `assets { resources(format: "matterpak") { status filename url } }` | `unlocked` / `locked` |
+| `matterpak(id)` | (above, then download zip) | extracts OBJ/MTL/textures/colorplan into `cache/media/mesh/<id>/`; `cloud.xyz` (≈400 MB) only with `include_pointcloud=True` |
+
+The Model API has no geographic search. Models are matched to buildings through the CoStar CSV (PropertyId → model ids).
+
+## Vexcel (`vexcel.py`)
+
+`overhead(point_wkt, buffer_m)` sends `{"wkt": <square around point>, "srid": 4326, "layer": "urban,urban-r,wide-area,urban-g", "crop": "bounding_box", "image-format": "jpeg", "destination-dimensions": "1400,1400", "attribution": "false"}`. Native GSD is 7.5 cm; `gsd_m` on the ImageRef is the effective `2·buffer/1400`. `overhead_buffer_m(rba, stories)` sizes the crop to ~1.6× the estimated footprint. Houston and LA only (403 elsewhere).
 
 ## CoStar kit layout
 
@@ -63,11 +83,11 @@ Sample: **PropertyId 23347, "333 Northbelt"**, 333 Sam Houston Pky, Houston. Off
 |---|---|---|
 | CoStar record | `costar.property` | ✅ (read_only re-run hits cache) |
 | Matterport model list | `costar.matterport_models` | ✅ 5 models: `NLpW1UAp1HJ, NgGvLZnbEMM, VKkfYGTqZAx, WSYTQt3istC, w63JtBJm3gt` |
-| Overhead image | `costar.attachment` (CoStar aerial as stand-in) | ❌ CDN 403 |
-| Oblique ×4 | — | ❌ no Vexcel access |
+| Overhead image | `vexcel.ortho` | ✅ all 8 portfolio buildings (e.g. hero 23551 at 8.6 cm/px) |
+| Oblique ×4 | — | ❌ oblique API undocumented in what we have |
+| MatterPak availability (hero 23551) | `matterport.matterpak` | ✅ all 10 models `unlocked`; hero model `hu9LX64osUN` (Suite 266, 17 panos, 3 rooms) |
 
-## Open questions for the human
+## Open items
 
-1. Vexcel: docs / base URL / auth for overhead + oblique (key `VEXCEL_API_KEY` is set but nothing describes the API).
-2. Matterport: the "separate zip" with connection details (`MATTERPORT_API_KEY` / `MATTERPORT_API_TOKEN` are set).
-3. CoStar CDN images return 403 to a plain request. Are they meant to be fetchable from our server, and how?
+1. Vexcel obliques + roof attributes: need the Vexcel quickstart (`backend/toolkit/` did not come through the merge). Aerial inspector runs overhead-only until then (plan fallback "skip obliques").
+2. `models_index.csv` (splat models) also missing; not needed since the hero's MatterPak is unlocked.

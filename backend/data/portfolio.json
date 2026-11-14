@@ -1,6 +1,6 @@
 {
   "city": "Houston",
-  "generated_at": "2026-11-14T06:14:09+00:00",
+  "generated_at": "2026-11-14T06:22:06+00:00",
   "selection": {
     "property_type": "Office",
     "rba_sqft": [
@@ -17,7 +17,7 @@
       "matterport_model",
       "costar_aerial_photo"
     ],
-    "vexcel_coverage": "unchecked"
+    "vexcel_coverage": "overhead ortho fetched per building (obliques not yet available)"
   },
   "buildings": [
     {
@@ -42,7 +42,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 11,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     },
     {
@@ -69,7 +69,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 8,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     },
     {
@@ -95,7 +95,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 7,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     },
     {
@@ -124,7 +124,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 4,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     },
     {
@@ -152,11 +152,18 @@
         "xH3GSAxmmht",
         "zDYYFhPQqHC"
       ],
-      "matterport_model_id": "4AGeBia6uPA",
+      "matterport_model_id": "hu9LX64osUN",
       "hero": true,
       "coverage": {
         "costar_aerial_photos": 1,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
+      },
+      "hero_model": {
+        "model_id": "hu9LX64osUN",
+        "name": "7457 Harwin Suite 266",
+        "panos": 17,
+        "rooms": 3,
+        "matterpak": "unlocked"
       }
     },
     {
@@ -181,7 +188,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 7,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     },
     {
@@ -207,7 +214,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 5,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     },
     {
@@ -230,7 +237,7 @@
       "hero": false,
       "coverage": {
         "costar_aerial_photos": 8,
-        "vexcel": "unchecked"
+        "vexcel": "overhead"
       }
     }
   ]
