@@ -165,3 +165,17 @@ def test_replan_is_fast_with_stub_engine(c, data):
         t1 = time.perf_counter(); assert post(c, t, pl).status_code == 200
         assert time.perf_counter() - t1 < 3.0, t
     assert time.perf_counter() - t0 < 5 * 3.0
+
+
+def test_compose_actions_never_erase_the_surveys_state_fields(c, data):
+    """Lane A's graph writes status/results/plan into runs/<id>/state.json; every action must merge into it."""
+    (data / "runs/r").mkdir(parents=True)
+    (data / "runs/r/state.json").write_text(json.dumps({"run_id": "r", "status": "surveyed", "plan": ["Survey 2 buildings"],
+                                                         "results": {"b1": {"status": "done", "upgrades": 2}}}))
+    for t, pl in [("goal", GOAL), ("set_target", {"target_pct": 20}), ("open_building", {"building_id": "b1"}),
+                  ("open_building", {"building_id": None})]:
+        assert post(c, t, pl).status_code == 200
+        st = json.loads((data / "runs/r/state.json").read_text())
+        assert st["status"] == "surveyed" and st["plan"] == ["Survey 2 buildings"] and st["results"]["b1"]["upgrades"] == 2, t
+        assert st["layout"]["widgets"] and st["plan_id"] and "view" in st
+    assert c.get("/state/r").json()["status"] == "surveyed"

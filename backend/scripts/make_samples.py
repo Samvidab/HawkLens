@@ -79,6 +79,11 @@ def build_world(root: Path, *, issue: bool = False) -> None:
                                           {"room_id": "r2", "type": "corridor", "polygon": [[10, 0], [22, 0], [22, 3], [10, 3]], "area_sqft": 390.0},
                                           {"room_id": "r3", "type": "mechanical", "polygon": [[10, 3], [22, 3], [22, 8], [10, 8]], "area_sqft": 640.0}])
             write_json(d / "interior.json", interior)
+            write_json(d / "interior_scan.json", {  # Lane A's scan summary: mesh urls + rooms (+ optional showcase_url)
+                "model_id": "SYNTH-MODEL", "mesh_url": "/media/mesh/SYNTH-MODEL/model.obj", "mtl_url": "/media/mesh/SYNTH-MODEL/model.mtl",
+                "rooms": [{"room_id": "r1", "type": "office", "area_sqft": 860.0, "height_m": 2.7},
+                          {"room_id": "r2", "type": "corridor", "area_sqft": 390.0, "height_m": 2.7},
+                          {"room_id": "r3", "type": "mechanical", "area_sqft": 640.0, "height_m": 3.0}]})
         ups = evaluate(prof, aer, interior, claims)
         # the verifier's final statuses decide verified/include_in_optimizer
         from app.rules.feasibility import apply_verification
@@ -124,6 +129,9 @@ async def generate(out: Path) -> dict[str, dict]:
     fresh(); await act("sample", "goal", GOAL)
     samples["building_detail"] = await act("sample", "open_building", {"building_id": "b1"})
     samples["building_detail_no_matterport"] = await act("sample", "open_building", {"building_id": "b3"})
+    scan = DATA / "buildings/b1/interior_scan.json"  # Lane A supplies a Matterport tour link: hero_3d embeds it instead of the mesh
+    write_json(scan, {**json.loads(scan.read_text()), "showcase_url": "https://my.matterport.com/show/?m=SYNTH-MODEL"})
+    samples["building_detail_showcase"] = await act("sample", "open_building", {"building_id": "b1"})
     fresh(); await act("sample", "goal", GOAL)
     pid = json.loads((DATA / "plans/current.json").read_text())["plan_id"]
     samples["approved"] = await act("sample", "approve", {"plan_id": pid})

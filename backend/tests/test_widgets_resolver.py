@@ -40,6 +40,8 @@ def data(tmp_path):
     write(tmp_path / "buildings/b1/interior.json", InteriorFindings(
         building_id="b1", model_id="m1", lighting_type="LED", hvac_visible=[], window_type="double",
         claim_ids=[], evidence_ids=[], pins=[Pin(claim_id="k1", label="solar roof", xyz=(1, 2, 3), status="verified")]))
+    write(tmp_path / "buildings/b1/interior_scan.json", {"model_id": "m1", "mesh_url": "/media/mesh/m1/model.obj",
+                                                         "mtl_url": "/media/mesh/m1/model.mtl", "rooms": [{"room_id": "r1", "type": "office", "area_sqft": 500.0}]})
     write(tmp_path / "buildings/b1/feasibility.json", [
         upgrade("b1", "rooftop_solar", "solar", 75, "kW", claims=["k1"]),
         upgrade("b1", "window_upgrade", "envelope", 9000, "sqft", verified="unverified", claims=["k2"])])

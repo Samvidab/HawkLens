@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from app.schemas.claims import Mark
 from app.schemas.interior import Pin
@@ -44,8 +44,8 @@ class Building3D(Props):
 
 class Room(Props):
     room_id: str
-    type: str
-    polygon: list[tuple[float, float]]
+    type: str | None = None
+    polygon: list[tuple[float, float]] = []  # empty when only the room list (no geometry) is known
     area_sqft: float | None = None
 
 
@@ -129,11 +129,23 @@ class Portfolio3D(Props):
 
 
 class Hero3D(Props):
+    """`mode` "mesh": render the OBJ/MTL (pins are in mesh coordinates). `mode` "showcase": embed the Matterport
+    3D tour (`showcase_url`, an iframe link); mesh urls are then null and pins are informational only."""
     building_id: str
-    mesh_url: str
-    mtl_url: str
+    mode: Literal["mesh", "showcase"] = "mesh"
+    mesh_url: str | None = None
+    mtl_url: str | None = None
+    showcase_url: str | None = None
     pins: list[Pin] = []
     rooms: list[Room] | None = None
+
+    @model_validator(mode="after")
+    def _has_a_source(self) -> "Hero3D":
+        if self.mode == "showcase" and not self.showcase_url:
+            raise ValueError("showcase mode needs showcase_url")
+        if self.mode == "mesh" and not self.mesh_url:
+            raise ValueError("mesh mode needs mesh_url")
+        return self
 
 
 class AbatementCurve(Props):

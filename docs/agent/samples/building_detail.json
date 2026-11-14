@@ -48,11 +48,13 @@
       "title": "Interior scan",
       "why": "Findings pinned where the scanner saw them.",
       "size": "wide",
-      "data_ref": "buildings/b1/interior.json",
+      "data_ref": "buildings/b1/interior_scan.json",
       "props": {
         "building_id": "b1",
+        "mode": "mesh",
         "mesh_url": "/media/mesh/SYNTH-MODEL/model.obj",
         "mtl_url": "/media/mesh/SYNTH-MODEL/model.mtl",
+        "showcase_url": null,
         "pins": [
           {
             "claim_id": "b1-i1",

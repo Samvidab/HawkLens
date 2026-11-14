@@ -11,7 +11,8 @@ the stub engine, so `plan_table.props.sample_pricing` is `true` (show the "sampl
 | `target_gap.json` | `target_gap` | `goal` {target 90 %, budget $400k} → engine says infeasible |
 | `verification_issue.json` | `verification_issue` | `goal`, one rejected claim backing an upgrade (evidence_gallery shows it first with the verifier note) |
 | `building_detail.json` | `building_detail` | `open_building` {b1}: hero with Matterport (`hero_3d`, `floor_plan`, pins) |
-| `building_detail_no_matterport.json` | `building_detail` | `open_building` {b3}: no Matterport → `portfolio_3d` instead, no `hero_3d`/`floor_plan` |
+| `building_detail_showcase.json` | `building_detail` | same, but Lane A supplied a Matterport tour link (`showcase_url`): `hero_3d.props.mode` = `"showcase"`, mesh urls are `null` |
+| `building_detail_no_matterport.json` | `building_detail` | `open_building` {b3}: no mesh, no showcase link and no interior data → `portfolio_3d` instead, no `hero_3d`/`floor_plan` |
 | `approved.json` | `approved` | `approve` {plan_id} → financing_card executed (stub Nessie ids), memo, plan_table |
 | `registry.json` | – | `GET /registry`: JSON Schema of every widget's props, default size, and the actions it emits |
 
@@ -21,6 +22,7 @@ the stub engine, so `plan_table.props.sample_pricing` is `true` (show the "sampl
   only prop is `run_id` (open `GET /events/{run_id}` SSE yourself). `why` is ≤ 90 chars (here the stock lines; in a live run Gemini may rewrite them).
 - Props never contain free text from an LLM except `why` and `memo.markdown` (numbers in both are substituted/checked by code).
 - Optional numbers can be `null` (e.g. `p_hit_target` before a plan exists, `upfront_usd` if the engine omits it): render a dash.
+- `hero_3d` appears only when the building has a mesh or a showcase link; `floor_plan` only when it has interior room data (rooms may have an empty `polygon`: list them with areas). `hero_3d.props.mode`: `"mesh"` (render `mesh_url`/`mtl_url`) or `"showcase"` (embed `showcase_url` in an iframe; mesh urls are null, pins informational).
 - Images: `evidence_gallery.items[].url` = `/media/{image_id}`; marks are normalized 0–1 (`bbox` = x0,y0,x1,y1, or `polygon`).
   Mesh: `hero_3d.props.mesh_url` / `mtl_url` = `/media/mesh/{model_id}/model.obj|.mtl`; textures load relative to that folder.
   These sample URLs are illustrative (no files behind them here).

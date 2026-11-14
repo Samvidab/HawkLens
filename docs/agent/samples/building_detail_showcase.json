@@ -1,0 +1,737 @@
+{
+  "layout_id": "lay_sample_building_detail_showcase",
+  "run_id": "sample",
+  "situation": "building_detail",
+  "focus_building_id": "b1",
+  "generated_at": "2026-11-14T15:02:11Z",
+  "widgets": [
+    {
+      "id": "w1",
+      "type": "building_header",
+      "title": "Building",
+      "why": "Records from CoStar for this building.",
+      "size": "full",
+      "data_ref": "buildings/b1/profile.json",
+      "props": {
+        "profile": {
+          "building_id": "b1",
+          "costar_id": "SYNTH-b1",
+          "name": "Sample Tower",
+          "address": "101 Main St",
+          "city": "Houston",
+          "lat": 29.7604,
+          "lon": -95.3698,
+          "footprint_wkt": "POLYGON ((-95.36952159774033 29.76016686720193, -95.36953280428271 29.760642911257904, -95.3700784035469 29.760633132132927, -95.37006719443004 29.760157088264574, -95.36952159774033 29.76016686720193))",
+          "footprint_source": "estimated",
+          "property_type": "Office",
+          "building_class": "A",
+          "year_built": 1982,
+          "stories": 30,
+          "rba_sqft": 900000.0,
+          "occupancy_pct": 88.0,
+          "matterport_model_id": "SYNTH-MODEL",
+          "source_fields": {
+            "stories": "NumberOfStories",
+            "rba_sqft": "RBA",
+            "year_built": "YearBuilt"
+          }
+        },
+        "baseline": {
+          "annual_spend_usd": 1890000.0,
+          "tonnes_per_year": 4050.0
+        }
+      }
+    },
+    {
+      "id": "w2",
+      "type": "hero_3d",
+      "title": "Interior scan",
+      "why": "Findings pinned where the scanner saw them.",
+      "size": "wide",
+      "data_ref": "buildings/b1/interior_scan.json",
+      "props": {
+        "building_id": "b1",
+        "mode": "showcase",
+        "mesh_url": null,
+        "mtl_url": null,
+        "showcase_url": "https://my.matterport.com/show/?m=SYNTH-MODEL",
+        "pins": [
+          {
+            "claim_id": "b1-i1",
+            "label": "Fluorescent lighting",
+            "xyz": [
+              4.2,
+              7.1,
+              2.6
+            ],
+            "status": "verified"
+          },
+          {
+            "claim_id": "b1-i2",
+            "label": "Older rooftop unit",
+            "xyz": [
+              12.0,
+              3.4,
+              3.1
+            ],
+            "status": "verified"
+          }
+        ],
+        "rooms": [
+          {
+            "room_id": "r1",
+            "type": "office",
+            "polygon": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                10.0,
+                0.0
+              ],
+              [
+                10.0,
+                8.0
+              ],
+              [
+                0.0,
+                8.0
+              ]
+            ],
+            "area_sqft": 860.0
+          },
+          {
+            "room_id": "r2",
+            "type": "corridor",
+            "polygon": [
+              [
+                10.0,
+                0.0
+              ],
+              [
+                22.0,
+                0.0
+              ],
+              [
+                22.0,
+                3.0
+              ],
+              [
+                10.0,
+                3.0
+              ]
+            ],
+            "area_sqft": 390.0
+          },
+          {
+            "room_id": "r3",
+            "type": "mechanical",
+            "polygon": [
+              [
+                10.0,
+                3.0
+              ],
+              [
+                22.0,
+                3.0
+              ],
+              [
+                22.0,
+                8.0
+              ],
+              [
+                10.0,
+                8.0
+              ]
+            ],
+            "area_sqft": 640.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "w3",
+      "type": "upgrade_list",
+      "title": "Feasible upgrades",
+      "why": "What this building can take, and how sure we are.",
+      "size": "half",
+      "data_ref": "buildings/*/feasibility.json",
+      "props": {
+        "upgrades": [
+          {
+            "upgrade": {
+              "upgrade_id": "b1:rooftop_solar",
+              "building_id": "b1",
+              "category": "solar",
+              "type": "rooftop_solar",
+              "size_value": 360.0,
+              "size_unit": "kW",
+              "reason": "2400 m2 usable roof, no existing solar, shading none (derate 1.0)",
+              "confidence": 0.85,
+              "claim_ids": [
+                "b1-c1",
+                "b1-c2"
+              ],
+              "evidence_ids": [
+                "vxo_b1_1"
+              ],
+              "verified": "verified",
+              "include_in_optimizer": true
+            },
+            "in_plan": true,
+            "owner_included": false,
+            "highlighted": true
+          },
+          {
+            "upgrade": {
+              "upgrade_id": "b1:cool_roof",
+              "building_id": "b1",
+              "category": "roof",
+              "type": "cool_roof",
+              "size_value": 30000.0,
+              "size_unit": "sqft",
+              "reason": "flat dark roof in a hot climate",
+              "confidence": 0.85,
+              "claim_ids": [
+                "b1-c3",
+                "b1-c4"
+              ],
+              "evidence_ids": [
+                "vxo_b1_1"
+              ],
+              "verified": "verified",
+              "include_in_optimizer": true
+            },
+            "in_plan": false,
+            "owner_included": false,
+            "highlighted": false
+          },
+          {
+            "upgrade": {
+              "upgrade_id": "b1:window_upgrade",
+              "building_id": "b1",
+              "category": "envelope",
+              "type": "window_upgrade",
+              "size_value": 68191.0,
+              "size_unit": "sqft",
+              "reason": "high glazing on sun-facing facades (S 55%, W 45%)",
+              "confidence": 0.7,
+              "claim_ids": [
+                "b1-c5"
+              ],
+              "evidence_ids": [
+                "vxo_b1_1"
+              ],
+              "verified": "verified",
+              "include_in_optimizer": true
+            },
+            "in_plan": false,
+            "owner_included": false,
+            "highlighted": false
+          },
+          {
+            "upgrade": {
+              "upgrade_id": "b1:heat_pump",
+              "building_id": "b1",
+              "category": "hvac",
+              "type": "heat_pump",
+              "size_value": 820000.0,
+              "size_unit": "sqft",
+              "reason": "built 1982; visible rooftop_unit_old",
+              "confidence": 0.75,
+              "claim_ids": [
+                "b1-i2"
+              ],
+              "evidence_ids": [
+                "pano_b1_1"
+              ],
+              "verified": "verified",
+              "include_in_optimizer": true
+            },
+            "in_plan": false,
+            "owner_included": false,
+            "highlighted": false
+          },
+          {
+            "upgrade": {
+              "upgrade_id": "b1:insulation",
+              "building_id": "b1",
+              "category": "envelope",
+              "type": "insulation",
+              "size_value": 410000.0,
+              "size_unit": "sqft",
+              "reason": "envelope area measured from the interior wall graph",
+              "confidence": 0.0,
+              "claim_ids": [],
+              "evidence_ids": [],
+              "verified": "unverified",
+              "include_in_optimizer": false
+            },
+            "in_plan": false,
+            "owner_included": false,
+            "highlighted": false
+          },
+          {
+            "upgrade": {
+              "upgrade_id": "b1:led_retrofit",
+              "building_id": "b1",
+              "category": "lighting",
+              "type": "led_retrofit",
+              "size_value": 820000.0,
+              "size_unit": "sqft",
+              "reason": "lighting observed as fluorescent",
+              "confidence": 0.8,
+              "claim_ids": [
+                "b1-i1"
+              ],
+              "evidence_ids": [
+                "pano_b1_1"
+              ],
+              "verified": "verified",
+              "include_in_optimizer": true
+            },
+            "in_plan": true,
+            "owner_included": false,
+            "highlighted": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "w4",
+      "type": "evidence_gallery",
+      "title": "Evidence",
+      "why": "The images behind each finding, with verifier status.",
+      "size": "wide",
+      "data_ref": "buildings/*/verification.json",
+      "props": {
+        "items": [
+          {
+            "image_id": "vxo_b1_1",
+            "url": "/media/vxo_b1_1",
+            "source": null,
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "vxo_b1_1",
+                "label": "existing_solar",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "shading",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "color",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "glazing",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b1-c1",
+              "b1-c2",
+              "b1-c3",
+              "b1-c4",
+              "b1-c5"
+            ],
+            "claim_summaries": [
+              "roof.existing_solar: False",
+              "roof.shading: none",
+              "roof.color: dark",
+              "roof.type: flat",
+              "facade.S.glazing: 0.55"
+            ],
+            "status": "verified",
+            "verifier_notes": []
+          },
+          {
+            "image_id": "pano_b1_1",
+            "url": "/media/pano_b1_1",
+            "source": "matterport_pano",
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "pano_b1_1",
+                "label": "lighting_type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "pano_b1_1",
+                "label": "hvac_visible",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b1-i1",
+              "b1-i2"
+            ],
+            "claim_summaries": [
+              "interior.lighting_type: fluorescent",
+              "interior.hvac_visible: rooftop_unit_old"
+            ],
+            "status": "verified",
+            "verifier_notes": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "w5",
+      "type": "facade_compass",
+      "title": "Facades",
+      "why": "Glazing on each side drives window upgrades.",
+      "size": "half",
+      "data_ref": "buildings/b1/aerial.json",
+      "props": {
+        "facades": {
+          "S": {
+            "glazing_ratio": 0.55,
+            "window_count_est": 180
+          },
+          "W": {
+            "glazing_ratio": 0.45000000000000007,
+            "window_count_est": 120
+          },
+          "N": {
+            "glazing_ratio": 0.25,
+            "window_count_est": 150
+          }
+        }
+      }
+    },
+    {
+      "id": "w6",
+      "type": "floor_plan",
+      "title": "Floor plan",
+      "why": "Rooms and findings from the scan.",
+      "size": "half",
+      "data_ref": "buildings/b1/interior.json",
+      "props": {
+        "rooms": [
+          {
+            "room_id": "r1",
+            "type": "office",
+            "polygon": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                10.0,
+                0.0
+              ],
+              [
+                10.0,
+                8.0
+              ],
+              [
+                0.0,
+                8.0
+              ]
+            ],
+            "area_sqft": 860.0
+          },
+          {
+            "room_id": "r2",
+            "type": "corridor",
+            "polygon": [
+              [
+                10.0,
+                0.0
+              ],
+              [
+                22.0,
+                0.0
+              ],
+              [
+                22.0,
+                3.0
+              ],
+              [
+                10.0,
+                3.0
+              ]
+            ],
+            "area_sqft": 390.0
+          },
+          {
+            "room_id": "r3",
+            "type": "mechanical",
+            "polygon": [
+              [
+                10.0,
+                3.0
+              ],
+              [
+                22.0,
+                3.0
+              ],
+              [
+                22.0,
+                8.0
+              ],
+              [
+                10.0,
+                8.0
+              ]
+            ],
+            "area_sqft": 640.0
+          }
+        ],
+        "pins": [
+          {
+            "claim_id": "b1-i1",
+            "label": "Fluorescent lighting",
+            "xyz": [
+              4.2,
+              7.1,
+              2.6
+            ],
+            "status": "verified"
+          },
+          {
+            "claim_id": "b1-i2",
+            "label": "Older rooftop unit",
+            "xyz": [
+              12.0,
+              3.4,
+              3.1
+            ],
+            "status": "verified"
+          }
+        ]
+      }
+    },
+    {
+      "id": "w7",
+      "type": "risk_histogram",
+      "title": "Building risk",
+      "why": "How this building's upgrades return across outcomes.",
+      "size": "half",
+      "data_ref": "plans/current.json",
+      "props": {
+        "bins": [
+          {
+            "x0": -2220200.14,
+            "x1": -2025996.81,
+            "count": 4.0
+          },
+          {
+            "x0": -2025996.81,
+            "x1": -1831793.47,
+            "count": 5.0
+          },
+          {
+            "x0": -1831793.47,
+            "x1": -1637590.14,
+            "count": 8.0
+          },
+          {
+            "x0": -1637590.14,
+            "x1": -1443386.81,
+            "count": 11.0
+          },
+          {
+            "x0": -1443386.81,
+            "x1": -1249183.47,
+            "count": 14.0
+          },
+          {
+            "x0": -1249183.47,
+            "x1": -1054980.14,
+            "count": 19.0
+          },
+          {
+            "x0": -1054980.14,
+            "x1": -860776.81,
+            "count": 24.0
+          },
+          {
+            "x0": -860776.81,
+            "x1": -666573.47,
+            "count": 30.0
+          },
+          {
+            "x0": -666573.47,
+            "x1": -472370.14,
+            "count": 37.0
+          },
+          {
+            "x0": -472370.14,
+            "x1": -278166.81,
+            "count": 44.0
+          },
+          {
+            "x0": -278166.81,
+            "x1": -83963.47,
+            "count": 50.0
+          },
+          {
+            "x0": -83963.47,
+            "x1": 110239.86,
+            "count": 56.0
+          },
+          {
+            "x0": 110239.86,
+            "x1": 304443.19,
+            "count": 61.0
+          },
+          {
+            "x0": 304443.19,
+            "x1": 498646.53,
+            "count": 64.0
+          },
+          {
+            "x0": 498646.53,
+            "x1": 692849.86,
+            "count": 66.0
+          },
+          {
+            "x0": 692849.86,
+            "x1": 887053.19,
+            "count": 66.0
+          },
+          {
+            "x0": 887053.19,
+            "x1": 1081256.53,
+            "count": 64.0
+          },
+          {
+            "x0": 1081256.53,
+            "x1": 1275459.86,
+            "count": 61.0
+          },
+          {
+            "x0": 1275459.86,
+            "x1": 1469663.19,
+            "count": 56.0
+          },
+          {
+            "x0": 1469663.19,
+            "x1": 1663866.53,
+            "count": 50.0
+          },
+          {
+            "x0": 1663866.53,
+            "x1": 1858069.86,
+            "count": 44.0
+          },
+          {
+            "x0": 1858069.86,
+            "x1": 2052273.19,
+            "count": 37.0
+          },
+          {
+            "x0": 2052273.19,
+            "x1": 2246476.53,
+            "count": 30.0
+          },
+          {
+            "x0": 2246476.53,
+            "x1": 2440679.86,
+            "count": 24.0
+          },
+          {
+            "x0": 2440679.86,
+            "x1": 2634883.19,
+            "count": 19.0
+          },
+          {
+            "x0": 2634883.19,
+            "x1": 2829086.53,
+            "count": 14.0
+          },
+          {
+            "x0": 2829086.53,
+            "x1": 3023289.86,
+            "count": 11.0
+          },
+          {
+            "x0": 3023289.86,
+            "x1": 3217493.19,
+            "count": 8.0
+          },
+          {
+            "x0": 3217493.19,
+            "x1": 3411696.53,
+            "count": 5.0
+          },
+          {
+            "x0": 3411696.53,
+            "x1": 3605899.86,
+            "count": 4.0
+          }
+        ],
+        "exp_npv": 692849.86,
+        "cvar5": -1710085.73,
+        "p_loss": 0.2761,
+        "scope": "plan"
+      }
+    },
+    {
+      "id": "w8",
+      "type": "activity_feed",
+      "title": "Agent activity",
+      "why": "Every agent step, as it happens.",
+      "size": "side",
+      "data_ref": "runs/sample/events.jsonl",
+      "props": {
+        "run_id": "sample"
+      }
+    }
+  ]
+}

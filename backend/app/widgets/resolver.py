@@ -26,6 +26,7 @@ from typing import Callable
 
 from pydantic import TypeAdapter
 
+from app.config import get_settings
 from app.rules.feasibility import load_rules
 from app.schemas.aerial import AerialFindings
 from app.schemas.claims import Claim
@@ -56,6 +57,14 @@ def _fmt_size(u: FeasibleUpgrade) -> str:
     return f"{u.size_value:,.0f} {u.size_unit}"
 
 
+def _mesh_on_disk(model_id: str) -> dict:
+    """URLs of an extracted MatterPak's OBJ/MTL (cache/media/mesh/<model>/), served via the `model.*` aliases."""
+    d = Path(get_settings().cache_dir) / "media" / "mesh" / model_id
+    have = lambda ext: d.is_dir() and any(p.suffix.lower() == ext for p in d.iterdir() if not p.name.startswith("."))
+    return {"obj": f"/media/mesh/{model_id}/model.obj" if have(".obj") else None,
+            "mtl": f"/media/mesh/{model_id}/model.mtl" if have(".mtl") else None}
+
+
 @dataclass
 class ResolveContext:
     run_id: str
@@ -66,6 +75,8 @@ class ResolveContext:
     upgrades: dict[str, list[FeasibleUpgrade]] = field(default_factory=dict)
     claims: dict[str, list[Claim]] = field(default_factory=dict)
     rooms: dict[str, list[dict]] = field(default_factory=dict)
+    scans: dict[str, dict] = field(default_factory=dict)  # buildings/<id>/interior_scan.json (Lane A)
+    mesh_files: dict[str, dict] = field(default_factory=dict)  # model_id -> {"obj": url|None, "mtl": url|None} on disk
     memo_md: str = ""
     focus_building_id: str | None = None
     selected_upgrade_ids: list[str] = field(default_factory=list)  # highlighted bar / upgrade
@@ -92,6 +103,11 @@ class ResolveContext:
                 _read(bdir / "feasibility.json", []))
             ctx.claims[bid] = TypeAdapter(list[Claim]).validate_python(_read(bdir / "verification.json", []))
             ctx.rooms[bid] = _read(bdir / "rooms.json", [])
+            if (scan := _read(bdir / "interior_scan.json")) is not None:
+                ctx.scans[bid] = scan
+            model = ctx.profiles[bid].matterport_model_id
+            if model:
+                ctx.mesh_files[model] = _mesh_on_disk(model)
         pid = ctx.plan.get("plan_id")
         memo = d / "memo" / f"{pid}.md"
         ctx.memo_md = memo.read_text() if pid and memo.exists() else ""
@@ -103,6 +119,29 @@ class ResolveContext:
 
     def all_upgrades(self) -> dict[str, FeasibleUpgrade]:
         return {u.upgrade_id: u for ups in self.upgrades.values() for u in ups}
+
+    def hero_source(self, bid: str | None) -> dict | None:
+        """How to show this building's interior in 3D, or None (App Flow §6: omit hero_3d then).
+        A `showcase_url` (Matterport tour link, from interior_scan.json) wins over the mesh; otherwise the
+        mesh from interior_scan.json or from files already extracted under cache/media/mesh/."""
+        if not bid or bid not in self.profiles:
+            return None
+        scan, model = self.scans.get(bid, {}), self.profiles[bid].matterport_model_id
+        if scan.get("showcase_url"):
+            return {"mode": "showcase", "showcase_url": scan["showcase_url"], "mesh_url": None, "mtl_url": None}
+        disk = self.mesh_files.get(model or "", {})
+        mesh_url = scan.get("mesh_url") or disk.get("obj")
+        if mesh_url:
+            return {"mode": "mesh", "showcase_url": None, "mesh_url": mesh_url,
+                    "mtl_url": scan.get("mtl_url") or disk.get("mtl")}
+        return None
+
+    def floor_rooms(self, bid: str | None) -> list[dict]:
+        """Rooms for the floor plan: rooms.json (with polygons) or the scan's room list (areas only).
+        Empty without interior data."""
+        if not bid or (bid not in self.interior and bid not in self.scans and not self.rooms.get(bid)):
+            return []
+        return self.rooms.get(bid) or self.scans.get(bid, {}).get("rooms") or []
 
     @property
     def selected(self) -> set[str]:
@@ -168,13 +207,12 @@ def _need_focus(ctx: ResolveContext) -> str:
 
 def _hero_3d(ctx: ResolveContext) -> tuple[str, dict]:
     bid = _need_focus(ctx)
-    model = ctx.profiles[bid].matterport_model_id
-    if not model:
-        raise ResolveError(f"{bid} has no Matterport model")
+    src = ctx.hero_source(bid)
+    if src is None:
+        raise ResolveError(f"{bid} has no mesh or showcase link")
     inter = ctx.interior.get(bid)
-    return f"buildings/{bid}/interior.json", dict(
-        building_id=bid, mesh_url=f"/media/mesh/{model}/model.obj", mtl_url=f"/media/mesh/{model}/model.mtl",
-        pins=[p.model_dump() for p in inter.pins] if inter else [],
+    return f"buildings/{bid}/interior_scan.json", dict(
+        building_id=bid, **src, pins=[p.model_dump() for p in inter.pins] if inter else [],
         rooms=ctx.rooms.get(bid) or None)
 
 
@@ -258,9 +296,12 @@ def _facade_compass(ctx: ResolveContext) -> tuple[str, dict]:
 
 def _floor_plan(ctx: ResolveContext) -> tuple[str, dict]:
     bid = _need_focus(ctx)
+    rooms = ctx.floor_rooms(bid)
+    if not rooms:
+        raise ResolveError(f"{bid} has no interior room data")
     inter = ctx.interior.get(bid)
     return f"buildings/{bid}/interior.json", dict(
-        rooms=ctx.rooms.get(bid, []), pins=[p.model_dump() for p in inter.pins] if inter else [])
+        rooms=rooms, pins=[p.model_dump() for p in inter.pins] if inter else [])
 
 
 def _upgrade_list(ctx: ResolveContext) -> tuple[str, dict]:
@@ -343,8 +384,7 @@ def resolve_layout(ctx: ResolveContext, situation: Situation | None = None,
     ctx.situation = situation
     if widgets is None:
         fid = ctx.focus_building_id
-        has_mp = bool(fid and fid in ctx.profiles and ctx.profiles[fid].matterport_model_id)
-        widgets = template_for(situation, has_matterport=has_mp)
+        widgets = template_for(situation, has_hero=ctx.hero_source(fid) is not None, has_floor_plan=bool(ctx.floor_rooms(fid)))
     resolved = [resolve_widget(w, ctx) for w in widgets]
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     layout = Layout(layout_id=layout_id or f"lay_{ctx.run_id}_{now}", run_id=ctx.run_id, situation=situation,

@@ -53,6 +53,10 @@ BASE_PLAN = {
 }
 
 
+SCAN_B1 = {"model_id": "m1", "mesh_url": "/media/mesh/m1/Suite.obj", "mtl_url": "/media/mesh/m1/Suite.mtl",
+           "rooms": [{"room_id": "r1", "type": "office", "area_sqft": 500.0}]}
+
+
 @pytest.fixture
 def world(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path)); get_settings.cache_clear()
@@ -65,6 +69,7 @@ def world(tmp_path, monkeypatch):
             put(tmp_path / f"buildings/{bid}/profile.json", prof(bid, name, mp))
             put(tmp_path / f"buildings/{bid}/aerial.json", aer(bid, roof))
             put(tmp_path / f"buildings/{bid}/verification.json", list(cl))
+        put(tmp_path / "buildings/b1/interior_scan.json", SCAN_B1)
         put(tmp_path / "buildings/b1/feasibility.json", [up("b1", "rooftop_solar", "solar", 150, "kW", claims=["k1"])])
         put(tmp_path / "buildings/b2/feasibility.json", upgrades_b2 or [
             up("b2", "cool_roof", "roof", 50000, "sqft", claims=["k2"]), up("b2", "window_upgrade", "envelope", 20000, "sqft", claims=["k3"], verified="unverified")])
@@ -296,3 +301,71 @@ async def test_compose_keeps_the_surveys_state_fields(world):
     got = json.loads(st.read_text())
     assert got["status"] == "surveyed" and got["results"] == {"b1": {"status": "done"}} and got["plan"] == ["step 1"]
     assert got["layout"]["situation"] == lay.situation and got["plan_id"] == "p1"
+
+
+# ---------------------------------------------------------------- hero_3d / floor_plan visibility (App Flow §6)
+async def open_b1(world, scan=..., interior=None, rooms=None, mesh_on_disk=None):
+    d = world()
+    for name in ("interior_scan.json", "interior.json", "rooms.json"):
+        (d / "buildings/b1" / name).unlink(missing_ok=True)
+    if scan is not ...:
+        if scan is not None:
+            put(d / "buildings/b1/interior_scan.json", scan)
+    if rooms is not None:
+        put(d / "buildings/b1/rooms.json", rooms)
+    if interior is not None:
+        put(d / "buildings/b1/interior.json", interior)
+    import shutil
+    md = get_settings().cache_dir / "media" / "mesh" / "m1"
+    shutil.rmtree(md, ignore_errors=True)
+    if mesh_on_disk:
+        md.mkdir(parents=True, exist_ok=True)
+        for f in mesh_on_disk:
+            (md / f).write_text("x")
+    lay, _ = await compose("r", "open_building", View(focus_building_id="b1"))
+    return lay, {w.type: w for w in lay.widgets}
+
+
+async def test_matterport_model_without_mesh_or_interior_data_hides_hero_and_floor_plan(world, tmp_path, monkeypatch):
+    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache")); get_settings.cache_clear()
+    lay, w = await open_b1(world, scan=None)
+    assert "hero_3d" not in w and "floor_plan" not in w and "portfolio_3d" in w  # b1 still has matterport_model_id
+    assert lay.widgets[-1].type == "activity_feed"
+
+
+async def test_mesh_without_rooms_shows_hero_but_no_floor_plan(world, tmp_path, monkeypatch):
+    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache")); get_settings.cache_clear()
+    lay, w = await open_b1(world, scan={"model_id": "m1", "mesh_url": "/media/mesh/m1/Suite.obj", "mtl_url": None, "rooms": []})
+    assert "hero_3d" in w and "floor_plan" not in w and "portfolio_3d" not in w
+    p = w["hero_3d"].props
+    assert p["mode"] == "mesh" and p["mesh_url"] == "/media/mesh/m1/Suite.obj" and p["mtl_url"] is None and p["showcase_url"] is None
+
+
+async def test_interior_rooms_without_mesh_show_floor_plan_but_no_hero(world, tmp_path, monkeypatch):
+    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache")); get_settings.cache_clear()
+    lay, w = await open_b1(world, scan={"model_id": "m1", "mesh_url": None, "rooms": [{"room_id": "r1", "type": None, "area_sqft": 900.0}]})
+    assert "hero_3d" not in w and "floor_plan" in w and "portfolio_3d" in w
+    rooms = w["floor_plan"].props["rooms"]
+    assert rooms == [{"room_id": "r1", "type": None, "polygon": [], "area_sqft": 900.0}]
+
+
+async def test_showcase_url_replaces_the_mesh(world, tmp_path, monkeypatch):
+    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache")); get_settings.cache_clear()
+    url = "https://my.matterport.com/show/?m=abc"
+    lay, w = await open_b1(world, scan={**SCAN_B1, "showcase_url": url})
+    p = w["hero_3d"].props
+    assert p["mode"] == "showcase" and p["showcase_url"] == url and p["mesh_url"] is None and p["mtl_url"] is None
+    assert "floor_plan" in w
+    # showcase alone is enough to show the hero, with no rooms and no mesh
+    lay, w = await open_b1(world, scan={"model_id": "m1", "mesh_url": None, "showcase_url": url})
+    assert w["hero_3d"].props["mode"] == "showcase" and "floor_plan" not in w
+
+
+async def test_mesh_found_on_disk_without_a_scan_file(world, tmp_path, monkeypatch):
+    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache")); get_settings.cache_clear()
+    lay, w = await open_b1(world, scan=None, mesh_on_disk=["Suite.obj", "Suite.mtl", "tex.jpg"])
+    p = w["hero_3d"].props
+    assert p["mode"] == "mesh" and p["mesh_url"] == "/media/mesh/m1/model.obj" and p["mtl_url"] == "/media/mesh/m1/model.mtl"
+    assert "floor_plan" not in w  # no interior data
+    lay, w = await open_b1(world, scan=None, mesh_on_disk=["tex.jpg", "matterpak.zip"])  # no obj: nothing to show
+    assert "hero_3d" not in w

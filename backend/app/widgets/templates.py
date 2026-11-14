@@ -14,7 +14,7 @@ class Item:
     title: str
     why: str
     size: str | None = None  # defaults to the registry's default size
-    optional: str | None = None  # "matterport": include only if the building has a Matterport model
+    optional: str | None = None  # "hero": needs a mesh or showcase link; "floor_plan": needs interior rooms; "no_hero": only without a hero
 
 
 FEED = Item("activity_feed", "Agent activity", "Every agent step, as it happens.", "side")
@@ -43,11 +43,11 @@ TEMPLATES: dict[str, list[Item]] = {
     ],
     "building_detail": [
         Item("building_header", "Building", "Records from CoStar for this building."),
-        Item("hero_3d", "Interior scan", "Findings pinned where the scanner saw them.", optional="matterport"),
-        Item("portfolio_3d", "Building in 3D", "This building in context.", optional="no_matterport"),
+        Item("hero_3d", "Interior scan", "Findings pinned where the scanner saw them.", optional="hero"),
+        Item("portfolio_3d", "Building in 3D", "This building in context.", optional="no_hero"),
         Item("evidence_gallery", "Evidence", "The images behind each finding, with verifier status."),
         Item("facade_compass", "Facades", "Glazing on each side drives window upgrades."),
-        Item("floor_plan", "Floor plan", "Rooms and findings from the scan.", optional="matterport"),
+        Item("floor_plan", "Floor plan", "Rooms and findings from the scan.", optional="floor_plan"),
         Item("upgrade_list", "Feasible upgrades", "What this building can take, and how sure we are."),
         Item("risk_histogram", "Building risk", "How this building's upgrades return across outcomes."),
     ],
@@ -59,13 +59,19 @@ TEMPLATES: dict[str, list[Item]] = {
 }
 
 
-def template_for(situation: Situation, *, has_matterport: bool = False) -> list[WidgetSpec]:
-    """Widget skeletons (empty props) for a situation, ending with the always-present activity feed."""
+def template_for(situation: Situation, *, has_hero: bool = False, has_floor_plan: bool | None = None,
+                 has_matterport: bool | None = None) -> list[WidgetSpec]:
+    """Widget skeletons (empty props) for a situation, ending with the always-present activity feed.
+    `has_hero`: a mesh or showcase link exists (hero_3d shown, else portfolio_3d stands in);
+    `has_floor_plan`: interior room data exists (defaults to has_hero). `has_matterport` is the old name for both."""
+    if has_matterport is not None:
+        has_hero = has_matterport
+    has_floor_plan = has_hero if has_floor_plan is None else has_floor_plan
     specs: list[WidgetSpec] = []
     for it in [*TEMPLATES[situation], FEED]:
-        if it.optional == "matterport" and not has_matterport:
+        if (it.optional == "hero" and not has_hero) or (it.optional == "no_hero" and has_hero):
             continue
-        if it.optional == "no_matterport" and has_matterport:
+        if it.optional == "floor_plan" and not has_floor_plan:
             continue
         specs.append(WidgetSpec(
             id=f"w{len(specs) + 1}", type=it.type, title=it.title, why=it.why,

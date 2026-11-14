@@ -198,8 +198,7 @@ async def compose(run_id: str, action_type: str, view: "View") -> tuple[Layout, 
             ctx.selected_upgrade_ids = [*ctx.selected_upgrade_ids, solar]
 
     fid = ctx.focus_building_id
-    has_mp = bool(fid and fid in ctx.profiles and ctx.profiles[fid].matterport_model_id)
-    template = template_for(situation, has_matterport=has_mp)
+    template = template_for(situation, has_hero=ctx.hero_source(fid) is not None, has_floor_plan=bool(ctx.floor_rooms(fid)))
     strings, raw = situation_facts(ctx, len(issue_claims(ctx)))
     chosen = await refine(situation, template, ctx)
 

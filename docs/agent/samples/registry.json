@@ -272,9 +272,7 @@
       "default_size": "wide",
       "emits": [],
       "required": [
-        "building_id",
-        "mesh_url",
-        "mtl_url"
+        "building_id"
       ],
       "props_schema": {
         "$defs": {
@@ -327,10 +325,19 @@
                 "type": "string"
               },
               "type": {
-                "title": "Type",
-                "type": "string"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
               },
               "polygon": {
+                "default": [],
                 "items": {
                   "maxItems": 2,
                   "minItems": 2,
@@ -361,27 +368,63 @@
               }
             },
             "required": [
-              "room_id",
-              "type",
-              "polygon"
+              "room_id"
             ],
             "title": "Room",
             "type": "object"
           }
         },
         "additionalProperties": false,
+        "description": "`mode` \"mesh\": render the OBJ/MTL (pins are in mesh coordinates). `mode` \"showcase\": embed the Matterport\n3D tour (`showcase_url`, an iframe link); mesh urls are then null and pins are informational only.",
         "properties": {
           "building_id": {
             "title": "Building Id",
             "type": "string"
           },
-          "mesh_url": {
-            "title": "Mesh Url",
+          "mode": {
+            "default": "mesh",
+            "enum": [
+              "mesh",
+              "showcase"
+            ],
+            "title": "Mode",
             "type": "string"
           },
+          "mesh_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mesh Url"
+          },
           "mtl_url": {
-            "title": "Mtl Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mtl Url"
+          },
+          "showcase_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Showcase Url"
           },
           "pins": {
             "default": [],
@@ -408,9 +451,7 @@
           }
         },
         "required": [
-          "building_id",
-          "mesh_url",
-          "mtl_url"
+          "building_id"
         ],
         "title": "Hero3D",
         "type": "object"
@@ -1046,10 +1087,19 @@
                 "type": "string"
               },
               "type": {
-                "title": "Type",
-                "type": "string"
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
               },
               "polygon": {
+                "default": [],
                 "items": {
                   "maxItems": 2,
                   "minItems": 2,
@@ -1080,9 +1130,7 @@
               }
             },
             "required": [
-              "room_id",
-              "type",
-              "polygon"
+              "room_id"
             ],
             "title": "Room",
             "type": "object"
