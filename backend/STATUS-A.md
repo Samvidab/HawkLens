@@ -36,6 +36,8 @@ Phase 1 done (AC-1). **Phase 2 done live** (Gemini via Vertex AI, 2026-11-14 ~19
 
 - **Final engine (CVaR), merge `8e76ad5`** of `agent` (clean; 493 tests pass). Read-only replay `ro_engine_final` (40%, risk_lambda 0.2): same survey + send_back, plan `64f6562caa73` ok, 23/23 upgrades, 3,865 t/yr (needed 3,480; baseline now 8,700.5), p(hit) 0.90, upfront $17.55M, E[NPV] −$3.29M, CVaR5 −$10.17M, p(loss) 0.83, `risk_supported: true`; composer + memo served from cache. Target sweep (λ 0.2): 20% ok, 15 upgrades; 60% infeasible, 1,356 t/yr short (ceiling 44%). Table + changed-number flags in `docs/agent/PITCH-FACTS.md`. `data/plans/current.json` now holds the 40% plan.
 
+- **Investigator agent** (`712345c`, `ea4af1f`; `agents/investigator.py`, `prompts/investigator.md`): per building, Gemini picks each tool call (CoStar record, Vexcel overhead, wider Vexcel context, Matterport scans/rooms/panoramas, inspect roof/interior, label rooms, finish) with a reason in the feed; ≤8 calls, temperature 0, structured output via `llm.text_json` (cached → replayable). `AGENTIC_SURVEY` (default on); `graph.inspect_node` falls back to the fixed pipeline on error. Outputs unchanged (profile, aerial, interior, claims → site engineer → verifier loop). Live warm-up `warm_full` + read_only replay `ro_investigator`: identical tool sequences for all 8 buildings. 7900 Fannin (2004) skipped interior ("newer building, interior won't change decisions"); wider context on 3 buildings, extra panoramas after unclear answers on 3; interiors on 7 of 8; 75 claims (68 verified, 5 unverified, 2 rejected), 3 send-backs, 14 rooms labelled. Plan at 40% / λ 0.2: `599f9a59a42f`, 21 upgrades, 3,662 t/yr (needed 3,480), p(hit) 0.74, $16.41M. Numbers in `docs/agent/PITCH-FACTS.md`, changed ones flagged.
+
 ## Blocked / open
 - Gemini blocker resolved by Vertex AI. History: free-tier 20/day cap (429), then prepaid credits depleted (402); the overnight 30-min retry loop was not started in time (my error), later replaced by an immediate run after the Vertex merge.
 - **MatterPak not downloadable**: all 37 portfolio models report `unlocked` but resources `unavailable`. The Showcase tour covers the 3D view meanwhile.
@@ -44,6 +46,7 @@ Phase 1 done (AC-1). **Phase 2 done live** (Gemini via Vertex AI, 2026-11-14 ~19
 - **Vexcel obliques**: `backend/toolkit/` still not on `agent`; facades empty, no window_upgrade.
 
 ## Requests for Lane B (I no longer edit main.py or llm.py)
+- **Engine (min_p_hit)**: at 40% the internal target goes 42% → 44%, which is above the portfolio ceiling (all 23 upgrades = 3,776 t/yr = 43.4%), so it falls back to the 42% plan (21 upgrades, p(hit) 0.736, `met_min_p_hit: false`) without trying "everything" (3,776 t/yr), which would raise p(hit). Suggest: when the bumped internal target is infeasible, try the all-eligible plan before falling back.
 - Room annotation: registry `Room` could take optional `evidence_note`, `status` (verifier) and `claim_id` so `floor_plan` can colour rooms by verification without reading pins; I already write these in `interior.json.rooms` (`RoomLabel`). I added `RoomLabel` + optional `InteriorFindings.rooms` to `schemas/interior.py` (additive).
 - `tests/test_samples.py` / `make_samples.py` depend on the local `.env`: with `NESSIE_CUSTOMER_ID` / `NESSIE_SOURCE_ACCOUNT_ID` set, `approved.json` stub IDs change and the freshness test fails (passes with `NESSIE_CUSTOMER_ID=demo-customer NESSIE_SOURCE_ACCOUNT_ID=demo-operating-account`). `make_samples.py` should pin those in `os.environ` like it pins the modes.
 - `memo.py`: the number guardrail makes the model spell out numbers inside building names ("seventy-nine hundred Fannin", "CityNorth six", "Harwin Plaza two"). Building names should be allowed verbatim (they're in `sources`, but as whole strings, so their digits aren't matched).
@@ -52,6 +55,6 @@ Phase 1 done (AC-1). **Phase 2 done live** (Gemini via Vertex AI, 2026-11-14 ~19
 
 ## Notes
 - venv: main checkout `backend/.venv` (Python 3.11.9, no pip). The engine merge needs `pulp[cbc]`; installed the pinned requirements with `uv pip install --python …/.venv/bin/python -r requirements.txt` (CBC solver available).
-- Tests: 493 pass (after the final-engine merge) (both lanes + engine; samples test needs the Nessie stub IDs, see Lane B requests) + live-marked.
+- Tests: 502 pass (incl. investigator; `test_smoke_script` flaked once under full-suite load, passes alone and on rerun) (both lanes + engine; samples test needs the Nessie stub IDs, see Lane B requests) + live-marked.
 - Port 8765 is taken by another process; I run the API on 8791.
 - `COSTAR_KIT_DIR` added to this worktree's `backend/.env`. CoStar CDN photos (403) skipped by decision.
