@@ -1,7 +1,17 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useRun } from '../lib/store'
 
 export default function BuildingExcluded() {
   const navigate = useNavigate()
+  const run = useRun()
+  const b = useLocation().state // { id, name } from the building screen
+  const again = async () => {
+    if (run.layout && b?.id) {
+      await run.act('include_building', { building_id: b.id }).catch(() => {})
+      await run.act('open_building', { building_id: b.id }).catch(() => {})
+    }
+    navigate('/building')
+  }
 
   return (
     <div className="min-h-full w-full flex justify-center py-10 px-4">
@@ -15,10 +25,10 @@ export default function BuildingExcluded() {
 
         <div className="absolute left-[440px] top-[300px] w-[560px] h-[380px] rounded-[10px] bg-white overflow-hidden">
           <p className="absolute left-[28px] top-[28px] font-semibold text-ink text-[20px] leading-[1.45]">
-            Midtown office excluded
+            {b?.name || 'Midtown office'} excluded
           </p>
           <p className="absolute left-[28px] top-[81px] text-muted text-[14px] leading-[1.45]">
-            All three upgrades for this building are off.
+            All upgrades for this building are off.
             <br />
             The portfolio baseline still includes its emissions;
             <br />
@@ -33,7 +43,7 @@ export default function BuildingExcluded() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/building')}
+            onClick={again}
             className="absolute left-[28px] top-[281px] w-[504px] h-[46px] rounded-[6px] bg-model text-brand text-[13px] font-medium leading-[1.45] hover:brightness-95 transition"
           >
             Include building again

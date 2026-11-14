@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import portfolio3d from '../assets/portfolio-3d.svg'
 import Page from '../components/Page'
 import { useGo } from '../lib/ui'
+import { useOverview } from '../lib/store'
+import { planRows, planSummary, portfolioBuildings, riskLabel, targetModel, usdK } from '../lib/viewModels'
 import {
   BUDGET_K,
   SLIDER_WIDTH,
@@ -13,11 +15,32 @@ import {
 
 export default function Portfolio() {
   const go = useGo()
-  const [target, setTarget] = useState(40)
+  const run = useOverview()
+  const layoutModel = run.layout ? targetModel(run.layout) : null // real plan when a run has a workspace
+  const [target, setTarget] = useState(layoutModel?.target ?? run.prefs.target_pct)
   const [buildingSelected, setBuildingSelected] = useState(true)
-  const model = deriveModel(target)
+  const model = layoutModel ? { ...layoutModel, target } : deriveModel(target)
+  const buildings = run.layout ? portfolioBuildings(run.layout) : null
+  const hero = run.portfolio?.buildings?.find((b) => b.hero) || run.portfolio?.buildings?.[0]
+  const featured = hero ? { id: hero.building_id, name: hero.name } : buildings?.[0] ?? null
 
   const setTargetClamped = useCallback((next) => setTarget(clampTarget(next)), [])
+
+  // Sliders send one action when they settle (App Flow 3: on release, at most every 400 ms).
+  useEffect(() => {
+    run.setPrefs({ target_pct: target })
+    if (!run.layout || layoutModel?.target === target) return undefined
+    const t = setTimeout(() => run.act('set_target', { target_pct: target }).catch(() => {}), 400)
+    return () => clearTimeout(t)
+  }, [target]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (layoutModel && layoutModel.target !== target && !run.busy) setTarget(layoutModel.target)
+  }, [layoutModel?.target]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openBuilding = useCallback(async () => {
+    if (run.layout && featured) await run.act('open_building', { building_id: featured.id }).catch(() => {})
+    go('/building')
+  }, [run, featured, go])
 
   return (
     <Page active="portfolio">
@@ -25,19 +48,20 @@ export default function Portfolio() {
         Houston portfolio
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        8 buildings · All surveys complete
+        {buildings ? `${buildings.length} buildings · All surveys complete` : '8 buildings · All surveys complete'}
       </p>
       <LinkArrow className="left-[1055px] top-[154px]" onClick={() => go('/start-survey')}>
         Run survey
       </LinkArrow>
-      <LinkArrow className="left-[1220px] top-[154px]" onClick={() => go('/building')}>
+      <LinkArrow className="left-[1220px] top-[154px]" onClick={openBuilding}>
         Building details
       </LinkArrow>
 
       <PortfolioModel
         selected={buildingSelected}
         onToggleSelected={() => setBuildingSelected((v) => !v)}
-        onViewBuilding={() => go('/building')}
+        onViewBuilding={openBuilding}
+        name={featured?.name}
         onExpand={() => go('/expanded-portfolio-model')}
       />
 
@@ -49,25 +73,27 @@ export default function Portfolio() {
         onEdit={() => go('/plan-preferences')}
         onReview={() => go('/plan')}
         onCheckGap={() => go('/risk-and-target')}
+        budgetText={`Budget ${model.budgetUsd === undefined ? `$${BUDGET_K}k` : model.budgetUsd == null ? 'not set' : usdK(model.budgetUsd)} · ${model.riskLambda === undefined ? 'Balanced' : riskLabel(model.riskLambda)} risk`}
+        busy={run.busy > 0}
       />
 
       <h2 className="absolute left-[56px] top-[704px] whitespace-nowrap font-semibold text-ink text-[20px]">
         Recommended upgrades
       </h2>
       <p className="absolute left-[56px] top-[738px] whitespace-nowrap text-muted text-[13px]">
-        18 upgrades across 8 buildings
+        {run.layout ? planSummary(run.layout)?.count : '18 upgrades across 8 buildings'}
       </p>
       <LinkArrow className="left-[1208px] top-[715px]" onClick={() => go('/plan')}>
         See costs &amp; evidence
       </LinkArrow>
 
-      <UpgradeSummary onOpen={() => go('/plan')} />
+      <UpgradeSummary onOpen={() => go('/plan')} rows={run.layout ? planRows(run.layout) : null} />
 
       <p className="absolute left-[56px] top-[947px] whitespace-nowrap text-muted text-[11px]">
-        Interactive demo · Illustrative calculations, not a live optimizer
+        {run.layout ? (model.sample ? 'Live backend · sample pricing (stub engine)' : 'Live backend · quant engine pricing') : 'Interactive demo · Illustrative calculations, not a live optimizer'}
       </p>
       <p className="absolute left-[1090px] top-[947px] whitespace-nowrap text-muted text-[11px]">
-        Baseline sample: {model.confidence}% target confidence
+        {run.layout ? `Chance of hitting the target: ${model.confidence ?? '—'}%` : `Baseline sample: ${model.confidence}% target confidence`}
       </p>
     </Page>
   )
@@ -85,14 +111,14 @@ function LinkArrow({ className = '', children, onClick }) {
   )
 }
 
-function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand }) {
+function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand, name = 'Midtown office' }) {
   return (
     <section className="absolute left-[56px] top-[231px] w-[848px] h-[420px] overflow-hidden rounded-[8px] bg-model">
       <p className="absolute left-[23px] top-[21px] whitespace-nowrap font-medium text-ink text-[15px]">
         Your buildings
       </p>
       <p className="absolute left-[23px] top-[46px] whitespace-nowrap text-muted text-[13px]">
-        Explore Midtown office or expand the portfolio.
+        Explore {name} or expand the portfolio.
       </p>
 
       <img
@@ -103,7 +129,7 @@ function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand }
 
       <button
         type="button"
-        aria-label="Select Midtown office"
+        aria-label={`Select ${name}`}
         onClick={onToggleSelected}
         className={`absolute left-[427px] top-[190px] w-[171px] h-[123px] rounded-[6px] transition-shadow ${
           selected ? 'ring-2 ring-brand/60' : 'hover:ring-2 hover:ring-brand/30'
@@ -113,7 +139,7 @@ function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand }
       {selected && (
         <div className="absolute left-[495px] top-[120px] w-[204px] h-[49px] rounded-[5px] bg-white overflow-hidden shadow-sm">
           <span className="absolute left-[12px] top-[8px] whitespace-nowrap font-medium text-ink text-[13px]">
-            Midtown office
+            {name}
           </span>
           <button
             type="button"
@@ -139,7 +165,7 @@ function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand }
   )
 }
 
-function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, onCheckGap }) {
+function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, onCheckGap, budgetText, busy }) {
   return (
     <section className="absolute left-[944px] top-[231px] w-[440px] h-[420px] overflow-hidden">
       <div className="absolute left-0 top-0 w-px h-[420px] bg-line" />
@@ -177,10 +203,10 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
       <TargetSlider target={target} onChange={onChangeTarget} />
 
       <p className="absolute left-[32px] top-[125px] whitespace-nowrap text-muted text-[11px]">0%</p>
-      <p className="absolute left-[384px] top-[125px] whitespace-nowrap text-muted text-[11px]">60%</p>
+      <p className="absolute left-[384px] top-[125px] whitespace-nowrap text-muted text-[11px]">{TARGET_MAX}%</p>
 
       <p className="absolute left-[32px] top-[165px] whitespace-nowrap text-muted text-[13px]">
-        Budget ${BUDGET_K}k · Balanced risk
+        {budgetText}
       </p>
       <button
         type="button"
@@ -200,7 +226,7 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
         {model.statusLabel}
       </p>
       <p className="absolute left-[32px] top-[257px] whitespace-nowrap text-muted text-[13px] tabular-nums">
-        {model.annualLabel}
+        {model.annualLabel}{busy ? ' · updating…' : ''}
       </p>
 
       <p className="absolute left-[32px] top-[297px] whitespace-nowrap text-muted text-[12px]">
@@ -291,11 +317,12 @@ const UPGRADES = [
   { name: 'Heat pump conversion', detail: '4 buildings · 4 bills', cost: '$400k' },
 ]
 
-function UpgradeSummary({ onOpen }) {
+function UpgradeSummary({ onOpen, rows }) {
+  const list = rows ? rows.map((r) => ({ name: r.name, detail: r.coverage, cost: r.cost })) : UPGRADES
   return (
     <section className="absolute left-[56px] top-[783px] w-[1328px] h-[133px] overflow-hidden">
-      {UPGRADES.map((u, i) => {
-        const top = i * 44
+      {list.map((u, i) => {
+        const top = i * (list.length > 3 ? 30 : 44)
         return (
           <div key={u.name}>
             <div className="absolute left-0 w-[1328px] h-px bg-line" style={{ top: `${top}px` }} />

@@ -1,6 +1,9 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
 import { useGo } from '../lib/ui'
+import { useRun } from '../lib/store'
+import { feedRows, surveyProgress } from '../lib/viewModels'
 
 const EVENTS = [
   { time: '09:41:12', agent: 'Records analyst', msg: 'Midtown office profile loaded.', meta: 'CoStar · 96,000 sq ft · 6 floors' },
@@ -21,6 +24,13 @@ const PROGRESS = [
 export default function SurveyInProgress() {
   const navigate = useNavigate()
   const go = useGo()
+  const run = useRun()
+  const live = run.live && !!run.runId
+  const total = run.portfolio?.buildings?.length || run.state?.building_ids?.length || 8
+  const events = live ? feedRows(run.events, 6) : EVENTS
+  const progress = live ? surveyProgress(run.events, total) : PROGRESS
+  const inspected = live ? progress[1].detail.split(' ')[0] * 1 || 0 : 6
+  useEffect(() => { if (live && run.phase === 'ready') navigate('/survey-complete') }, [live, run.phase, navigate])
 
   return (
     <Page active="portfolio">
@@ -44,13 +54,13 @@ export default function SurveyInProgress() {
           Survey activity
         </p>
         <p className="absolute left-[19px] top-[46px] text-muted text-[11px] leading-[1.45]">
-          6 of 8 buildings inspected · Example event stream
+          {inspected} of {total} buildings inspected · {live ? `${run.events.length} events` : 'Example event stream'}
         </p>
-        <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">In progress</p>
-        {EVENTS.map((e, i) => {
+        <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">{live && run.phase === 'error' ? 'Stopped' : 'In progress'}</p>
+        {events.map((e, i) => {
           const top = 86 + i * 48
           return (
-            <div key={e.time}>
+            <div key={e.seq ?? e.time}>
               {i > 0 && (
                 <div className="absolute left-[19px] w-[808px] h-px bg-line" style={{ top: `${top - 7}px` }} />
               )}
@@ -70,18 +80,18 @@ export default function SurveyInProgress() {
           )
         })}
         <p className="absolute left-[19px] top-[409px] text-muted text-[11px] leading-[1.45]">
-          Structured events · Illustrative sequence, not a live server feed
+          {live ? (run.error ? run.error : 'Structured events · live from the agents') : 'Structured events · Illustrative sequence, not a live server feed'}
         </p>
       </section>
 
       {/* Survey progress */}
       <section className="absolute left-[944px] top-[265px] w-[440px] h-[440px] rounded-[8px] bg-[#f5f7f2] overflow-hidden">
         <p className="absolute left-[24px] top-[21px] font-semibold text-ink text-[20px] leading-[1.45]">
-          6 of 8 buildings inspected
+          {inspected} of {total} buildings inspected
         </p>
         <div className="absolute left-[24px] top-[81px] w-[392px] h-[6px] rounded-[3px] bg-model" />
-        <div className="absolute left-[24px] top-[81px] w-[294px] h-[6px] rounded-[3px] bg-brand" />
-        {PROGRESS.map((p, i) => {
+        <div className="absolute left-[24px] top-[81px] h-[6px] rounded-[3px] bg-brand" style={{ width: `${Math.round(392 * Math.min(1, inspected / total))}px` }} />
+        {progress.map((p, i) => {
           const top = 128 + i * 49
           return (
             <div key={p.label}>
@@ -107,7 +117,7 @@ export default function SurveyInProgress() {
       </section>
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px] leading-[1.45]">
-        Prototype survey sequence · Example buildings and findings, not live data
+        {live ? 'Live survey · events stream from the backend' : 'Prototype survey sequence · Example buildings and findings, not live data'}
       </p>
     </Page>
   )

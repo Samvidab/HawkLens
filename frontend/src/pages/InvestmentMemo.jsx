@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import { useOverview } from '../lib/store'
+import { targetModel } from '../lib/viewModels'
 
 const METRICS = [
   ['Upfront investment', '$1280k'],
@@ -9,6 +11,9 @@ const METRICS = [
 
 export default function InvestmentMemo() {
   const navigate = useNavigate()
+  const run = useOverview()
+  const m = run.layout ? targetModel(run.layout) : null
+  const metrics = m ? [['Upfront investment', m.investmentLabel], ['Expected lifetime net value', m.netValueLabel], ['Chance of hitting the target', m.confidence == null ? '—' : `${m.confidence}%`]] : METRICS
 
   return (
     <Page nav={false}>
@@ -46,7 +51,7 @@ export default function InvestmentMemo() {
           <br />
           Expected annual cut: 1032 tonnes CO₂.
         </p>
-        {METRICS.map(([label, value], i) => {
+        {metrics.map(([label, value], i) => {
           const top = 383.08 + i * 46.36
           return (
             <div key={label}>

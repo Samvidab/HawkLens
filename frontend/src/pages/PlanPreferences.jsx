@@ -1,13 +1,24 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useOverview } from '../lib/store'
+import { RISK_LAMBDA, riskLabel, targetModel, usdK, widget } from '../lib/viewModels'
 
 const BUDGETS = ['$1000k', '$1500k', '$2000k']
 const RISKS = ['Cautious', 'Balanced', 'Growth']
 
 export default function PlanPreferences() {
   const navigate = useNavigate()
-  const [budget, setBudget] = useState('$1500k')
-  const [risk, setRisk] = useState('Balanced')
+  const run = useOverview()
+  const tm = run.layout ? targetModel(run.layout) : null
+  // With a real plan the budget choices scale with its cost (a fixed $1000k-$2000k would make any real portfolio infeasible).
+  const total = tm ? (widget(run.layout, 'plan_table')?.totals?.upfront_usd ?? 0) : 0
+  const options = tm && total > 0
+    ? [{ label: 'No cap', usd: null }, { label: usdK(Math.round((total * 0.8) / 1e5) * 1e5), usd: Math.round((total * 0.8) / 1e5) * 1e5 }, { label: usdK(Math.round((total * 1.2) / 1e5) * 1e5), usd: Math.round((total * 1.2) / 1e5) * 1e5 }]
+    : BUDGETS.map((b) => ({ label: b, usd: parseInt(b.replace(/\D/g, ''), 10) * 1000 }))
+  const [budget, setBudget] = useState(tm ? (tm.budgetUsd == null ? 'No cap' : usdK(tm.budgetUsd)) : '$1500k')
+  const [risk, setRisk] = useState(tm ? riskLabel(tm.riskLambda) : 'Balanced')
+  const pickBudget = (o) => { setBudget(o.label); run.setPrefs({ budget_usd: o.usd }); if (run.layout) run.act('set_budget', { budget_usd: o.usd }).catch(() => {}) }
+  const pickRisk = (r) => { setRisk(r); run.setPrefs({ risk_lambda: RISK_LAMBDA[r] }); if (run.layout) run.act('set_risk', { risk_lambda: RISK_LAMBDA[r] }).catch(() => {}) }
 
   const close = () => navigate(-1)
 
@@ -41,13 +52,14 @@ export default function PlanPreferences() {
           <p className="absolute left-[32px] top-[122px] font-medium text-ink text-[14px]">
             Investment ceiling
           </p>
-          {BUDGETS.map((b, i) => {
+          {options.map((o, i) => {
+            const b = o.label
             const selected = b === budget
             return (
               <button
                 key={b}
                 type="button"
-                onClick={() => setBudget(b)}
+                onClick={() => pickBudget(o)}
                 className={`absolute top-[155px] w-[168px] h-[46px] rounded-[6px] text-[14px] font-medium transition ${
                   selected ? 'bg-[#e7ece3] text-brand ring-2 ring-brand/50' : 'bg-[#e7ece3] text-brand hover:brightness-95'
                 }`}
@@ -67,7 +79,7 @@ export default function PlanPreferences() {
               <button
                 key={r}
                 type="button"
-                onClick={() => setRisk(r)}
+                onClick={() => pickRisk(r)}
                 className={`absolute top-[269px] w-[168px] h-[46px] rounded-[6px] text-[14px] font-medium transition ${
                   selected ? 'bg-[#e7ece3] text-brand ring-2 ring-brand/50' : 'bg-[#e7ece3] text-brand hover:brightness-95'
                 }`}

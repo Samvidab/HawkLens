@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
-import { useGo } from '../lib/ui'
+import { useGo, useToast } from '../lib/ui'
+import { useOverview } from '../lib/store'
+import { financingModel, planRows, planSummary } from '../lib/viewModels'
 
 const ALLOCATIONS = [
   { name: 'LED retrofit', bills: '8 buildings · 8 bills', amount: '$120k' },
@@ -19,6 +21,23 @@ export default function FinancingApproval() {
   const navigate = useNavigate()
   const go = useGo()
   const [consent, setConsent] = useState(false)
+  const run = useOverview()
+  const toast = useToast()
+  const [approving, setApproving] = useState(false)
+  const fin = run.layout ? financingModel(run.layout, run.state) : null
+  const allocations = (run.layout && planRows(run.layout)?.map((r) => ({ name: r.name, bills: r.coverage, amount: r.cost }))) || ALLOCATIONS
+  const summary = run.layout ? planSummary(run.layout) : null
+  const nBills = fin?.bills?.length || allocations.length
+  const approve = async () => {
+    if (!fin) return navigate('/funding-confirmation')
+    setApproving(true)
+    try {
+      await run.act('approve', { plan_id: fin.planId })
+      navigate('/funding-confirmation')
+    } catch (e) {
+      toast(e.status === 409 ? 'The plan changed; review it again before approving.' : `Approval failed: ${e.message}`.slice(0, 90))
+    } finally { setApproving(false) }
+  }
 
   return (
     <Page active="plan">
@@ -46,12 +65,12 @@ export default function FinancingApproval() {
           Where your investment goes
         </p>
         <p className="absolute left-0 top-[34px] text-muted text-[13px]">
-          18 upgrades across 8 buildings
+          {summary ? summary.count : '18 upgrades across 8 buildings'}
         </p>
         <p className="absolute left-0 top-[91px] text-muted text-[12px]">Upgrade bundle</p>
         <p className="absolute left-[394px] top-[91px] text-muted text-[12px]">Contractor bills</p>
         <p className="absolute left-[670px] top-[91px] text-muted text-[12px]">Allocation</p>
-        {ALLOCATIONS.map((a, i) => {
+        {allocations.map((a, i) => {
           const top = 136 + i * 57
           return (
             <div key={a.name}>
@@ -70,7 +89,7 @@ export default function FinancingApproval() {
         })}
         <div className="absolute left-0 top-[297px] w-[816px] h-px bg-line" />
         <p className="absolute left-0 top-[318px] font-medium text-ink text-[15px]">Total to fund</p>
-        <p className="absolute left-[650px] top-[313px] font-semibold text-ink text-[22px]">$1280k</p>
+        <p className="absolute left-[650px] top-[313px] font-semibold text-ink text-[22px]">{fin ? fin.total : '$1280k'}</p>
       </section>
 
       {/* Approval summary card */}
@@ -79,7 +98,7 @@ export default function FinancingApproval() {
           Fund your retrofit plan
         </p>
         <p className="absolute left-[28px] top-[74px] text-muted text-[13px]">Amount to transfer</p>
-        <p className="absolute left-[28px] top-[99px] font-semibold text-ink text-[34px]">$1280k</p>
+        <p className="absolute left-[28px] top-[99px] font-semibold text-ink text-[34px]">{fin ? fin.total : '$1280k'}</p>
 
         <p className="absolute left-[28px] top-[166px] text-muted text-[12px]">From</p>
         <button
@@ -88,16 +107,16 @@ export default function FinancingApproval() {
           className="absolute left-[28px] top-[190px] w-[384px] h-[56px] rounded-[5px] bg-white border border-line text-left overflow-hidden"
         >
           <span className="absolute left-[13px] top-[11px] font-medium text-ink text-[14px]">
-            Owner checking · •• 2048
+            {fin ? 'Hawk Lens Operating' : 'Owner checking · •• 2048'}
           </span>
           <span className="absolute left-[13px] top-[33px] text-muted text-[11px]">
-            Available $2,400,000 · Nessie sandbox
+            {fin ? 'Nessie sandbox account' : 'Available $2,400,000 · Nessie sandbox'}
           </span>
           <span className="absolute left-[331px] top-[19px] text-muted text-[11px]">Details</span>
         </button>
 
         <p className="absolute left-[28px] top-[269px] text-muted text-[12px]">To</p>
-        <p className="absolute left-[28px] top-[292px] font-medium text-ink text-[16px]">Retrofit Reserve</p>
+        <p className="absolute left-[28px] top-[292px] font-medium text-ink text-[16px]">{fin ? 'Hawk Lens Retrofit Reserve' : 'Retrofit Reserve'}</p>
         <p className="absolute left-[28px] top-[320px] text-muted text-[12px]">
           A dedicated account, created after approval.
         </p>
@@ -122,21 +141,21 @@ export default function FinancingApproval() {
           <span className="absolute left-[37px] top-[10px] text-ink text-[13px] leading-[21px]">
             I approve this transfer and the creation
             <br />
-            of 18 contractor bills for this plan.
+            of {nBills} contractor bill{nBills === 1 ? '' : 's'} for this plan.
           </span>
         </button>
 
         <button
           type="button"
-          disabled={!consent}
-          onClick={() => navigate('/funding-confirmation')}
+          disabled={!consent || approving || (run.runId && !fin)} // after a reload the plan loads asynchronously: never approve blind
+          onClick={approve}
           className={`absolute left-[28px] top-[448px] w-[384px] h-[47px] rounded-[6px] text-[14px] font-medium transition ${
             consent
               ? 'bg-brand text-white hover:brightness-110 active:brightness-95'
               : 'bg-[#dde5d7] text-[#65765e] cursor-not-allowed'
           }`}
         >
-          Approve &amp; fund
+          {approving ? 'Approving…' : 'Approve & fund'}
         </button>
         <p className="absolute left-[28px] top-[515px] text-muted text-[11px]">
           Confirm above to continue. No money has moved.

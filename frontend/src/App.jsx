@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './lib/ui'
+import { RunProvider } from './lib/store'
 import Portfolio from './pages/Portfolio'
 import PlanDetails from './pages/PlanDetails'
 import BuildingDetails from './pages/BuildingDetails'
@@ -26,6 +27,7 @@ import Placeholder from './pages/Placeholder'
 export default function App() {
   return (
     <BrowserRouter>
+      <RunProvider demoRunId={import.meta.env.VITE_DEMO_RUN_ID}>
       <ToastProvider>
         <Routes>
           <Route path="/" element={<Portfolio />} />
@@ -52,6 +54,7 @@ export default function App() {
           <Route path="*" element={<Placeholder title="Not found" />} />
         </Routes>
       </ToastProvider>
+      </RunProvider>
     </BrowserRouter>
   )
 }

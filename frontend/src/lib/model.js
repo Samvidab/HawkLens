@@ -5,7 +5,7 @@
 // None of this is real data; it just makes the prototype feel alive.
 // ---------------------------------------------------------------------------
 export const TARGET_MIN = 0
-export const TARGET_MAX = 60
+export const TARGET_MAX = 80 // App Flow 2.1: slider 0-80 %
 export const SLIDER_WIDTH = 376 // px, matches Figma track width
 export const BUDGET_K = 1500 // "Budget $1500k"
 

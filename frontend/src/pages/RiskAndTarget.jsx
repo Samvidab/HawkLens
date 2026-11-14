@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import { useOverview } from '../lib/store'
+import { riskModel, targetModel, upgradeLabel, widget } from '../lib/viewModels'
 
 // NPV histogram bins: [left, top, height, loss?] — loss bins use the warning color.
 const BINS = [
@@ -39,6 +41,13 @@ const EXPLAINERS = [
 
 export default function RiskAndTarget() {
   const navigate = useNavigate()
+  const run = useOverview()
+  const rm = run.layout ? riskModel(run.layout) : null
+  const tm = run.layout ? targetModel(run.layout) : null
+  const gap = run.layout ? widget(run.layout, 'target_gap_card') : null
+  const bars = rm ? rm.bars : BINS.map(([left, top, height, loss]) => ({ left, top, height, loss, width: 27.778 }))
+  const axis = rm ? rm.axis.map((a) => [a.label, a.left]) : AXIS
+  const cheapest = gap?.cheapest_extra?.[0]
 
   return (
     <Page active="plan">
@@ -65,27 +74,31 @@ export default function RiskAndTarget() {
           Lifetime NPV distribution · Baseline sample plan
         </p>
         <p className="absolute left-[637px] top-[17px] font-semibold text-brand text-[30px] leading-[1.45]">
-          +$486k
+          {rm ? rm.expNpv : '+$486k'}
         </p>
         <p className="absolute left-[637px] top-[62px] text-muted text-[11px] leading-[1.45]">
           Expected net value
         </p>
 
-        {BINS.map(([left, top, height, loss], i) => (
+        {bars.map((b, i) => (
           <div
             key={i}
-            className={`absolute rounded-[2px] ${loss ? 'bg-[#7a693b]' : 'bg-brand'}`}
-            style={{ left: `${left}px`, top: `${top}px`, width: '27.778px', height: `${height}px` }}
+            className={`absolute rounded-[2px] ${b.loss ? 'bg-[#7a693b]' : 'bg-brand'}`}
+            style={{ left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` }}
           />
         ))}
 
         {/* break-even line */}
-        <div className="absolute left-[178.11px] top-[104px] w-px h-[158px] bg-[#7a693b]" />
-        <p className="absolute left-[151.11px] top-[84px] text-[#7a693b] text-[11px] leading-[1.45]">
-          Break even
-        </p>
+        {(!rm || rm.breakEven !== null) && (
+          <>
+            <div className="absolute top-[104px] w-px h-[158px] bg-[#7a693b]" style={{ left: `${rm ? rm.breakEven : 178.11}px` }} />
+            <p className="absolute top-[84px] text-[#7a693b] text-[11px] leading-[1.45]" style={{ left: `${(rm ? rm.breakEven : 178.11) - 27}px` }}>
+              Break even
+            </p>
+          </>
+        )}
 
-        {AXIS.map(([label, left]) => (
+        {axis.map(([label, left]) => (
           <p
             key={label}
             className="absolute top-[272px] text-muted text-[11px] leading-[1.45]"
@@ -96,19 +109,19 @@ export default function RiskAndTarget() {
         ))}
 
         <p className="absolute left-[637px] top-[125px] font-semibold text-[#7a693b] text-[20px] leading-[1.45]">
-          4.2%
+          {rm ? rm.pLoss : '4.2%'}
         </p>
         <p className="absolute left-[637px] top-[157px] text-muted text-[11px] leading-[1.45]">
           Chance of a loss
         </p>
         <p className="absolute left-[637px] top-[204px] font-semibold text-ink text-[20px] leading-[1.45]">
-          −$94k
+          {rm ? rm.worst5 : '−$94k'}
         </p>
         <p className="absolute left-[637px] top-[238px] text-muted text-[11px] leading-[1.45]">
           Worst 5% average
         </p>
         <p className="absolute left-[19px] top-[327px] text-muted text-[11px] leading-[1.45]">
-          Illustrative baseline · 10,000 scenarios · Run again after changing the plan.
+          {rm ? 'Simulated by the quant engine' : 'Illustrative baseline'} · 10,000 scenarios · Run again after changing the plan.
         </p>
       </section>
 
@@ -119,23 +132,23 @@ export default function RiskAndTarget() {
         className="absolute left-[944px] top-[265px] w-[440px] h-[320px] rounded-[8px] border border-line bg-white text-left"
       >
         <span className="absolute left-[19px] top-[16px] font-semibold text-ink text-[16px] leading-[1.45]">
-          Your target is covered
+          {tm ? (tm.covered ? 'Your target is covered' : 'Your target is out of reach') : 'Your target is covered'}
         </span>
         <span className="absolute left-[19px] top-[46px] text-muted text-[11px] leading-[1.45]">
-          Current goal · Expected carbon cuts cover the target
+          {tm ? (tm.covered ? 'Current goal · Expected carbon cuts cover the target' : `Current goal · ${tm.target}% needs ${tm.tonnesNeeded?.toLocaleString('en-US')} tonnes a year`) : 'Current goal · Expected carbon cuts cover the target'}
         </span>
         <span className="absolute left-[19px] top-[75px] font-semibold text-brand text-[30px] leading-[1.45]">
-          72
+          {tm ? (tm.covered ? tm.surplus : tm.shortfall).toLocaleString('en-US') : 72}
         </span>
         <span className="absolute left-[79px] top-[92px] text-muted text-[11px] leading-[1.45]">
-          tonnes per year above your goal
+          {tm && !tm.covered ? 'tonnes per year short of your goal' : 'tonnes per year above your goal'}
         </span>
         <span className="absolute left-[19px] top-[139px] w-[400px] h-px bg-line" />
         <span className="absolute left-[19px] top-[165px] text-ink text-[14px] leading-[1.45]">
-          1032 tonnes / year
+          {tm ? tm.annualLabel : '1032 tonnes / year'}
         </span>
         <span className="absolute left-[19px] top-[203px] text-muted text-[11px] leading-[1.45]">
-          See the risk panel for the current simulation status.
+          {cheapest ? `Cheapest extra cut: ${upgradeLabel(String(cheapest.upgrade_id).split(':')[1])} · ${Math.round(cheapest.tonnes_per_year)} t/yr` : tm && !tm.covered ? 'No single extra upgrade can close the gap.' : 'See the risk panel for the current simulation status.'}
         </span>
         <span className="absolute left-[19px] top-[277px] font-medium text-brand text-[13px] leading-[1.45]">
           Review your plan&nbsp;&nbsp;→
@@ -156,7 +169,7 @@ export default function RiskAndTarget() {
       ))}
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px] leading-[1.45]">
-        Illustrative baseline · No live Monte Carlo execution
+        {rm ? 'Simulated by the quant engine · re-run after changing the plan' : 'Illustrative baseline · No live Monte Carlo execution'}
       </p>
     </Page>
   )

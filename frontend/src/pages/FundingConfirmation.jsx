@@ -1,8 +1,15 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import { useOverview } from '../lib/store'
+import { financingModel, planSummary } from '../lib/viewModels'
 
 export default function FundingConfirmation() {
   const navigate = useNavigate()
+  const run = useOverview()
+  const fin = run.layout ? financingModel(run.layout, run.state) : null
+  const ids = fin?.nessieIds || {}
+  const tail = (v) => (v ? `…${String(v).slice(-6)}` : '—')
+  const sum = run.layout ? planSummary(run.layout) : null
 
   return (
     <Page active="plan">
@@ -12,20 +19,24 @@ export default function FundingConfirmation() {
           Your retrofit plan is funded.
         </p>
         <p className="absolute left-[185px] top-[142px] text-muted text-[13px]">
-          Simulated confirmation · No real account or money movement
+          {fin?.executed
+            ? (run.health?.nessie_mode === 'live'
+              ? `Recorded in the Nessie sandbox · account ${tail(ids.account)} · transfer ${tail(ids.transfer)}`
+              : `Simulated confirmation (stub Nessie) · account ${tail(ids.account)} · transfer ${tail(ids.transfer)}`)
+            : 'Simulated confirmation · No real account or money movement'}
         </p>
 
         <p className="absolute left-[46px] top-[202px] text-muted text-[14px]">Retrofit Reserve</p>
         <p className="absolute left-[554px] top-[202px] font-medium text-brand text-[14px]">
-          Created in this demo
+          {fin?.executed ? (run.health?.nessie_mode === 'live' ? 'Nessie sandbox' : 'Simulated') : 'Created in this demo'}
         </p>
 
         <p className="absolute left-[46px] top-[247px] text-muted text-[14px]">Reserved for upgrades</p>
-        <p className="absolute left-[554px] top-[242px] font-semibold text-ink text-[24px]">$1280k</p>
+        <p className="absolute left-[554px] top-[242px] font-semibold text-ink text-[24px]">{fin ? fin.total : '$1280k'}</p>
 
         <p className="absolute left-[46px] top-[294px] text-muted text-[14px]">Contractor allocation</p>
         <p className="absolute left-[454px] top-[294px] text-ink text-[13px]">
-          18 upgrades across 8 buildings
+          {sum ? sum.count : '18 upgrades across 8 buildings'}
         </p>
 
         <div className="absolute left-[46px] top-[338px] w-[748px] h-px bg-[#dde3d8]" />

@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import { useRun } from '../lib/store'
+import { feedRows, surveySummary } from '../lib/viewModels'
 
 const EVENTS = [
   { time: '09:41:12', agent: 'Records analyst', msg: 'Midtown office profile loaded.', meta: 'CoStar · 96,000 sq ft · 6 floors' },
@@ -19,6 +21,12 @@ const SUMMARY = [
 
 export default function SurveyComplete() {
   const navigate = useNavigate()
+  const run = useRun()
+  const live = run.live && !!run.runId && run.events.length > 0
+  const events = live ? feedRows(run.events, 6) : EVENTS
+  const summary = (live && surveySummary(run.state, run.layout)) || SUMMARY
+  const nDone = live && run.state?.results ? Object.values(run.state.results).filter((r) => r.status === 'done').length : 8
+  const nAll = live && run.state?.results ? Object.keys(run.state.results).length : 8
 
   return (
     <Page active="portfolio">
@@ -33,7 +41,7 @@ export default function SurveyComplete() {
         Your survey is ready
       </h1>
       <p className="absolute left-[56px] top-[202px] text-muted text-[14px] leading-[1.45]">
-        8 buildings inspected. Verified findings are ready for pricing and planning.
+        {nDone} buildings inspected. Verified findings are ready for pricing and planning.
       </p>
 
       {/* Activity feed */}
@@ -42,13 +50,13 @@ export default function SurveyComplete() {
           Survey activity
         </p>
         <p className="absolute left-[19px] top-[46px] text-muted text-[11px] leading-[1.45]">
-          8 of 8 buildings inspected · Workspace ready
+          {nDone} of {nAll} buildings inspected · {run.layout || !live ? 'Workspace ready' : 'Finishing up…'}
         </p>
         <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">Complete</p>
-        {EVENTS.map((e, i) => {
+        {events.map((e, i) => {
           const top = 86 + i * 48
           return (
-            <div key={e.time}>
+            <div key={e.seq ?? e.time}>
               {i > 0 && (
                 <div className="absolute left-[19px] w-[808px] h-px bg-line" style={{ top: `${top - 7}px` }} />
               )}
@@ -68,16 +76,16 @@ export default function SurveyComplete() {
           )
         })}
         <p className="absolute left-[19px] top-[409px] text-muted text-[11px] leading-[1.45]">
-          Structured events · Illustrative sequence, not a live server feed
+          {live ? 'Structured events · live from the agents' : 'Structured events · Illustrative sequence, not a live server feed'}
         </p>
       </section>
 
       {/* Survey result summary */}
       <section className="absolute left-[944px] top-[265px] w-[440px] h-[340px] rounded-[8px] bg-[#f5f7f2] overflow-hidden">
         <p className="absolute left-[24px] top-[23px] font-semibold text-ink text-[20px] leading-[1.45]">
-          8 buildings ready
+          {nDone} buildings ready
         </p>
-        {SUMMARY.map((s, i) => {
+        {summary.map((s, i) => {
           const top = 85 + i * 46
           return (
             <div key={s.label}>
@@ -101,7 +109,7 @@ export default function SurveyComplete() {
       </button>
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px] leading-[1.45]">
-        Prototype survey sequence · Example buildings and findings, not live data
+        {live ? 'Live survey result' : 'Prototype survey sequence · Example buildings and findings, not live data'}
       </p>
     </Page>
   )

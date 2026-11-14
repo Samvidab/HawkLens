@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
 import { useGo } from '../lib/ui'
+import { useOverview } from '../lib/store'
+import { abatementGeometry, feedRows, planMetrics, planRows, planSummary, portfolioBuildings, riskModel, targetModel } from '../lib/viewModels'
 
 // Abatement-curve bars (baseline at the $0 line, y=165 within the 290px card).
 const CUT_BARS = [
@@ -51,6 +53,28 @@ const METRICS = [
 export default function PlanDetails() {
   const go = useGo()
   const navigate = useNavigate()
+  const run = useOverview()
+  const L = run.layout
+  const metrics = (L && planMetrics(L)) || METRICS
+  const rows = (L && planRows(L)) || ROWS
+  const geo = L && abatementGeometry(L)
+  const sum = L && planSummary(L)
+  const tm = L && targetModel(L)
+  const risk = L && riskModel(L)
+  const nBuildings = (L && portfolioBuildings(L)?.length) || 8
+  const activity = run.events.length
+    ? feedRows(run.events, 3).map((e) => ({ time: `${e.time.slice(0, 5)} · ${e.agent}`, line: e.msg, meta: e.meta }))
+    : ACTIVITY
+  const cutBars = geo ? geo.bars.filter((b) => b.profitable) : CUT_BARS
+  const costBars = geo ? geo.bars.filter((b) => !b.profitable) : COST_BARS
+  const yLab = geo ? geo.yLabel : 100
+  const rowH = rows.length > 3 ? 24 : 33
+  const tableH = rows.length > 3 ? 90 + rows.length * rowH + 12 : 193
+  const pickBar = async (b) => {
+    if (!b.upgradeId) return
+    await run.act('select_bar', { upgrade_id: b.upgradeId }).catch(() => {})
+    navigate('/building')
+  }
 
   return (
     <Page active="plan">
@@ -58,7 +82,7 @@ export default function PlanDetails() {
         What&rsquo;s in your plan
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        18 upgrades · 40% reduction goal
+        {sum ? sum.line : '18 upgrades · 40% reduction goal'}
       </p>
       <button
         type="button"
@@ -70,7 +94,7 @@ export default function PlanDetails() {
 
       {/* Plan outcomes metric strip */}
       <div className="absolute left-[56px] top-[230px] w-[1328px] h-[94px]">
-        {METRICS.map((m, i) => (
+        {metrics.map((m, i) => (
           <div key={m.label}>
             {i > 0 && (
               <div
@@ -107,38 +131,46 @@ export default function PlanDetails() {
 
         {/* grid lines + axis labels */}
         <div className="absolute left-[64px] top-[212px] w-[562px] h-px bg-[#e7ebe2]" />
-        <p className="absolute left-[16px] top-[207px] text-muted text-[9px]">−$100</p>
+        <p className="absolute left-[16px] top-[207px] text-muted text-[9px]">−${yLab.toLocaleString('en-US')}</p>
         <div className="absolute left-[64px] top-[165px] w-[562px] h-px bg-[#9aa68f]" />
         <p className="absolute left-[16px] top-[160px] text-muted text-[9px]">$0</p>
         <div className="absolute left-[64px] top-[118px] w-[562px] h-px bg-[#e7ebe2]" />
-        <p className="absolute left-[16px] top-[113px] text-muted text-[9px]">$100</p>
+        <p className="absolute left-[16px] top-[113px] text-muted text-[9px]">${yLab.toLocaleString('en-US')}</p>
 
         {/* profitable (below-zero) bars grow downward from the $0 line */}
-        {CUT_BARS.map((b) => (
+        {cutBars.map((b) => (
           <div
             key={b.name}
             title={b.name}
-            className="absolute bg-brand rounded-[2px]"
+            onClick={() => pickBar(b)}
+            className={`absolute bg-brand rounded-[2px] ${b.upgradeId ? 'cursor-pointer hover:brightness-110' : ''}`}
             style={{ left: `${b.left}px`, top: '165px', width: `${b.width}px`, height: `${b.height}px` }}
           />
         ))}
         {/* net-cost opportunity bars */}
-        {COST_BARS.map((b) => (
+        {costBars.map((b) => (
           <div
             key={b.name}
             title={b.name}
-            className="absolute bg-[#dde4d5] border border-[#b9c5ae] rounded-[2px]"
+            onClick={() => pickBar(b)}
+            className={`absolute bg-[#dde4d5] border border-[#b9c5ae] rounded-[2px] ${b.upgradeId ? 'cursor-pointer hover:brightness-95' : ''}`}
             style={{ left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` }}
           />
         ))}
-        <div className="absolute left-[472.11px] top-[110px] w-px h-[131px] bg-[#7a693b]" />
-        <p className="absolute left-[442.11px] top-[93px] font-medium text-[#7a693b] text-[10px]">
-          Reference: 40%
-        </p>
-        <p className="absolute left-[59px] top-[237px] text-muted text-[9px]">0</p>
-        <p className="absolute left-[229.05px] top-[237px] text-muted text-[9px]">400</p>
-        <p className="absolute left-[399.09px] top-[237px] text-muted text-[9px]">800</p>
-        <p className="absolute left-[569.14px] top-[237px] text-muted text-[9px]">1200</p>
+        {(() => {
+          const refLeft = geo && tm?.tonnesNeeded != null ? geo.referenceLeft(tm.tonnesNeeded) : 472.11
+          return (
+            <>
+              <div className="absolute top-[110px] w-px h-[131px] bg-[#7a693b]" style={{ left: `${refLeft}px` }} />
+              <p className="absolute top-[93px] font-medium text-[#7a693b] text-[10px]" style={{ left: `${refLeft - 30}px` }}>
+                Reference: {tm ? tm.target : 40}%
+              </p>
+            </>
+          )
+        })()}
+        {(geo ? geo.xTicks : [{ label: '0', left: 59 }, { label: '400', left: 229.05 }, { label: '800', left: 399.09 }, { label: '1200', left: 569.14 }]).map((t) => (
+          <p key={t.label} className="absolute top-[237px] text-muted text-[9px]" style={{ left: `${t.left}px` }}>{t.label}</p>
+        ))}
 
         {/* legend */}
         <div className="absolute left-[21px] top-[270px] w-[9px] h-[9px] rounded-[2px] bg-[#416b4d]" />
@@ -151,7 +183,7 @@ export default function PlanDetails() {
         <p className="absolute left-[673px] top-[92px] font-medium text-muted text-[10px] tracking-[0.6px]">
           PROFITABLE CUTS
         </p>
-        <p className="absolute left-[673px] top-[113px] font-semibold text-brand text-[31px]">1,032</p>
+        <p className="absolute left-[673px] top-[113px] font-semibold text-brand text-[31px]">{geo ? geo.profitableTonnes.toLocaleString('en-US') : '1,032'}</p>
         <p className="absolute left-[673px] top-[153px] text-muted text-[10px]">tCO₂ / year</p>
         <div className="absolute left-[673px] top-[178px] font-medium text-ink text-[12px] leading-[20px]">
           Below-zero upgrades
@@ -175,12 +207,12 @@ export default function PlanDetails() {
           Survey activity
         </button>
         <div className="absolute left-[314px] top-[19px] w-[86px] h-[23px] rounded-[5px] bg-[#edf3e6] flex items-center">
-          <span className="ml-[12px] font-medium text-brand text-[10px]">8 / 8 ready</span>
+          <span className="ml-[12px] font-medium text-brand text-[10px]">{nBuildings} / {nBuildings} ready</span>
         </div>
         <p className="absolute left-[21px] top-[44px] text-muted text-[12px]">
           Latest completed survey events
         </p>
-        {ACTIVITY.map((a, i) => {
+        {activity.map((a, i) => {
           const top = 82 + i * 57
           return (
             <div key={a.time}>
@@ -223,15 +255,15 @@ export default function PlanDetails() {
       </section>
 
       {/* Upgrade breakdown table */}
-      <section className="absolute left-[56px] top-[709px] w-[1328px] h-[193px] rounded-[6px] border border-line bg-white overflow-hidden">
+      <section className="absolute left-[56px] top-[709px] w-[1328px] rounded-[6px] border border-line bg-white overflow-hidden" style={{ height: tableH }}>
         <p className="absolute left-[21px] top-[16px] font-semibold text-ink text-[16px]">
           Upgrade breakdown
         </p>
         <p className="absolute left-[237px] top-[21px] text-muted text-[11px]">
-          18 upgrades across 8 buildings
+          {sum ? sum.count : '18 upgrades across 8 buildings'}
         </p>
         <p className="absolute left-[919px] top-[20px] text-muted text-[11px]">
-          Baseline downside: −$94k NPV
+          {risk ? `Worst 5% average: ${risk.worst5} NPV` : 'Baseline downside: −$94k NPV'}
         </p>
         <button
           type="button"
@@ -253,8 +285,8 @@ export default function PlanDetails() {
             </p>
           ),
         )}
-        {ROWS.map((r, i) => {
-          const top = 90 + i * 33
+        {rows.map((r, i) => {
+          const top = 90 + i * rowH
           return (
             <div key={r.name}>
               {i > 0 && (
@@ -289,7 +321,7 @@ export default function PlanDetails() {
       </section>
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px]">
-        Illustrative data · Review assumptions before approval
+        {L ? (tm?.sample ? 'Sample pricing (stub engine) · Review assumptions before approval' : 'Quant engine pricing · Review assumptions before approval') : 'Illustrative data · Review assumptions before approval'}
       </p>
       <button
         type="button"

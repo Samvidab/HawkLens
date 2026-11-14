@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import buildingModel from '../assets/building-model.svg'
 import Page from '../components/Page'
+import { useBuildingFocus } from '../lib/store'
+import { buildingModel as selectBuilding, buildingTotals, upgradeRows } from '../lib/viewModels'
 import { useGo } from '../lib/ui'
 
 const PROFILE = [
@@ -22,6 +24,22 @@ export default function BuildingDetails() {
   const go = useGo()
   const navigate = useNavigate()
   const [included, setIncluded] = useState({ led: true, solar: true, hvac: true })
+  const run = useBuildingFocus()
+  const bm = run.layout && run.layout.situation === 'building_detail' ? selectBuilding(run.layout) : null
+  const live = bm ? upgradeRows(run.layout) : null
+  const profile = bm ? bm.profile : PROFILE
+  const ups = live || UPGRADES
+  const rowH = ups.length > 3 ? 27 : 42
+  const solar = live?.find((u) => u.type === 'rooftop_solar') || live?.[0]
+  const flip = async (u) => {
+    if (!live) return toggle(u.key)
+    const verb = !u.on && u.includable ? ['include_unverified', { upgrade_id: u.id }] : ['toggle_upgrade', { upgrade_id: u.id, on: !u.on }]
+    await run.act(...verb).catch(() => {})
+  }
+  const exclude = async () => {
+    if (live) await run.act('exclude_building', { building_id: bm.id }).catch(() => {})
+    navigate('/building-excluded', { state: bm ? { id: bm.id, name: bm.name } : null })
+  }
 
   const toggle = (key) => setIncluded((s) => ({ ...s, [key]: !s[key] }))
 
@@ -36,10 +54,10 @@ export default function BuildingDetails() {
         ←&nbsp;&nbsp;Houston portfolio
       </button>
       <h1 className="absolute left-[56px] top-[142px] font-semibold text-ink text-[32px]">
-        Midtown office
+        {bm ? bm.name : 'Midtown office'}
       </h1>
       <p className="absolute left-[56px] top-[191px] text-muted text-[14px]">
-        Houston, TX · Commercial office · HOU–04
+        {bm ? `${bm.address} · ${bm.type}` : 'Houston, TX · Commercial office · HOU–04'}
       </p>
       <p className="absolute left-[1200px] top-[158px] font-medium text-brand text-[14px]">
         Adjust upgrades below
@@ -54,7 +72,7 @@ export default function BuildingDetails() {
         <img src={buildingModel} alt="" className="absolute inset-0 w-full h-full" />
         <div className="absolute left-[555px] top-[98px] w-[231px] h-[58px] rounded-[6px] bg-white overflow-hidden shadow-sm">
           <p className="absolute left-[13px] top-[11px] font-medium text-brand text-[14px]">
-            120 kW rooftop solar
+            {solar ? solar.name : '120 kW rooftop solar'}
           </p>
           <button
             type="button"
@@ -82,7 +100,7 @@ export default function BuildingDetails() {
         <p className="absolute left-[32px] top-[8px] font-semibold text-ink text-[18px]">
           About this building
         </p>
-        {PROFILE.map(([label, value], i) => {
+        {profile.map(([label, value], i) => {
           const top = 55 + i * 38
           return (
             <div key={label}>
@@ -123,7 +141,7 @@ export default function BuildingDetails() {
       </button>
       <button
         type="button"
-        onClick={() => go('/building-excluded')}
+        onClick={exclude}
         className="absolute left-[1222px] top-[183px] w-[162px] h-[36px] rounded-[5px] bg-[#f5f7f2] text-[13px] font-medium text-[#9a493c] hover:brightness-95"
       >
         Exclude building
@@ -135,7 +153,7 @@ export default function BuildingDetails() {
           Upgrades for this building
         </p>
         <p className="absolute left-0 top-[34px] text-muted text-[13px]">
-          210 tCO₂ / year · $270k investment
+          {live ? buildingTotals(run.layout).line : '210 tCO₂ / year · $270k investment'}
         </p>
         <p className="absolute left-[1061px] top-[12px] text-muted text-[12px]">
           Changes update your portfolio plan.
@@ -153,9 +171,9 @@ export default function BuildingDetails() {
           ),
         )}
 
-        {UPGRADES.map((u, i) => {
-          const top = 105 + i * 42
-          const on = included[u.key]
+        {ups.map((u, i) => {
+          const top = 105 + i * rowH
+          const on = live ? u.on : included[u.key]
           return (
             <div key={u.key}>
               <div
@@ -163,7 +181,7 @@ export default function BuildingDetails() {
                 style={{ top: `${top - 8}px` }}
               />
               <p className="absolute left-0 font-medium text-ink text-[14px]" style={{ top: `${top}px` }}>
-                {u.name}
+                {u.name}{live && u.verified !== 'verified' ? ` · ${u.verified}` : ''}
               </p>
               <p className="absolute left-[563px] text-ink text-[14px]" style={{ top: `${top}px` }}>
                 {u.co2}
@@ -179,7 +197,7 @@ export default function BuildingDetails() {
                 role="switch"
                 aria-checked={on}
                 aria-label={`Include ${u.name}`}
-                onClick={() => toggle(u.key)}
+                onClick={() => flip(u)}
                 className={`absolute left-[1271px] w-[38px] h-[22px] rounded-full transition-colors ${
                   on ? 'bg-brand' : 'bg-[#c7ccd1]'
                 }`}
@@ -197,7 +215,7 @@ export default function BuildingDetails() {
       </section>
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px]">
-        Illustrative data · Not a live building survey
+        {live ? 'Live survey data · Changes update your portfolio plan' : 'Illustrative data · Not a live building survey'}
       </p>
       <button
         type="button"
