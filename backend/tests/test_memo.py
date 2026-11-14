@@ -261,3 +261,42 @@ async def test_the_prompt_states_the_wording_rules(data, monkeypatch):
                    'Never write "{{n_upgrades}} upgrade types"'):
         assert needle in p, needle
     assert all(w in EVALUATIVE_WORDS for w in ("strong", "robust", "attractive", "protection", "protections"))
+
+
+# ---- memo numbers only from the plan --------------------------------------------------------------------------------------
+async def test_the_plan_carries_the_selected_upgrades_and_building_names(data, monkeypatch):
+    plan = await run_pricing("r", GOALS[1])
+    assert set(plan["upgrades"]) == set(plan["selected"])
+    for uid, d in plan["upgrades"].items():
+        assert {"building_id", "type", "size_value", "size_unit", "verified"} <= set(d) and uid.startswith(d["building_id"] + ":")
+    assert plan["building_names"] == {"b1": "Allen Center 2", "b2": "Harbor Lofts"}
+
+
+async def test_every_number_in_the_memo_comes_from_the_plan(data, monkeypatch):
+    fake_llm(monkeypatch, [GOOD])
+    plan = await run_pricing("r", GOALS[1])
+    # change the survey files AFTER pricing: the memo must not read sizes from them any more
+    for b in ("b1", "b2"):
+        f = data / f"buildings/{b}/feasibility.json"
+        ups = json.loads(f.read_text())
+        for u in ups:
+            u["size_value"] = 987654.0
+        f.write_text(json.dumps(ups))
+    md = await memo.write_memo("r", plan)
+    assert "987,654" not in md
+    for d in plan["upgrades"].values():
+        assert f"{d['size_value']:,.0f} {d['size_unit']}" in md
+    body = md.split("\n", 1)[1]  # the header's plan id is itself from the plan, but check the rest strictly
+    names = [{"name": "Allen Center 2"}, {"name": "Harbor Lofts"}]
+    from app.agents.memo import build_values
+    _, raw = build_values(plan, plan["upgrades"])
+    assert check_numbers(body, [plan, raw, names]) == []
+
+
+async def test_old_plans_without_upgrade_details_show_size_as_not_available(data, monkeypatch):
+    fake_llm(monkeypatch, [GOOD])
+    plan = await run_pricing("r", GOALS[1])
+    plan.pop("upgrades"); plan.pop("building_names")
+    md = await memo.write_memo("r", plan)
+    table = md.split("## Upgrades in the plan")[1]
+    assert table.count("not available") >= len(plan["selected"])  # never re-read from the survey files

@@ -239,7 +239,7 @@ async def test_invalid_selection_falls_back_to_template(world, monkeypatch, name
     llm(monkeypatch, BAD[name])
     lay, _ = await compose("r", "goal", View())
     assert types(lay) == OV + ["activity_feed"]
-    assert {w.type: w for w in lay.widgets}["plan_table"].why == "The cheapest verified mix that meets the target."
+    assert {w.type: w for w in lay.widgets}["plan_table"].why == "The upgrades the engine selected for your target."
 
 
 async def test_llm_failure_and_timeout_fall_back_fast(world, monkeypatch):

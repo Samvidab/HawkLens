@@ -192,6 +192,9 @@ class UpgradeList(Props):
 class Baseline(Props):
     annual_spend_usd: float | None = None
     tonnes_per_year: float | None = None
+    # where the numbers come from; the engine's baseline is a benchmark (energy use per sq ft for the building type) until
+    # metered bills are wired in, so the UI must label it an estimate
+    basis: str | None = "benchmark estimate"
 
 
 class BuildingHeader(Props):

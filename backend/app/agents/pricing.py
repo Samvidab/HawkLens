@@ -61,6 +61,11 @@ async def run_pricing(run_id: str, goal: Goal, *, excluded_building_ids: Iterabl
         "simulate": r["sim"],
         "baseline": r["baseline"],
         "stub": bool(opt.get("stub", False)),
+        # what the memo and other documents show about each selected upgrade: from the plan, never re-read elsewhere
+        "upgrades": {u.upgrade_id: {"building_id": u.building_id, "type": u.type, "size_value": u.size_value,
+                                    "size_unit": u.size_unit, "verified": u.verified}
+                     for ups in by_building.values() for u in ups if u.upgrade_id in set(opt.get("selected", []))},
+        "building_names": {b: (read_json(data_path("buildings", b, "profile.json"), {}) or {}).get("name", b) for b in by_building},
     }
     write_json(data_path("plans", f"{plan['plan_id']}.json"), plan)
     write_json(data_path("plans", "current.json"), plan)

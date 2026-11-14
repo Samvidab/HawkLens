@@ -216,3 +216,9 @@ def test_upgrade_list_rows_carry_the_engines_numbers(data):
     rows = {r["upgrade"]["upgrade_id"]: r for r in widgets(resolve_layout(ctx, "building_detail"))["upgrade_list"].props["upgrades"]}
     assert rows["b1:rooftop_solar"]["upfront_usd"] == 60000.0 and rows["b1:rooftop_solar"]["exp_npv"] == 900.0
     assert rows["b1:window_upgrade"]["upfront_usd"] is None  # not priced by the engine: null, not a made-up number
+
+
+def test_the_baseline_is_labelled_as_a_benchmark_estimate(data):
+    ctx = ResolveContext.load(data, "r1", focus_building_id="b1")
+    head = widgets(resolve_layout(ctx, "building_detail"))["building_header"].props
+    assert head["baseline"]["basis"] == "benchmark estimate"

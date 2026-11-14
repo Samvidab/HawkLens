@@ -169,16 +169,21 @@ def _prompt(plan: dict, profiles: dict[str, dict], upgrades: dict[str, dict], al
 
 
 def _appendix(plan: dict, profiles: dict[str, dict], upgrades: dict[str, dict]) -> str:
+    """The table of selected upgrades. Every number comes from the plan JSON: costs and tonnes from `simulate`, sizes from
+    `plan["upgrades"]` (written by the pricing node). Plans priced before that field existed show the size as not available."""
     sim = plan.get("simulate", {})
+    details = plan.get("upgrades", {})
+    names = plan.get("building_names", {})
     rows = ["| Building | Upgrade | Size | Upfront | Tonnes/yr |", "|---|---|---|---|---|"]
     for uid in plan.get("selected", []):
-        u = upgrades.get(uid)
-        if not u:
-            continue
+        d = details.get(uid) or {}
+        bid = d.get("building_id") or (upgrades.get(uid) or {}).get("building_id") or uid.split(":")[0]
+        typ = d.get("type") or (upgrades.get(uid) or {}).get("type") or uid.split(":")[-1]
+        name = names.get(bid) or profiles.get(bid, {}).get("name", bid)
+        size = f"{d['size_value']:,.0f} {d['size_unit']}" if d.get("size_value") is not None else "not available"
         s = sim.get(uid, {})
-        rows.append(f"| {profiles.get(u['building_id'], {}).get('name', u['building_id'])} | {u['type']} | "
-                    f"{u['size_value']:,.0f} {u['size_unit']} | {usd(s.get('upfront_usd'))} | "
-                    f"{tonnes(s.get('tonnes_per_year')).replace(' t/yr', '')} |")
+        t = s.get("tonnes_per_year")
+        rows.append(f"| {name} | {LABEL.get(typ, typ)} | {size} | {usd(s.get('upfront_usd'))} | {'not available' if t is None else f'{t:,.0f}'} |")
     return "\n".join(rows)
 
 
@@ -200,7 +205,8 @@ async def write_memo(run_id: str, plan: dict | None = None) -> str:
     if not plan.get("plan_id"):
         raise ValueError("no plan to write a memo for")
     values, raw = build_values(plan, upgrades)
-    # Digits that belong to a building's name or address are not invented numbers ("7900 Fannin", "CityNorth 6").
+    # Numbers may come only from the plan JSON and counts derived from it (`raw`). Digits that belong to a building's
+    # name or address are not numbers about the plan ("7900 Fannin", "CityNorth 6"), so they are allowed too.
     sources = [plan, raw, [{"name": p.get("name"), "address": p.get("address")} for p in profiles.values()]]
 
     template, feedback = FALLBACK, None
@@ -223,7 +229,10 @@ async def write_memo(run_id: str, plan: dict | None = None) -> str:
     if bad := check_numbers(prose, sources):  # defence in depth: substituted text must be explained
         log.warning("memo failed number check %s; using template", bad)
         prose = fill_placeholders(FALLBACK, values)
-    parts = [f"# Retrofit plan memo ({plan['plan_id']})", prose, "## Upgrades in the plan", _appendix(plan, profiles, upgrades)]
+    appendix = _appendix(plan, profiles, upgrades)
+    if bad := check_numbers(appendix, sources):  # the table too: only numbers from the plan (and names/addresses)
+        raise ValueError(f"memo table has numbers that are not in the plan: {bad}")
+    parts = [f"# Retrofit plan memo ({plan['plan_id']})", prose, "## Upgrades in the plan", appendix]
     if plan.get("stub"):
         parts.append(STUB_NOTE)
     md = "\n\n".join(parts) + "\n"

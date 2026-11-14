@@ -257,7 +257,7 @@
       "id": "w4",
       "type": "plan_table",
       "title": "Recommended plan",
-      "why": "The cheapest verified mix that meets the target.",
+      "why": "The upgrades the engine selected for your target.",
       "size": "wide",
       "data_ref": "plans/current.json#/selected",
       "props": {
