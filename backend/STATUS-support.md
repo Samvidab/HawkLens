@@ -8,6 +8,8 @@
 - widgets: registry, templates, resolver (`app/widgets/`)
 - T4.1 guardrails: `check_numbers`, `guarded_text`, `fill_placeholders`, `StepCounter` (`app/guardrails.py`)
 
+- llm.py: vision falls back once to GEMINI_MODEL_VISION_FALLBACK (=gemini-3.5-flash, set in all 3 .env) on 5xx/timeout after retries; cached under primary key
+
 ## In progress
 - nothing
 
