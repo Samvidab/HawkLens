@@ -15,7 +15,8 @@ from PIL import Image
 from pydantic import BaseModel, ValidationError
 
 from app.adapters.cache import cached
-from app.config import BACKEND_DIR, get_settings
+from app.config import get_settings
+from app.envutil import env_value
 
 log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
@@ -40,13 +41,7 @@ class ImageLike(Protocol):  # adapters.vexcel.ImageRef satisfies this
     local_path: str
 
 
-def _env(name: str) -> str | None:
-    """Process env first, then backend/.env (Settings drops keys it does not declare)."""
-    if os.environ.get(name):
-        return os.environ[name]
-    from dotenv import dotenv_values
-
-    return dotenv_values(BACKEND_DIR / ".env").get(name) or None
+_env = env_value  # name kept: tests and finance.py patch/import llm._env
 
 
 def token_budget() -> int:

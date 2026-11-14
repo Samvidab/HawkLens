@@ -1,0 +1,16 @@
+# /etc/systemd/system/retroalpha.service
+[Unit]
+Description=RetroAlpha API
+After=network.target
+
+[Service]
+User=retro
+WorkingDirectory=/opt/retroalpha/backend
+# Keys and modes come from /opt/retroalpha/backend/.env (read by the app). Override the mode here if wanted:
+# Environment=CACHE_MODE=read_only
+ExecStart=/opt/retroalpha/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+# /etc/caddy/Caddyfile  - automatic HTTPS (the frontend is https, so the API must be too)
+api.YOURDOMAIN.com {
+	reverse_proxy 127.0.0.1:8000 {
+		flush_interval -1   # do not buffer the SSE stream at /events/{run_id}
+	}
+}
