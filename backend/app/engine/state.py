@@ -7,6 +7,7 @@ One process, one cache: fine for a single-user demo.
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -29,10 +30,15 @@ class _Cache:
     overrides: dict[str, Any] = field(default_factory=dict)   # dotted key -> value, from set_assumption
     buildings_root: Path | None = None           # None = data_dir/buildings
     assumptions_path: Path | None = None         # None = app/engine/assumptions.json
+    generation: int = 0                          # bumps on every new simulation; plan cache keys use it
+    plans: dict = field(default_factory=dict)    # (generation, request...) -> optimize() result
+    precomputed: set = field(default_factory=set)  # (generation, context) already queued
+    last_context: tuple | None = None            # (risk_lambda, budget, exclusions) of the last optimize
     stale: bool = False
 
 
 _cache = _Cache()
+LOCK = threading.RLock()
 
 
 def set_simulation(sim: SimulationResult, upgrades: list[FeasibleUpgrade],
@@ -40,7 +46,10 @@ def set_simulation(sim: SimulationResult, upgrades: list[FeasibleUpgrade],
                    assumptions: dict[str, Any] | None = None) -> None:
     if [u.upgrade_id for u in upgrades] != sim.upgrade_ids:
         raise ValueError("upgrades must be the same list, in the same order, that was simulated")
-    _cache.sim, _cache.upgrades, _cache.stale = sim, list(upgrades), False
+    with LOCK:
+        _cache.sim, _cache.upgrades, _cache.stale = sim, list(upgrades), False
+        _cache.generation += 1
+        _cache.plans.clear(); _cache.precomputed.clear()
     if buildings is not None:
         _cache.buildings = dict(buildings)
     if assumptions is not None:
@@ -75,9 +84,13 @@ def is_stale() -> bool:
 
 
 def clear() -> None:
-    """Forget everything, including set_assumption overrides."""
+    """Forget everything, including set_assumption overrides. Background precompute threads
+    see the generation change and stop storing results."""
     global _cache
-    _cache = _Cache()
+    with LOCK:
+        gen = _cache.generation
+        _cache = _Cache()
+        _cache.generation = gen + 1
 
 
 def has_simulation() -> bool:
@@ -108,3 +121,38 @@ def buildings_root() -> Path | None:
 
 def forget_buildings() -> None:
     _cache.buildings = {}
+
+
+
+def generation() -> int:
+    return _cache.generation
+
+
+def get_plan(key: tuple):
+    with LOCK:
+        return _cache.plans.get(key)
+
+
+def put_plan(key: tuple, result: dict) -> None:
+    """Store only if the simulation it was computed on is still current."""
+    with LOCK:
+        if key[0] == _cache.generation:
+            _cache.plans[key] = result
+
+
+def claim_precompute(context: tuple) -> bool:
+    """True the first time a (generation, context) is claimed; False if already queued."""
+    with LOCK:
+        k = (_cache.generation, context)
+        if k in _cache.precomputed:
+            return False
+        _cache.precomputed.add(k)
+        return True
+
+
+def set_last_context(context: tuple) -> None:
+    _cache.last_context = context
+
+
+def last_context() -> tuple | None:
+    return _cache.last_context

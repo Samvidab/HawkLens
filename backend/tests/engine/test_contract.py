@@ -19,7 +19,7 @@ TRD_PLAN_KEYS = {"plan_id", "selected", "exp_npv", "cvar5", "p_hit_target", "tot
                  "tonnes_per_year"}
 EXTRA_PLAN_KEYS = {"status", "p_loss", "hist_bins", "tonnes_needed", "shortfall_tonnes",
                    "cheapest_extra", "internal_target_pct", "min_p_hit", "met_min_p_hit",
-                   "p_hit_retries"}
+                   "p_hit_retries", "risk_supported"}
 
 
 @pytest.fixture
@@ -113,6 +113,7 @@ def test_optimize_keys_and_types(simulated):
         assert is_num(r[k]), k
     assert r["status"] in ("ok", "infeasible")
     assert isinstance(r["met_min_p_hit"], bool) and isinstance(r["p_hit_retries"], int)
+    assert r["risk_supported"] is True      # the agent's client reads this; missing means "not modelled"
     assert_hist(r["hist_bins"])
     json.dumps(r, allow_nan=False)
 
@@ -280,3 +281,59 @@ def test_contract_simulate_rejects_wrong_size_unit(upgrades):
     bad = [u.model_copy(update={"size_unit": "fixtures"}) if u.type == "led_retrofit" else u for u in upgrades]
     with pytest.raises(ValueError, match="led_retrofit must be sized in 'sqft'"):
         engine.simulate(bad, {})
+
+
+
+# --- plan cache and precompute (build step 9) --------------------------------------------------
+
+def _uncached(target, lam, budget=None, excl=()):
+    """Solve directly, bypassing the cache, for comparison."""
+    return engine._solve(target, engine._context(lam, budget, list(excl)))
+
+
+def test_precompute_fills_every_slider_step_and_matches_live_solves(simulated):
+    engine.precompute(0.5, None, [], background=False)
+    gen = state.generation()
+    for t in engine.PRECOMPUTE_TARGETS:
+        assert state.get_plan((gen, float(t), 0.5, None, ())) is not None, t
+    for t in (0, 25, 40, 80):
+        assert engine.optimize(t, 0.5, None, []) == _uncached(t, 0.5), t
+
+
+def test_optimize_starts_background_precompute_for_risk_settings(simulated):
+    engine.optimize(25, 0.5, None, ["hou-002"])
+    engine.wait_for_precompute(60)
+    gen = state.generation()
+    cached = [t for t in engine.PRECOMPUTE_TARGETS
+              if state.get_plan((gen, float(t), 0.5, None, ("hou-002",))) is not None]
+    assert cached == list(engine.PRECOMPUTE_TARGETS)
+
+
+def test_off_grid_target_still_solved_exactly(simulated):
+    engine.precompute(0.5, None, [], background=False)
+    assert engine.optimize(27.5, 0.5, None, []) == _uncached(27.5, 0.5)
+
+
+def test_new_simulation_invalidates_cached_plans(simulated):
+    before = engine.optimize(25, 0.0, None, [])
+    gen = state.generation()
+    assert engine.set_assumption("upgrades.led_retrofit.unit_cost", 0.5)["ok"]
+    after = engine.optimize(25, 0.0, None, [])        # re-simulates: new generation, fresh solve
+    assert state.generation() > gen
+    assert after["plan_id"] != before["plan_id"]
+    assert state.get_plan((gen, 25.0, 0.0, None, ())) is None
+
+
+def test_cached_result_is_a_copy(simulated):
+    a = engine.optimize(25, 0.0, None, [])
+    a["selected"].append("tampered")
+    assert "tampered" not in engine.optimize(25, 0.0, None, [])["selected"]
+
+
+def test_stale_background_results_are_never_stored(simulated):
+    """A worker started on generation g must not store into a newer generation's cache."""
+    gen = state.generation()
+    context = engine._context(0.5, None, [])
+    state.clear()                                     # bumps the generation
+    engine._precompute_worker(context, [25], gen)     # returns at once: generation changed
+    assert state.get_plan((gen, 25.0, *context)) is None

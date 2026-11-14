@@ -49,7 +49,8 @@ optimize(target_pct, risk_lambda, budget_usd, exclusions) -> {
     p_loss, hist_bins, # plan-level risk_histogram
     tonnes_needed,     # target_control (always the owner's target_pct)
     shortfall_tonnes, cheapest_extra,   # target_gap_card, when infeasible; each extra has verified, fits_budget
-    internal_target_pct, min_p_hit, met_min_p_hit, p_hit_retries}
+    internal_target_pct, min_p_hit, met_min_p_hit, p_hit_retries,
+    risk_supported}    # True: risk_lambda is applied. The agent's engine_client treats a missing flag as False
 set_assumption(key, value) -> {ok} | {ok: False, error}
 baseline(building_id) -> {annual_spend_usd, tonnes_per_year}   # extra, for building_header
 ```
@@ -144,6 +145,7 @@ cost_per_tonne = -exp_npv / mean(tonnes_lifetime). Negative = cuts carbon and ma
 - plan_id = short hash of (inputs, target, lambda, budget, exclusions), so the same request gives the same ID.
 - `brute_force()` enumerates every plan for small cases. It is the test oracle for PuLP.
 - Speed: optimize < 1 s for 10 buildings. If slower, precompute plans for target steps of 5 %.
+- Plan cache (build step 9): `optimize` caches every result per simulation (key = generation, target, λ, budget, exclusions). With λ > 0, the first call for a (λ, budget, exclusions) setting starts a background thread that precomputes targets 0, 5, …, 80 % (`PRECOMPUTE_TARGETS`, the UI slider range). `simulate` re-warms the last setting. A new simulation bumps `state.generation`, so stale plans are never served and stale workers stop. Measured on 10 buildings / 45 upgrades: first call 1.6–1.8 s, precompute about 12 s in the background, then slider moves on 5 % steps about 0.1 ms; off-grid targets still solve live (about 1.2–1.4 s). `precompute(...)` and `wait_for_precompute()` are exposed for scripts and tests.
 - Measured (MacBook, CBC with cuts and heuristics off, K_risk = 1000): risk_lambda 0 → 30–120 ms; risk_lambda 0.5 → ~0.4 s for 3 buildings, 0.8–1.6 s for 10 buildings including one min_p_hit retry (each CVaR solve ≈ 0.7 s). Over the 1 s goal at 10 buildings; levers: `n_scenarios_optimizer` 500 (≈ 4× faster, slightly different plans) or precomputing.
 
 ## Files
