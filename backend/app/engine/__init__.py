@@ -17,8 +17,9 @@ Assumptions, lowest to highest priority:
 Fields beyond the TRD (they only add to it; agent owner: these exist):
   simulate:  upfront_usd, tonnes_per_year per upgrade
   optimize:  status, p_loss, hist_bins, tonnes_needed, shortfall_tonnes, cheapest_extra
-             (each with fits_budget), internal_target_pct, min_p_hit, met_min_p_hit,
-             p_hit_retries
+             (each with verified, fits_budget), internal_target_pct, min_p_hit,
+             met_min_p_hit, p_hit_retries
+  configure(buildings_root=...): setup only, outside the contract
   set_assumption: error (when ok is False)
 """
 from __future__ import annotations
@@ -28,7 +29,7 @@ import math
 from pathlib import Path
 from typing import Any, Iterable
 
-from . import macc as _macc_mod
+from . import curve as _curve
 from . import monte_carlo as _mc
 from . import optimizer as _opt
 from . import risk as _risk
@@ -36,7 +37,7 @@ from . import state
 from .buildings import BuildingFacts, baseline_kwh_per_year, baseline_tonnes_per_year, load_building
 from .models import FeasibleUpgrade, load_assumptions
 
-__all__ = ["simulate", "macc", "optimize", "set_assumption", "baseline"]
+__all__ = ["simulate", "macc", "optimize", "set_assumption", "baseline", "configure"]
 
 _VALIDATION_SCENARIOS = 50
 
@@ -103,13 +104,25 @@ def _num(x: float) -> float | None:
     return x if math.isfinite(x) else None
 
 
-def _as_upgrades(upgrades: Iterable[FeasibleUpgrade | dict]) -> list[FeasibleUpgrade]:
-    return [u if isinstance(u, FeasibleUpgrade) else FeasibleUpgrade.model_validate(u) for u in upgrades]
+def _as_upgrades(upgrades: Iterable[Any]) -> list[FeasibleUpgrade]:
+    """Accept our FeasibleUpgrade, the agent's app.schemas.upgrades.FeasibleUpgrade (or any
+    pydantic model with the same fields), or plain dicts. Pydantic refuses another class's
+    instance directly, so foreign models are validated from their fields."""
+    out = []
+    for u in upgrades:
+        if isinstance(u, FeasibleUpgrade):
+            out.append(u)
+        elif hasattr(u, "model_dump"):
+            out.append(FeasibleUpgrade.model_validate(u.model_dump()))
+        else:
+            out.append(FeasibleUpgrade.model_validate(u))
+    return out
 
 
-def _load_buildings(ids: Iterable[str], root: str | Path | None, a: dict) -> dict[str, BuildingFacts]:
-    cached = state.buildings()
-    return {b: cached[b] if b in cached and root is None else load_building(b, root=root, assumptions=a)
+def _load_buildings(ids: Iterable[str], a: dict) -> dict[str, BuildingFacts]:
+    """Facts for each building: from the cache if already loaded, else from configure()'s root."""
+    cached, root = state.buildings(), state.buildings_root()
+    return {b: cached[b] if b in cached else load_building(b, root=root, assumptions=a)
             for b in sorted(set(ids))}
 
 
@@ -129,19 +142,28 @@ def _ensure_fresh() -> _mc.SimulationResult:
     return sim
 
 
+# --- setup (not part of the TRD contract) ------------------------------------------------
+
+def configure(*, buildings_root: str | Path | None = None) -> None:
+    """Where to read <building_id>/profile.json (default: data_dir/buildings). Tests and
+    scripts point it at fixtures. Kept out of the contract functions so their signatures
+    match TRD §8.1 exactly (the agent's engine_client checks parameter names)."""
+    state.set_buildings_root(buildings_root)
+
+
 # --- contract ----------------------------------------------------------------------------
 
-def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = None, *,
-             buildings_root: str | Path | None = None) -> dict[str, dict]:
+def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = None) -> dict[str, dict]:
     """Simulate every upgrade and cache the result for macc()/optimize().
 
-    buildings_root: folder holding <building_id>/profile.json (default: data_dir/buildings).
+    Re-reads buildings from disk each time (the survey may have updated them).
     """
     ups = _as_upgrades(upgrades)
     a = _effective(assumptions)
-    buildings = _load_buildings((u.building_id for u in ups), buildings_root, a)
+    state.forget_buildings()
+    buildings = _load_buildings((u.building_id for u in ups), a)
     sim = _run(ups, buildings, a, assumptions)
-    cpt = _macc_mod.cost_per_tonne(sim.npv, sim.tonnes_lifetime)
+    cpt = _curve.cost_per_tonne(sim.npv, sim.tonnes_lifetime)
     out = {}
     for i, uid in enumerate(sim.upgrade_ids):
         r = _risk.summarize(sim.npv[i])
@@ -160,16 +182,18 @@ def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = 
 
 def macc(exclusions: list[str] | None = None) -> dict:
     _ensure_fresh()
-    return _macc_mod.macc(exclusions or [])
+    return _curve.macc(exclusions or [])
 
 
 def optimize(target_pct: float, risk_lambda: float = 0.0, budget_usd: float | None = None,
-             exclusions: list[str] | None = None, *, min_p_hit: float = 0.8) -> dict:
+             exclusions: list[str] | None = None) -> dict:
     """Cheapest plan (max expected NPV) that hits target_pct % of the portfolio's baseline CO2.
 
+    The target's denominator is every simulated building, excluded or not.
     risk_lambda is accepted and part of plan_id but not applied yet (build step 7).
-    min_p_hit: raise the internal target until the plan hits the real target in at
-    least this share of scenarios (see optimizer.solve_with_min_p_hit). 0 turns it off.
+    global.min_p_hit (assumptions; default 0.8, set_assumption("min_p_hit", x) to change,
+    0 turns it off): raise the internal target until the plan hits the real target in at
+    least this share of scenarios (see optimizer.solve_with_min_p_hit).
     """
     sim = _ensure_fresh()
     _, upgrades = state.current()
@@ -177,7 +201,7 @@ def optimize(target_pct: float, risk_lambda: float = 0.0, budget_usd: float | No
     base = sum(baseline_tonnes_per_year(b, a) for b in state.buildings().values())
     return _opt.solve_with_min_p_hit(
         sim, upgrades, baseline_tonnes_per_year=base, target_pct=target_pct,
-        min_p_hit=min_p_hit, budget_usd=budget_usd, exclusions=exclusions or [],
+        min_p_hit=a["global"]["min_p_hit"], budget_usd=budget_usd, exclusions=exclusions or [],
         risk_lambda=risk_lambda,
     )
 
@@ -193,6 +217,8 @@ def set_assumption(key: str, value: Any) -> dict:
     try:
         trial = _effective(state.request_assumptions())
         _apply(trial, {key: value})
+        if not 0 <= trial["global"]["min_p_hit"] <= 1:
+            raise ValueError("global.min_p_hit is a probability 0-1, e.g. 0.8")
         if state.has_simulation():      # dry run on the cached upgrades to catch bad values
             _, ups = state.current()
             _mc.simulate(ups, state.buildings(), trial, n_scenarios=_VALIDATION_SCENARIOS)
@@ -202,10 +228,10 @@ def set_assumption(key: str, value: Any) -> dict:
     return {"ok": True}
 
 
-def baseline(building_id: str, *, buildings_root: str | Path | None = None) -> dict:
+def baseline(building_id: str) -> dict:
     """Annual electricity spend and CO2 for one building (benchmark until bills are wired in)."""
     a = _effective(state.request_assumptions())
-    b = _load_buildings([building_id], buildings_root, a)[building_id]
+    b = _load_buildings([building_id], a)[building_id]
     kwh = baseline_kwh_per_year(b, a)
     return {
         "annual_spend_usd": kwh * a["cities"][b.city]["electricity_rate_usd_per_kwh"],

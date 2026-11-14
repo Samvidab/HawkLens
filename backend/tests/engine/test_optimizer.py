@@ -71,8 +71,11 @@ def test_infeasible_target_matches_brute_force_and_reports_shortfall(setup):
     assert got["status"] == "infeasible"
     assert got["shortfall_tonnes"] == pytest.approx(got["tonnes_needed"] - got["tonnes_per_year"])
     assert got["shortfall_tonnes"] > 100
-    # Every remaining unselected upgrade would only replace a bigger one in its slot -> no extras.
-    assert got["cheapest_extra"] == []
+    # Every eligible upgrade is used or would only replace a bigger slot-mate; the one thing
+    # left that adds tonnes is the unverified hou-003 window upgrade (22.9 t/yr).
+    extras = got["cheapest_extra"]
+    assert [e["upgrade_id"] for e in extras] == ["hou-003-window_upgrade"]
+    assert extras[0]["verified"] is False and extras[0]["fits_budget"] is True
 
 
 def test_cheapest_extra_suggests_excluded_upgrades_that_add_tonnes(setup):

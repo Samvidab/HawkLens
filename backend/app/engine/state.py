@@ -8,6 +8,7 @@ One process, one cache: fine for a single-user demo.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from .buildings import BuildingFacts
@@ -26,6 +27,7 @@ class _Cache:
     buildings: dict[str, BuildingFacts] = field(default_factory=dict)
     assumptions: dict[str, Any] | None = None    # the `assumptions` passed to simulate() (before overrides)
     overrides: dict[str, Any] = field(default_factory=dict)   # dotted key -> value, from set_assumption
+    buildings_root: Path | None = None           # None = data_dir/buildings
     stale: bool = False
 
 
@@ -84,3 +86,15 @@ def has_simulation() -> bool:
 def request_assumptions() -> dict[str, Any]:
     """The `assumptions` dict passed to the latest simulate() ({} if none)."""
     return _cache.assumptions or {}
+
+
+def set_buildings_root(root: str | Path | None) -> None:
+    _cache.buildings_root = Path(root) if root is not None else None
+
+
+def buildings_root() -> Path | None:
+    return _cache.buildings_root
+
+
+def forget_buildings() -> None:
+    _cache.buildings = {}

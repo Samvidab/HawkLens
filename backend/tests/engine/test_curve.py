@@ -1,4 +1,4 @@
-"""Step 4: macc.py (abatement curve) on the cached simulation."""
+"""Step 4: curve.py (abatement curve) on the cached simulation."""
 from pathlib import Path
 
 import numpy as np
@@ -6,7 +6,7 @@ import pytest
 
 from app.engine import state
 from app.engine.buildings import load_building
-from app.engine.macc import cost_per_tonne, macc
+from app.engine.curve import cost_per_tonne, macc
 from app.engine.models import load_assumptions, load_feasibility
 from app.engine.monte_carlo import simulate
 

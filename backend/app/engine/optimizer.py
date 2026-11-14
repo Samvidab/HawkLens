@@ -14,9 +14,10 @@ Two solvers for the same problem:
 - solve(): the PuLP integer program, solved with CBC (HiGHS as fallback).
 
 If no plan reaches the target, the result has status "infeasible", the plan that
-gets closest (most tonnes), shortfall_tonnes, and cheapest_extra: up to 3 excluded
-or unselected upgrades with the lowest cost per tonne that would add tonnes (their
-building/category slot is empty, or they avoid more CO2 than what's in it).
+gets closest (most tonnes), shortfall_tonnes, and cheapest_extra: up to 3 unselected,
+owner-excluded or unverified upgrades with the lowest cost per tonne that would add
+tonnes (their building/category slot is empty, or they avoid more CO2 than what's in
+it). Each item has verified (False = needs "include unverified") and fits_budget.
 
 Step 7 adds the CVaR risk term; risk_lambda is not used yet.
 """
@@ -33,7 +34,7 @@ from typing import Iterable
 import numpy as np
 import pulp
 
-from .macc import cost_per_tonne
+from .curve import cost_per_tonne
 from .models import FeasibleUpgrade
 from .monte_carlo import SimulationResult
 from .risk import summarize
@@ -56,6 +57,7 @@ class Candidate:
     cost_per_tonne: float
     eligible: bool             # passes exclusions and include_in_optimizer
     user_excluded: bool        # excluded by the caller (not by include_in_optimizer)
+    verified: bool             # False only for verified == "unverified" (assumed counts as verified)
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,7 @@ def build_problem(sim: SimulationResult, upgrades: list[FeasibleUpgrade], *,
             category=u.category, exp_npv=float(exp_npv[i]), tonnes_per_year=float(tpy[i]),
             upfront_usd=sim.inputs[i].upfront_usd, cost_per_tonne=float(cpt[i]),
             eligible=u.include_in_optimizer and not user_ex, user_excluded=user_ex,
+            verified=u.verified != "unverified",
         ))
     return Problem(sim=sim, candidates=cands,
                    tonnes_needed=target_pct / 100.0 * baseline_tonnes_per_year,
@@ -291,8 +294,10 @@ def _result(p: Problem, selected: list[int], *, status: str, id_extra: dict | No
         # Only suggest upgrades that would ADD tonnes: their (building, category) slot is
         # empty, or they'd replace a selected upgrade that avoids less CO2.
         in_slot = {(c.building_id, c.category): c for c in p.candidates if c.index in chosen}
+        # Candidates: eligible but unselected, owner-excluded, AND unverified (include_in_optimizer
+        # False) ones, flagged verified: False so the UI can offer "include unverified".
         extras = [c for c in p.candidates
-                  if c.index not in chosen and (c.eligible or c.user_excluded)
+                  if c.index not in chosen
                   and np.isfinite(c.cost_per_tonne)
                   and c.tonnes_per_year > (in_slot[(c.building_id, c.category)].tonnes_per_year
                                            if (c.building_id, c.category) in in_slot else 0.0)]
@@ -307,7 +312,8 @@ def _result(p: Problem, selected: list[int], *, status: str, id_extra: dict | No
             new_total = plan_upfront - (replaced.upfront_usd if replaced else 0.0) + c.upfront_usd
             return new_total <= p.budget_usd + 1e-6
 
-        cheapest_extra = [{**_bar(c), "fits_budget": fits(c)} for c in extras[:N_CHEAPEST_EXTRA]]
+        cheapest_extra = [{**_bar(c), "verified": c.verified, "fits_budget": fits(c)}
+                          for c in extras[:N_CHEAPEST_EXTRA]]
     else:
         shortfall, cheapest_extra = 0.0, []
 
