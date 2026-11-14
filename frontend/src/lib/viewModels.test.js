@@ -20,9 +20,11 @@ describe('formatting', () => {
     expect(vm.tonnesFmt(1032.4)).toBe('1,032')
     expect([vm.usdK(null), vm.signedUsdK(undefined), vm.usd(NaN), vm.tonnesFmt(null), vm.pct(null)]).toEqual(['—', '—', '—', '—', '—'])
   })
-  it('risk labels map both ways', () => {
-    expect(vm.riskLabel(0.2)).toBe('Cautious'); expect(vm.riskLabel(0.5)).toBe('Balanced'); expect(vm.riskLabel(0.8)).toBe('Growth')
+  it('risk labels map both ways; Balanced is the middle position (lambda 0.2)', () => {
+    expect(vm.RISK_LAMBDA).toEqual({ Cautious: 0.4, Balanced: 0.2, Growth: 0 })
+    expect([0, 0.2, 0.4].map(vm.riskLabel)).toEqual(['Growth', 'Balanced', 'Cautious'])
     for (const l of vm.RISK_LABELS) expect(vm.riskLabel(vm.RISK_LAMBDA[l])).toBe(l)
+    expect([0.05, 0.15, 0.25, 0.35, 1].map(vm.riskLabel)).toEqual(['Growth', 'Balanced', 'Balanced', 'Cautious', 'Cautious'])
   })
 })
 

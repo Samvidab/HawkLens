@@ -98,6 +98,16 @@ describe('openEvents', () => {
     close(); FakeES.last.onerror(); expect(err).not.toHaveBeenCalled()
   })
 
+  it('a replay keeps reading past `done` (actions are recorded after it) and reports the server ending the stream', () => {
+    const got = [], done = vi.fn(), end = vi.fn(), err = vi.fn()
+    api.openEvents('r', { replay: true, delay: 0, EventSourceImpl: FakeES, onEvent: (e) => got.push(e.seq), onDone: done, onEnd: end, onError: err })
+    const es = FakeES.last
+    es.emit(ev(0)); es.emit(ev(1, 'done')); es.emit(ev(2)); es.emit(ev(3, 'done'))
+    expect(got).toEqual([0, 1, 2, 3]); expect(es.closed).toBe(false); expect(done).toHaveBeenCalledOnce() // onDone only for the first
+    es.onerror() // EventSource fires an error when the server ends the stream
+    expect(end).toHaveBeenCalledOnce(); expect(err).not.toHaveBeenCalled(); expect(es.closed).toBe(true)
+  })
+
   it('ignores malformed messages', () => {
     const got = []
     api.openEvents('r', { EventSourceImpl: FakeES, onEvent: (e) => got.push(e) })

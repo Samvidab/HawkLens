@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import overview from '../test/fixtures/portfolio_overview.json'
 import detail from '../test/fixtures/building_detail.json'
 import { INERT, RunProvider, useBuildingFocus, useOverview, useRun } from './store'
@@ -31,7 +31,7 @@ function fakeApi({ events = [], states = [], composeResult = overview, portfolio
     openEvents: vi.fn((id, h) => {
       log.push(['openEvents', id, !!h.replay])
       handlers = h
-      queueMicrotask(() => { for (const e of events) { h.onEvent(e); if (e.kind === 'done') h.onDone(e) } })
+      queueMicrotask(() => { for (const e of events) { h.onEvent(e); if (e.kind === 'done') h.onDone?.(e) } if (h.replay) h.onEnd?.() })
       return () => log.push(['closeFeed'])
     }),
   }
@@ -42,6 +42,7 @@ const wrap = (api, props = {}) => ({ children }) => <RunProvider api={api} {...p
 const GOAL = { city: 'Houston', target_pct: 40, risk_lambda: 0.5 }
 
 beforeEach(() => sessionStorage.clear())
+afterEach(cleanup)
 
 describe('useRun without a provider', () => {
   it('is inert, so pages keep their prototype data', async () => {
@@ -150,6 +151,27 @@ describe('resume after a reload', () => {
     const { result } = renderHook(() => useRun(), { wrapper: wrap(api) })
     await waitFor(() => expect(sessionStorage.getItem('hawklens.runId')).toBeNull())
     expect(result.current.runId).toBeNull()
+  })
+})
+
+describe('the feed after a reload or an action is the run\'s recorded events', () => {
+  it('a resumed run loads its recorded events with replay and no delay', async () => {
+    sessionStorage.setItem('hawklens.runId', 'run_7')
+    const events = [ev(0), ev(1), ev(2, 'done')]
+    const { api, log } = fakeApi({ events, states: [{ status: 'ready', layout: overview }] })
+    const { result } = renderHook(() => useRun(), { wrapper: wrap(api) })
+    await waitFor(() => expect(result.current.events.map((e) => e.seq)).toEqual([0, 1, 2]))
+    expect(api.openEvents).toHaveBeenCalledWith('run_7', expect.objectContaining({ replay: true, delay: 0 }))
+    expect(log).toContainEqual(['openEvents', 'run_7', true])
+  })
+  it('an action refreshes the feed so the new events show up', async () => {
+    sessionStorage.setItem('hawklens.runId', 'run_7')
+    const { api } = fakeApi({ events: [ev(0), ev(1, 'done')], states: [{ status: 'ready', layout: overview }] })
+    const { result } = renderHook(() => useRun(), { wrapper: wrap(api) })
+    await waitFor(() => expect(result.current.phase).toBe('ready'))
+    const before = api.openEvents.mock.calls.length
+    await act(async () => { await result.current.act('set_risk', { risk_lambda: 0.2 }) })
+    await waitFor(() => expect(api.openEvents.mock.calls.length).toBeGreaterThan(before))
   })
 })
 

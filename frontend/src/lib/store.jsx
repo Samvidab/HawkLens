@@ -16,7 +16,7 @@ const remember = (id) => { try { id ? store?.setItem(STORAGE_KEY, id) : store?.r
 const recall = () => { try { return store?.getItem(STORAGE_KEY) || null } catch { return null } }
 
 const Ctx = createContext(null)
-export const INERT = { health: null, prefs: { target_pct: 40, budget_usd: 1_500_000, risk_lambda: 0.5 }, setPrefs: () => {}, runId: null, phase: 'idle', events: [], state: null, layout: null, portfolio: null, busy: 0, error: null,
+export const INERT = { health: null, prefs: { target_pct: 40, budget_usd: 1_500_000, risk_lambda: 0.2 }, setPrefs: () => {}, runId: null, phase: 'idle', events: [], state: null, layout: null, portfolio: null, busy: 0, error: null,
   start: async () => null, act: async () => null, refresh: async () => null, reset: () => {}, live: false }
 export const useRun = () => useContext(Ctx) || INERT
 
@@ -61,7 +61,7 @@ export function RunProvider({ children, api = realApi, demoRunId }) {
   const [error, setError] = useState(null)
   const [portfolio, setPortfolio] = useState(null)
   const [health, setHealth] = useState(null) // { engine_mode, nessie_mode, cache_mode, ... }
-  const [prefs, setPrefsState] = useState({ target_pct: 40, budget_usd: null, risk_lambda: 0.5 }) // the goal the owner is shaping (no budget cap until chosen: the prototype's $1500k would not fit a real portfolio)
+  const [prefs, setPrefsState] = useState({ target_pct: 40, budget_usd: null, risk_lambda: 0.2 }) // the goal the owner is shaping (no budget cap until chosen: the prototype's $1500k would not fit a real portfolio)
   const closeFeed = useRef(null)
   const alive = useRef(true)
   const idRef = useRef(null)
@@ -92,6 +92,14 @@ export function RunProvider({ children, api = realApi, demoRunId }) {
     if (s.layout) { setPhase('ready') } else { setPhase('error'); setError(s.error || 'The run finished without a workspace') }
     return s
   }, [api, loadState])
+
+  // Recorded events of a run (the server replays its events.jsonl instantly with delay=0): used after a reload and after
+  // every action, because the live stream ended at `done`.
+  const loadEvents = useCallback((id) => new Promise((resolve) => {
+    const acc = []
+    const commit = () => { if (alive.current && idRef.current === id && acc.length) setEvents(acc); resolve() }
+    api.openEvents(id, { replay: true, delay: 0, onEvent: (e) => acc.push(e), onEnd: commit, onError: commit })
+  }), [api])
 
   const attach = useCallback((id, { replay = false } = {}) => {
     closeFeed.current?.()
@@ -131,9 +139,10 @@ export function RunProvider({ children, api = realApi, demoRunId }) {
       const layout = await api.compose(id, type, payload)
       if (alive.current) { setError(null); setState((s) => ({ ...(s || {}), layout })) }
       loadState(id).catch(() => {}) // plan_id / view / goal for the next screen
+      loadEvents(id).catch(() => {}) // the feed now includes this action's events
       return layout
     } catch (e) { fail(e); throw e } finally { if (alive.current) setBusy((n) => n - 1) }
-  }, [api, loadState, fail])
+  }, [api, loadState, loadEvents, fail])
 
   const reset = useCallback(() => {
     closeFeed.current?.(); idRef.current = null
@@ -147,11 +156,11 @@ export function RunProvider({ children, api = realApi, demoRunId }) {
     const saved = recall()
     if (saved) { // resume after a reload
       idRef.current = saved; setRunId(saved)
-      loadState(saved).then((s) => alive.current && setPhase(s.layout ? 'ready' : s.status === 'error' ? 'error' : 'surveying'))
+      loadState(saved).then((s) => { if (alive.current) setPhase(s.layout ? 'ready' : s.status === 'error' ? 'error' : 'surveying'); loadEvents(saved) })
         .catch(() => { remember(null); idRef.current = null; setRunId(null) })
     }
     return () => { alive.current = false; closeFeed.current?.() }
-  }, [api, loadState])
+  }, [api, loadState, loadEvents])
 
   const value = useMemo(() => ({
     runId, phase, events, state, layout: state?.layout ?? null, portfolio, busy, error, start, act, refresh, reset, live: true, demoRunId, prefs, setPrefs, health,

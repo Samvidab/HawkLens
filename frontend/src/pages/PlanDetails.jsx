@@ -62,9 +62,10 @@ export default function PlanDetails() {
   const tm = L && targetModel(L)
   const risk = L && riskModel(L)
   const nBuildings = (L && portfolioBuildings(L)?.length) || 8
+  // real events; empty (not the prototype's) while a real plan is showing and its events are still loading
   const activity = run.events.length
     ? feedRows(run.events, 3).map((e) => ({ time: `${e.time.slice(0, 5)} · ${e.agent}`, line: e.msg, meta: e.meta }))
-    : ACTIVITY
+    : L ? [] : ACTIVITY
   const cutBars = geo ? geo.bars.filter((b) => b.profitable) : CUT_BARS
   const costBars = geo ? geo.bars.filter((b) => !b.profitable) : COST_BARS
   const yLab = geo ? geo.yLabel : 100

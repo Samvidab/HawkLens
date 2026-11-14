@@ -69,17 +69,19 @@ export const mediaUrl = (imageId) => `${API_BASE}/media/${encodeURIComponent(ima
 /**
  * Subscribe to a run's activity feed. Calls onEvent(ev) for every ActivityEvent
  * { ts, run_id, seq, agent, building_id, building_name, kind, message, evidence_id } (past events first),
- * then onDone(ev) and CLOSES on the `done` event (otherwise EventSource reconnects and replays everything).
- * replay: stream a recorded run paced for the demo (~35 s; `delay` seconds per event overrides).
+ * then onDone(ev) and, for a LIVE run, CLOSES on the `done` event (otherwise EventSource reconnects and replays everything).
+ * replay: stream a recorded run (paced ~35 s for the demo; `delay` seconds per event overrides, 0 = at once). A replay keeps
+ * reading past `done` (owner actions are recorded after it) and calls onEnd() when the server ends the stream.
  * Returns close().
  */
-export function openEvents(runId, { replay = false, delay, onEvent, onDone, onError, EventSourceImpl } = {}) {
+export function openEvents(runId, { replay = false, delay, onEvent, onDone, onEnd, onError, EventSourceImpl } = {}) {
   const ES = EventSourceImpl || globalThis.EventSource
   const q = new URLSearchParams()
   if (replay) q.set('replay', '1')
   if (delay !== undefined) q.set('delay', String(delay))
   const es = new ES(`${API_BASE}/events/${encodeURIComponent(runId)}${q.size ? `?${q}` : ''}`)
   let finished = false
+  let doneSeen = false
   const close = () => {
     finished = true
     es.close()
@@ -92,15 +94,19 @@ export function openEvents(runId, { replay = false, delay, onEvent, onDone, onEr
       return
     }
     onEvent && onEvent(ev)
-    if (ev.kind === 'done') {
-      close()
+    if (ev.kind === 'done' && !doneSeen) {
+      doneSeen = true
       onDone && onDone(ev)
+      // A live stream is over at `done` (the server closes it; EventSource would reconnect and replay everything).
+      // A recorded run can carry later events (owner actions) after its `done`: keep reading until the server ends it.
+      if (!replay) close()
     }
   }
   es.onerror = () => {
     if (finished) return
-    close()  // the server ends the stream after `done`; any other close is a failure
-    onError && onError(new ApiError(0, 'Lost the activity stream'))
+    close()
+    if (replay) onEnd && onEnd() // the server ended the recorded stream: that is the normal end of a replay
+    else onError && onError(new ApiError(0, 'Lost the activity stream'))
   }
   return close
 }

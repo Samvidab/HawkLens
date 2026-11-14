@@ -121,6 +121,62 @@ test('a reload resumes the run from sessionStorage and shows the same workspace'
   await shot(page, '10-resumed-plan')
 })
 
+test('the risk control is live: Growth -> Balanced -> Cautious re-plans and changes the plan', async ({ page }) => {
+  const health = await (await fetch(`${API}/health`)).json()
+  // a run at lambda 0 (Growth: expected NPV only), target 20 %
+  const { run_id } = await (await fetch(`${API}/run`, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ city: 'Houston', target_pct: 20, risk_lambda: 0 }) })).json()
+  let st = null
+  for (let i = 0; i < 60 && !st?.layout; i++) { await new Promise((r) => setTimeout(r, 500)); st = await (await fetch(`${API}/state/${run_id}`)).json().catch(() => null) }
+  expect(st?.layout).toBeTruthy()
+  const supported = st.layout.widgets.find((w) => w.type === 'target_control').props.risk_supported
+  await page.addInitScript((id) => sessionStorage.setItem('hawklens.runId', id), run_id)
+
+  const metric = (label) => page.locator(`p:has-text("${label}") + p`).first()
+  const planNumbers = async () => {
+    await page.goto('/plan')
+    await expect(page.getByText(/Quant engine pricing|Sample pricing/)).toBeVisible({ timeout: 20_000 })
+    return { upfront: await metric('Upfront investment').textContent(), npv: await metric('Lifetime net value').textContent(), text: await page.locator('body').innerText() }
+  }
+  const pickRisk = async (name, lambda) => {
+    await page.goto('/plan-preferences')
+    const chip = page.getByRole('button', { name, exact: true })
+    await expect(chip).toBeVisible({ timeout: 20_000 })
+    const done = page.waitForResponse((r) => r.url().endsWith('/compose') && r.request().postDataJSON().type === 'set_risk' && r.request().postDataJSON().payload.risk_lambda === lambda, { timeout: 30_000 })
+    await chip.click()
+    expect((await done).status()).toBe(200)
+    await expect(chip).toHaveAttribute('aria-pressed', 'true')
+  }
+
+  if (!supported) { // stub engine: the control must be disabled and say why
+    await page.goto('/plan-preferences')
+    await expect(page.getByRole('button', { name: 'Balanced', exact: true })).toBeDisabled({ timeout: 20_000 })
+    await expect(page.getByText(/not applied by the current pricing engine/)).toBeVisible()
+    return
+  }
+  expect(health.engine_mode).toBe('live')
+  const growth = await planNumbers()
+  await shot(page, '11-plan-growth')
+  await expect(page.getByText('Midtown roof verified')).toHaveCount(0) // never the prototype's activity next to a real plan
+  await expect(page.getByText('Workspace ready').first()).toBeVisible({ timeout: 15_000 }) // this run's own events
+  await page.goto('/plan-preferences')                     // the loaded plan's own position is shown after a reload
+  await expect(page.getByRole('button', { name: 'Growth', exact: true })).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 })
+  await expect(page.getByText(/Budget No cap · Growth risk/)).toBeVisible()
+
+  await pickRisk('Balanced', 0.2)                      // the middle position = lambda 0.2
+  await shot(page, '12-preferences-balanced')
+  const balanced = await planNumbers()
+  await shot(page, '13-plan-balanced')
+  await expect(page.getByText('re-plan: risk appetite 0.2')).toBeVisible({ timeout: 15_000 }) // the action just taken (recorded events after the survey's `done`)
+  expect(balanced.upfront !== growth.upfront || balanced.npv !== growth.npv, `plan unchanged: ${JSON.stringify([growth.upfront, balanced.upfront])}`).toBe(true)
+
+  await pickRisk('Cautious', 0.4)                      // sent and applied; may equal Balanced when the effect has saturated
+  await pickRisk('Growth', 0)
+  const back = await planNumbers()
+  expect(back.upfront).toBe(growth.upfront)            // back to the first position: the first plan again
+  expect(back.npv).toBe(growth.npv)
+})
+
 test('the prototype still renders without a backend (static fallback)', async ({ page }) => {
   await page.route(`${API}/**`, (r) => r.abort())
   await page.addInitScript(() => sessionStorage.clear())

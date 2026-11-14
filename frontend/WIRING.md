@@ -38,7 +38,7 @@ streams `GET /events/{id}` and advances by itself on `done` -> `GET /state/{id}`
 | RiskAndTarget | **wired**: 30-bin histogram, expected value / chance of loss / worst 5 %, target-gap card with the cheapest extra cut |
 | BuildingDetails / BuildingExcluded | **wired**: real profile + baseline, real upgrades with CO2/cost/NPV, include toggles, exclude / include again; the 3D picture is static |
 | SurveyEvidence | **wired**: real Vexcel/Matterport images from `/media/{id}`, the verifier's boxes drawn on the image, the claims as findings |
-| PlanPreferences | **wired**: budget chips scale with the plan's cost, risk chips send `risk_lambda` (the engine does not apply it yet: `risk_supported` is false) |
+| PlanPreferences | **wired**: budget chips scale with the plan's cost; the three risk chips are **live when `target_control.props.risk_supported` is true** (Cautious = `risk_lambda` 0.4, **Balanced = 0.2 (middle)**, Growth = 0) and disabled with an explanation when the engine does not apply risk. They show the loaded plan's own position. |
 | FinancingApproval / FundingConfirmation | **wired**: totals, contractor allocation, `approve` with the current `plan_id`, errors as toasts, confirmation shows the Nessie ids (says "Simulated (stub Nessie)" when the backend is in stub mode) |
 | InvestmentMemo | partly: the three metrics are live; the memo prose is still the static text (`memo` widget has the markdown) |
 | Documents, Assumptions, BuildingInsights, DemoDocumentNotice, FundingAccount, Expanded* | **not wired** (static); no backend data for Documents/Assumptions yet |
@@ -46,15 +46,17 @@ streams `GET /events/{id}` and advances by itself on `done` -> `GET /state/{id}`
 
 ## Behaviour worth knowing
 - **No budget cap by default** for a real run (the prototype's $1500k would not fit a real portfolio; the plan costs millions).
-- The activity feed ends at `done`; later actions (slider, toggles) do not add live events, so the "latest events" box on the Plan page shows the survey's last events.
+- The live stream ends at `done`. After a reload and after every action the store re-reads the run's **recorded events** (`/events/{id}?replay=1&delay=0`, which also contains the owner's actions), so the "latest events" box on the Plan page shows e.g. `re-plan: risk appetite 0.2`.
+- **Risk scale:** the engine maximises `E[NPV] + lambda x CVaR5`: 0 = expected value only (Growth), higher = more weight on the worst-5 % outcome (Cautious). On the real Houston portfolio the effect saturates early: at a 20 % target lambda 0 -> 0.2 swaps 8 solar upgrades ($9.5M, worst 5 % -$4.5M) for a safer 15-upgrade plan ($7.2M, worst 5 % -$3.0M), and 0.2 = 0.4 give the same plan; at 30 % the jump is between 0.2 and 0.4. Solves above lambda ~0.5 can take over 3 s, so the scale stays small.
 - The survey screen needs a **backend with data**; with `CACHE_MODE=read_only` and a warm cache it replays the real survey in seconds.
 - Money from the API is raw USD (can be `null`): `usdK()` shows "$1,280k", `—` for null.
 
 ## Tests
 ```bash
-npm test            # 46 unit tests: api client, SSE handling, every view-model, the store (fake API, jsdom)
+npm test            # 53 unit tests: api client, SSE handling (live and replay), every view-model, the store, the preferences screen (fake API, jsdom)
 npm run e2e         # Playwright (Chromium) against a RUNNING backend: goal form -> live survey -> workspace -> slider -> plan ->
-                    # risk -> building toggle -> evidence -> approve -> funded; reload resume; static fallback. Skips if no backend.
+                    # risk -> building toggle -> evidence -> approve -> funded; reload resume; the risk control changes the plan; static fallback.
+                    # Skips if no backend.
 npx playwright install chromium   # once
 ```
 Screenshots of every step land in `e2e/screens/` (gitignored). Unit-test fixtures are the synthetic `docs/agent/samples/*.json`

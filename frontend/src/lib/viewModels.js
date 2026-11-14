@@ -23,9 +23,12 @@ export const signedUsd = (v) => (num(v) === null ? '—' : `${v >= 0 ? '+' : '�
 export const tonnesFmt = (v) => (num(v) === null ? '—' : Math.round(v).toLocaleString('en-US'))
 export const pct = (p, digits = 0) => (num(p) === null ? '—' : `${(p * 100).toFixed(digits)}%`)
 
+// risk_lambda (engine): maximise E[NPV] + lambda x CVaR5, so 0 = expected NPV only (Growth) and higher = more weight on the
+// worst-5 % outcome (Cautious). Three positions, Balanced in the middle. The effect saturates early on real portfolios
+// (lambda 0.2 and 0.4 often give the same plan), and solves above ~0.5 can take over 3 s, so the scale stays small.
 export const RISK_LABELS = ['Cautious', 'Balanced', 'Growth']
-export const RISK_LAMBDA = { Cautious: 0.2, Balanced: 0.5, Growth: 0.8 }
-export const riskLabel = (lambda) => (lambda < 0.35 ? 'Cautious' : lambda > 0.65 ? 'Growth' : 'Balanced')
+export const RISK_LAMBDA = { Cautious: 0.4, Balanced: 0.2, Growth: 0 }
+export const riskLabel = (lambda) => (lambda < 0.1 ? 'Growth' : lambda > 0.3 ? 'Cautious' : 'Balanced')
 
 // ---- widget access --------------------------------------------------------------------------------------------------
 export const widget = (layout, type) => layout?.widgets?.find((w) => w.type === type)?.props ?? null

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOverview } from '../lib/store'
 import { RISK_LAMBDA, riskLabel, targetModel, usdK, widget } from '../lib/viewModels'
@@ -17,8 +17,19 @@ export default function PlanPreferences() {
     : BUDGETS.map((b) => ({ label: b, usd: parseInt(b.replace(/\D/g, ''), 10) * 1000 }))
   const [budget, setBudget] = useState(tm ? (tm.budgetUsd == null ? 'No cap' : usdK(tm.budgetUsd)) : '$1500k')
   const [risk, setRisk] = useState(tm ? riskLabel(tm.riskLambda) : 'Balanced')
+  useEffect(() => { // the plan loads asynchronously after a reload: show ITS budget and risk
+    if (!tm) return
+    setBudget(tm.budgetUsd == null ? 'No cap' : usdK(tm.budgetUsd))
+    setRisk(riskLabel(tm.riskLambda))
+  }, [tm?.budgetUsd, tm?.riskLambda]) // eslint-disable-line react-hooks/exhaustive-deps
   const pickBudget = (o) => { setBudget(o.label); run.setPrefs({ budget_usd: o.usd }); if (run.layout) run.act('set_budget', { budget_usd: o.usd }).catch(() => {}) }
-  const pickRisk = (r) => { setRisk(r); run.setPrefs({ risk_lambda: RISK_LAMBDA[r] }); if (run.layout) run.act('set_risk', { risk_lambda: RISK_LAMBDA[r] }).catch(() => {}) }
+  const riskOn = !tm || tm.riskSupported // no plan yet: local choice only; with a plan, only if the engine applies risk_lambda
+  const pickRisk = (r) => {
+    if (!riskOn) return
+    setRisk(r)
+    run.setPrefs({ risk_lambda: RISK_LAMBDA[r] })
+    if (run.layout) run.act('set_risk', { risk_lambda: RISK_LAMBDA[r] }).catch(() => {})
+  }
 
   const close = () => navigate(-1)
 
@@ -73,6 +84,11 @@ export default function PlanPreferences() {
           <p className="absolute left-[32px] top-[236px] font-medium text-ink text-[14px]">
             Risk preference
           </p>
+          <p className="absolute left-[32px] top-[330px] w-[536px] text-muted text-[12px] leading-[18px]">
+            {riskOn
+              ? 'Cautious favours plans with a better worst case; Growth maximises the expected return.'
+              : 'Risk preference is not applied by the current pricing engine yet.'}
+          </p>
           {RISKS.map((r, i) => {
             const selected = r === risk
             return (
@@ -80,8 +96,10 @@ export default function PlanPreferences() {
                 key={r}
                 type="button"
                 onClick={() => pickRisk(r)}
+                disabled={!riskOn}
+                aria-pressed={selected}
                 className={`absolute top-[269px] w-[168px] h-[46px] rounded-[6px] text-[14px] font-medium transition ${
-                  selected ? 'bg-[#e7ece3] text-brand ring-2 ring-brand/50' : 'bg-[#e7ece3] text-brand hover:brightness-95'
+                  !riskOn ? 'bg-[#eef0ec] text-[#a3aaa0] cursor-not-allowed' : selected ? 'bg-[#e7ece3] text-brand ring-2 ring-brand/50' : 'bg-[#e7ece3] text-brand hover:brightness-95'
                 }`}
                 style={{ left: `${32 + i * 184}px` }}
               >
@@ -91,9 +109,11 @@ export default function PlanPreferences() {
           })}
 
           <p className="absolute left-[32px] top-[355px] text-muted text-[13px] leading-[23px]">
-            Changes update the demo totals and reset any prior approval.
+            {tm
+              ? 'Changes re-plan your portfolio with the quant engine and reset any prior approval.'
+              : 'Changes update the demo totals and reset any prior approval.'}
             <br />
-            Risk pricing and optimization require a live backend.
+            {tm ? 'The plan is re-priced each time you choose.' : 'Risk pricing and optimization require a live backend.'}
           </p>
 
           <button
