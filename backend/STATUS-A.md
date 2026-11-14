@@ -1,31 +1,38 @@
 # Lane A (critical path), branch `lane-data`
 
-Phase 1 done (AC-1). Phase 2: T2.1 done live; T2.2 and T2.3 code + tests done, **live runs blocked on Gemini daily quota**.
+Phase 1 done (AC-1). Phase 2: T2.1 done live; T2.2 / T2.3 code + tests done, **live LLM runs blocked: Gemini prepaid credits are depleted (402)**.
 
 ## Done
 - T0.1, T0.2 (before this session)
 - T0.3/T0.4 (`f5a16ce`, `d711f9f`, `0a1e311`): `adapters/README.md`; `costar.py`, `matterport.py`, `vexcel.py` (overhead), `types.py`. Live test (`-m live`) passes.
-- T1.1 (`a51e025`, `0a1e311`): `data/portfolio.json`, 8 Houston offices, all with Vexcel overhead. Hero 23551 Harwin Plaza II, model `hu9LX64osUN` (17 panos, 3 rooms).
+- T1.1 (`a51e025`, `0a1e311`): `data/portfolio.json`, 8 Houston offices, all with Vexcel overhead. Hero 23551 Harwin Plaza II, model `hu9LX64osUN` (17 panos, 3 rooms, public).
 - T1.5 (`93f652f`) records agent · T1.6 (`dc629c7`) aerial inspector · T1.8 (`bbcffd3`) `survey_one.py`, **AC-1 passes**.
-- T2.1 (`dff900c`): `agents/graph.py` (orchestrator plan → `Send` fan-out → survey subgraph [records → aerial ∥ interior → site engineer → verify ⟲ reinspect → finalize] → collect), `main.py` (`POST /run`, `GET /state/{id}`, SSE events router, `/portfolio`, `/registry`, `/media/{id}`, `/media/mesh/{model}/{file}`). **Live: run_8e9dd656 surveyed 8/8 buildings, 4 at a time, 23 feasible upgrades, events streamed over SSE.** That run was `CACHE_MODE=read_write`: records, Vexcel imagery and aerial Gemini calls for all 8 are cached.
-- T2.2 (code + tests): `agents/verifier.py` + `prompts/verifier.md`. One batched Gemini call per building per inspector per round; ≥0.7 verified, <0.3 rejected, else sent back with a number-checked question (≤2 loops) then unverified; unknown values → unverified; verifier errors → unverified, never a send-back. Batched `aerial.reinspect`. `verification.json` per building. Tests drive the real subgraph through every outcome incl. 3 `send_back` events.
-- T2.3 (code + tests): `agents/interior.py` + `prompts/interior.md`. 5 panoramas (farthest-point sampled, ceiling + 2 horizon faces), lighting / HVAC / window claims, pins at scan xyz, `interior.json` + `interior_scan.json`, batched reinspect, MatterPak download when available.
-- `llm.py` (Lane B's file, small change): waits out 429s using the API's `retryDelay`, optional `GEMINI_RPM` pacing, fails fast with `QuotaExhausted` when the API asks for > 90 s (daily cap).
-
-- Merge of `agent` (`41b48e4`, `3ecc10e`, `35eb598`): conflicts in llm.py / main.py were NOT pre-resolved on `agent`; resolved here keeping both sides. main.py = Lane B's (media router, /compose, /state) + `POST /run` (survey → Lane B goal replan: pricing → compose → `done`); `graph.survey_runner` registered with replan. llm.py = Lane B's model fallback + my 429 waits / `GEMINI_RPM` / `QuotaExhausted`. Survey completion is now a `decide` event; `done` comes after compose.
-- **Live after merge (run_43e96f50):** 8/8 surveyed → pricing (stub engine) → composer → `done`; `/state` has layout `portfolio_overview` (7 widgets) + results; `/compose open_building` → `building_detail`; `/health`, `/portfolio`, `/registry`, `/media/{id}` all 200. Verifier hit the spent daily quota and failed fast (no hang, no false send_back). Interior failed on an expired skybox link (410) → re-sign fixed (`35eb598`), 15 faces now download live.
+- T2.1 (`dff900c`): `agents/graph.py` (orchestrator plan → `Send` fan-out → survey subgraph [records → aerial ∥ interior → site engineer → verify ⟲ reinspect → finalize] → collect). Live run_8e9dd656: 8/8 buildings, 4 at a time, 23 upgrades; aerial Gemini calls for all 8 cached.
+- T2.2 (`d52f2ac`): `agents/verifier.py` (batched per building/inspector; verified / rejected / sent back ≤2 loops / unverified; errors never send back). Path proven in tests incl. 3 `send_back` events.
+- T2.3 (`fc0d908`): `agents/interior.py` (5 farthest-point panos × 3 faces, lighting/HVAC/window claims, 3D pins, MatterPak when available).
+- Merges of `agent`: `41b48e4` (resolved llm.py/main.py keeping both sides; `POST /run` = survey → Lane B goal replan → `done`), `228e4c5` (quant engine, fast-forward).
+- `35eb598`: Matterport skybox links re-signed on 410 Gone (seen live).
+- `31de528` **showcase_url**: `BuildingProfile.showcase_url` (optional) set by the records agent for public/unlisted hero models and merged into `interior_scan.json` (where the resolver reads it). Live: hero 23551 → `https://my.matterport.com/show/?m=hu9LX64osUN`. Samples regenerated with `scripts/make_samples.py`.
+- `ENGINE_MODE=live` set in this worktree's `backend/.env`. Live engine end to end (run `warm_full`, 2026-11-14 18:39 UTC): 8/8 surveyed → live optimize (`stub: false`) → composer `target_gap` ("2,006 t/yr short": every claim unverified, so solar/cool roof stay out of the optimizer) → `done`.
+- `scripts/warm_cache.py`: `--probe` checks Gemini; default = hero first (verifier + interior get quota first), then the full `POST /run` pipeline, summary in `data/runs/warm_full/warm_summary.json`.
 
 ## Blocked / open
-- **Gemini free tier: 20 requests/day per model** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `gemini-3.6-flash` spent; also 5/min). Blocks: live verifier run (genuine send_back), live interior run on the hero, cache warm-up with verifier + interior, and any re-run. Needs billing on the key or a paid key.
-- **No genuine live send_back yet.** The send_backs in run t22-live were caused by 429 errors being scored as doubt (bug, fixed). Proven only in tests so far.
-- **MatterPak not downloadable**: every portfolio model (37, incl. hero's 10) has `bundle availability: unlocked` but all resources `unavailable`, no URL. Mesh route is ready; hero_3d needs CoStar to generate/unlock the files, or `models_index.csv` to pick a splat model.
-- **Hero scan is one suite** (~1,000 sf of 105,717 sf, 3 unlabelled rooms, empty wall graph): scanned area kept in `interior_scan.json`, not used as building floor area (coverage < 50%); envelope area null → insulation not proposed.
-- **For Lane B:** composer shows `hero_3d` + `floor_plan` for the hero even with no mesh (`interior_scan.json` `mesh_url: null`) and no interior.json; App Flow §6 says omit when there's no Matterport data. Also `composer.save_state` overwrites state.json (I re-merge `status`/`results` after it).
+- **Gemini: every call returns 402 "Your prepayment credits are depleted"** (both `gemini-3.6-flash` and `gemini-3.5-flash-lite`, probed 18:38 UTC). Earlier blocker was the free-tier 20/day cap; the key's project is now on prepaid billing with a zero balance. Needs someone with AI Studio access to add credits (https://ai.studio/projects). Blocks:
+  - **Genuine live send_back**: not achieved. Live verifier calls so far all failed (429 earlier, 402 now); claims left unverified as designed.
+  - **Hero interior**: Matterport side works live (rooms, 17 panos, 15 faces downloaded, showcase link); the Gemini step failed, so `interior.json` has `unknown` values.
+  - **Full cache warm-up**: records, Vexcel, Matterport and aerial Gemini calls are cached; verifier, interior, orchestrator-plan and composer Gemini calls are not. A read_only demo now would show every claim unverified and the template plan.
+  - The 30-minute retry loop was **not** started before 18:38 UTC (my error: I hadn't set it up when the next instruction arrived). Started after this commit; it probes every 30 min and runs `warm_cache.py` once a call succeeds.
+- **MatterPak not downloadable**: all 37 portfolio models report `unlocked` but resources `unavailable`. The Showcase tour covers the 3D view meanwhile.
+- **Hero scan is one suite** (1,026 sf of 105,717 sf, coverage 0.97%, empty wall graph): scanned area not used as building floor area; envelope null → no insulation.
 - **Vexcel obliques**: `backend/toolkit/` still not on `agent`; facades empty, no window_upgrade.
 
+## Requests for Lane B (I no longer edit main.py or llm.py)
+- `llm.py`: 402 (prepaid credits depleted) is raised immediately as a plain 4xx, which is right; consider mapping it to `QuotaExhausted` too so callers can tell "out of credit" from a bad request.
+- `schemas/profile.py`: I added optional `showcase_url` (additive) and regenerated `docs/agent/samples/` with your `make_samples.py`. Shout if you'd rather own that field.
+- `composer.save_state` overwrites `state.json`; `graph.run_full` re-merges `status`/`results` after it. A merge in `save_state` would be cleaner.
+
 ## Notes
-- venv: main checkout `backend/.venv` (Python 3.11.9). Tests: 231 pass (both lanes) + 1 live.
-- Port 8765 is taken by another process; I ran the API on 8791.
+- venv: main checkout `backend/.venv` (Python 3.11.9, no pip). The engine merge needs `pulp[cbc]`; installed the pinned requirements with `uv pip install --python …/.venv/bin/python -r requirements.txt` (CBC solver available).
+- Tests: 385 pass (both lanes + engine) + live-marked.
+- Port 8765 is taken by another process; I run the API on 8791.
 - `COSTAR_KIT_DIR` added to this worktree's `backend/.env`. CoStar CDN photos (403) skipped by decision.
-- Estimated footprints run ~20% under real roofs; overhead crop = 2.2× estimated side.
-- `occupancy_pct` not in the CoStar property record; null.
