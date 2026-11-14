@@ -123,6 +123,9 @@ async def test_inspect_and_reinspect_rooms(tmp_path, monkeypatch):
 
     async def fake_vision(prompt, images, schema):
         calls.append(schema.__name__)
+        if schema is interior.InteriorObservation:
+            listed = {i.image_id for i in images}
+            assert all(f"`{x}`" in prompt for x in listed), "base call got images its prompt doesn't list"
         if schema is interior.RoomLabelsObservation:
             if "Verifier questions" in prompt:  # re-check only the asked room
                 return interior.RoomLabelsObservation(rooms=[
@@ -150,6 +153,9 @@ async def test_inspect_and_reinspect_rooms(tmp_path, monkeypatch):
         res2 = await interior.reinspect(p, res, [(big, "Is the long table a conference table?")])
         assert [r.type for r in res2.findings.rooms] == ["private_office", "conference", "unknown"]
         assert calls[-1] == "RoomLabelsObservation"  # base observation not re-asked
+        hv = next(c for c in res2.claims if c.field == "interior.hvac")
+        await interior.reinspect(p, res2, [(hv, "Is the thermostat visible?")])
+        assert calls[-1] == "InteriorObservation"
 
         by_id = {c.claim_id: c.model_copy(update={"status": "verified"}) for c in res2.claims}
         res3 = interior.with_statuses(res2, by_id)
@@ -227,3 +233,10 @@ async def test_big_rooms_get_more_panoramas(monkeypatch, tmp_path):
     imgs, _ = await interior.fetch_room_images(MODEL, ROOM_INFO, panos(9))
     assert len(imgs["r_small"]) == 4  # 10 m2 → 1 pano × 4 faces
     assert len(imgs["r_big"]) == 4 + 2 + 2 + 2  # 74 m2 → 4 panos
+
+
+def test_room_claims_verified_apart_from_base_interior_claims():
+    p, ps, (f, claims) = base_findings()
+    _, claims2 = interior.add_rooms(p, f, claims, ROOM_INFO, room_images(), room_obs(), ps)
+    groups = {verifier.claim_group(c) for c in claims2}
+    assert groups == {("interior", "base"), ("interior", "room")}

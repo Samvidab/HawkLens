@@ -148,6 +148,12 @@ def scan_areas(rooms: dict, profile: BuildingProfile) -> dict:
                            for f in (rooms.get("assets") or {}).get("floorplans") or []]}
 
 
+def base_images(images: list[ImageRef], panos: list[PanoramaRef]) -> list[ImageRef]:
+    """The images the lighting/HVAC/window prompt lists (sampled panos × FACES), not the room images."""
+    ids = {image_id(p.model_id, p.pano_id, f) for p in panos for f in FACES}
+    return [i for i in images if i.image_id in ids]
+
+
 def prompt_for(profile: BuildingProfile, images: list[ImageRef], panos: list[PanoramaRef],
                question: str | None = None) -> str:
     face_name = {0: "ceiling (up)", 1: "horizontal", 3: "horizontal, opposite"}
@@ -409,8 +415,8 @@ async def reinspect(profile: BuildingProfile, res: InteriorResult, asks: list[tu
     if base:
         questions = "\n".join(f"- about `{c.field}`: {q}" for c, q in base)
         try:
-            new = await llm.vision_json(prompt_for(profile, res.images, res.panos, questions), res.images,
-                                        InteriorObservation)
+            imgs = base_images(res.images, res.panos)
+            new = await llm.vision_json(prompt_for(profile, imgs, res.panos, questions), imgs, InteriorObservation)
             for c, _ in base:
                 attr = c.field.split(".", 1)[1]
                 if attr in ("lighting", "hvac", "window"):

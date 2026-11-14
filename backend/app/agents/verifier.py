@@ -1,7 +1,7 @@
 """Verifier loop (T2.2).
 
-verify(): the pending claims of a building, grouped by inspector, go to Gemini in ONE call per
-group with their evidence images (inspector marks drawn on, numbered by claim) →
+verify(): the pending claims of a building, grouped by inspector and claim family (room labels
+apart), go to Gemini in ONE call per group with their evidence images (inspector marks drawn on, numbered by claim) →
   score ≥ THRESHOLD           → verified
   score < REJECT              → rejected
   else, loops < MAX_LOOPS     → sent_back with a specific question (send_back event)
@@ -63,6 +63,12 @@ def field_help(field: str) -> str:
 
 
 PALETTE = [(255, 0, 255), (255, 200, 0), (0, 230, 255), (255, 80, 80), (80, 255, 80), (255, 140, 0)]
+
+
+def claim_group(c: Claim) -> tuple[str, str]:
+    """One verifier call per inspector and claim family: room labels are judged apart from the
+    other interior claims, on their rooms' images only (not every interior photo at once)."""
+    return c.agent, "room" if c.field.startswith("interior.room.") else "base"
 
 
 def threshold() -> float:
@@ -185,8 +191,8 @@ async def verify(state: dict) -> dict:
     checkable = [c for c in todo if c.value != "unknown"]
     verdicts: dict[str, ClaimVerdict] = {}
     failed = False
-    for agent in sorted({c.agent for c in checkable}):
-        got = await check_group(state, [c for c in checkable if c.agent == agent])
+    for group in sorted({claim_group(c) for c in checkable}):
+        got = await check_group(state, [c for c in checkable if claim_group(c) == group])
         if got is None:
             failed = True
         else:
