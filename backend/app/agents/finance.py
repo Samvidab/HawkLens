@@ -17,7 +17,7 @@ from app.integrations import nessie_client as nessie
 from app.storage import data_path, read_json, write_json
 from app.widgets.resolver import CONTRACTOR
 
-RESERVE_NICKNAME = "Retrofit Reserve"
+RESERVE_NICKNAME = "Hawk Lens Retrofit Reserve"  # the reserve account the Nessie teammate already seeded (get-or-create)
 STUB_CUSTOMER, STUB_SOURCE = "demo-customer", "demo-operating-account"
 
 
@@ -26,10 +26,11 @@ class ApprovalError(Exception):
 
 
 def _ids() -> tuple[str, str]:
-    """(customer_id, source account id) from NESSIE_CUSTOMER_ID / NESSIE_SOURCE_ACCOUNT_ID."""
-    cust, src = _env("NESSIE_CUSTOMER_ID"), _env("NESSIE_SOURCE_ACCOUNT_ID")
+    """(customer_id, source account id) from NESSIE_CUSTOMER_ID / NESSIE_SOURCE_ACCOUNT_ID.
+    Stub mode always uses fixed ids, so stub output (tests, samples) never depends on a machine's .env."""
     if get_settings().nessie_mode == "stub":
-        return cust or STUB_CUSTOMER, src or STUB_SOURCE
+        return STUB_CUSTOMER, STUB_SOURCE
+    cust, src = _env("NESSIE_CUSTOMER_ID"), _env("NESSIE_SOURCE_ACCOUNT_ID")
     if not (cust and src):
         raise ApprovalError("NESSIE_CUSTOMER_ID and NESSIE_SOURCE_ACCOUNT_ID must be set for live Nessie")
     return cust, src

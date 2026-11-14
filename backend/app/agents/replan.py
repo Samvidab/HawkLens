@@ -22,6 +22,7 @@ from app.agents import composer
 from app.agents.composer import View
 from app.agents.finance import ApprovalError, run_finance
 from app.agents.memo import write_memo
+from app.integrations.nessie_client import NessieError
 from app.agents.pricing import load_upgrades, run_pricing
 from app.schemas.goal import Goal, OwnerAction
 from app.schemas.layout import Layout
@@ -169,6 +170,8 @@ async def _approve(action: OwnerAction) -> Layout:
         await run_finance(rid, action.payload.get("plan_id"))
     except ApprovalError as e:
         raise ReplanError(409, str(e)) from e
+    except NessieError as e:  # progress is saved by finance; approving again resumes where it stopped
+        raise ReplanError(502, f"Nessie could not complete the financing: {e}") from e
     plan = read_json(data_path("plans", "current.json"))
     if not data_path("memo", f"{plan['plan_id']}.md").exists():
         await write_memo(rid, plan)
