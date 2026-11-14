@@ -40,12 +40,12 @@ async def _extract(body: dict) -> bytes:
 
 
 def overhead_buffer_m(rba_sqft: float | None, stories: int | None, *, minimum: float = 40) -> float:
-    """Half-side of the overhead crop: 0.8 × the estimated footprint side, so the square is ~1.6×
-    the building and keeps neighbours (for shading) in view."""
+    """Half-side of the overhead crop: 1.1 × the estimated footprint side, so the square is ~2.2×
+    the estimated footprint: real roofs run larger than the estimate, and neighbours (shade) stay in view."""
     if not rba_sqft:
         return minimum
     side_m = (rba_sqft / max(stories or 1, 1) / 10.763910416709722) ** 0.5
-    return max(minimum, round(0.8 * side_m, 1))
+    return max(minimum, round(1.1 * side_m, 1))
 
 
 async def overhead(point_wkt: str, buffer_m: float = 40, *, px: int = DEFAULT_PX,

@@ -31,7 +31,7 @@ The Model API has no geographic search. Models are matched to buildings through 
 
 ## Vexcel (`vexcel.py`)
 
-`overhead(point_wkt, buffer_m)` sends `{"wkt": <square around point>, "srid": 4326, "layer": "urban,urban-r,wide-area,urban-g", "crop": "bounding_box", "image-format": "jpeg", "destination-dimensions": "1400,1400", "attribution": "false"}`. Native GSD is 7.5 cm; `gsd_m` on the ImageRef is the effective `2·buffer/1400`. `overhead_buffer_m(rba, stories)` sizes the crop to ~1.6× the estimated footprint. Houston and LA only (403 elsewhere).
+`overhead(point_wkt, buffer_m)` sends `{"wkt": <square around point>, "srid": 4326, "layer": "urban,urban-r,wide-area,urban-g", "crop": "bounding_box", "image-format": "jpeg", "destination-dimensions": "1400,1400", "attribution": "false"}`. Native GSD is 7.5 cm; `gsd_m` on the ImageRef is the effective `2·buffer/1400`. `overhead_buffer_m(rba, stories)` sizes the crop to ~2.2× the estimated footprint side. Houston and LA only (403 elsewhere).
 
 ## CoStar kit layout
 
