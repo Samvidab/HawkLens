@@ -284,3 +284,15 @@ async def test_widget_without_data_is_dropped_not_blank(world, monkeypatch):
     llm(monkeypatch, sel(*[(t, "") for t in OV], ("upgrade_list", "")))
     lay, _ = await compose("r", "goal", View())
     assert lay.widgets[-1].type == "activity_feed" and "upgrade_list" in types(lay)
+
+
+async def test_compose_keeps_the_surveys_state_fields(world):
+    """graph.py writes status/results into the same state.json; the composer must merge, not overwrite."""
+    d = world()
+    st = d / "runs/r/state.json"
+    put(st, {"run_id": "r", "status": "surveyed", "results": {"b1": {"status": "done"}}, "plan": ["step 1"]})
+    lay, view = await compose("r", "goal", View())
+    composer.save_state("r", lay, {"target_pct": 40}, "p1", view.model_dump())
+    got = json.loads(st.read_text())
+    assert got["status"] == "surveyed" and got["results"] == {"b1": {"status": "done"}} and got["plan"] == ["step 1"]
+    assert got["layout"]["situation"] == lay.situation and got["plan_id"] == "p1"

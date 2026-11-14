@@ -25,6 +25,13 @@ MAX_IMAGE_SIDE = 1536
 CALL_TIMEOUT_S = 60.0  # per Gemini request; a hung call counts as a failed attempt
 RETRIES = 2  # transport retries after the first attempt
 BACKOFF_S = 1.0
+RATE_LIMIT_RETRIES = 8  # 429s are waited out (free-tier keys: a few requests per minute)
+RATE_LIMIT_DEFAULT_WAIT_S = 15.0
+RATE_LIMIT_MAX_WAIT_S = 90.0  # longer asks mean a daily quota is spent: fail fast instead of hanging
+
+
+class QuotaExhausted(RuntimeError):
+    pass
 CACHE_NAMESPACE = "gemini"
 
 _sem: asyncio.Semaphore | None = None
@@ -56,6 +63,41 @@ def _should_fall_back(e: Exception) -> bool:
     """Server-side failure or timeout (after the primary model's retries)."""
     code = getattr(e, "code", None)
     return isinstance(e, (asyncio.TimeoutError, TimeoutError)) or (isinstance(code, int) and 500 <= code < 600)
+
+
+_pace_lock: asyncio.Lock | None = None
+_pace_loop: asyncio.AbstractEventLoop | None = None
+_last_start = 0.0
+
+
+def _rpm() -> float:
+    """GEMINI_RPM from the environment: max request starts per minute (0 = no pacing)."""
+    try:
+        return float(os.environ.get("GEMINI_RPM", "0"))
+    except ValueError:
+        return 0.0
+
+
+async def _pace() -> None:
+    global _pace_lock, _pace_loop, _last_start
+    rpm = _rpm()
+    if rpm <= 0:
+        return
+    loop = asyncio.get_running_loop()
+    if _pace_lock is None or _pace_loop is not loop:
+        _pace_lock, _pace_loop = asyncio.Lock(), loop
+    async with _pace_lock:
+        wait = _last_start + 60.0 / rpm - loop.time()
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_start = loop.time()
+
+
+def _retry_delay_s(e: Exception) -> float:
+    """Seconds the API asks us to wait on a 429 (RetryInfo.retryDelay), else a default."""
+    import re
+    m = re.search(r"retry(?:Delay)?['\"]?\s*[:in]+\s*['\"]?(\d+(?:\.\d+)?)s", str(e))
+    return (float(m.group(1)) + 1.0) if m else RATE_LIMIT_DEFAULT_WAIT_S
 
 
 def _semaphore() -> asyncio.Semaphore:
@@ -104,9 +146,11 @@ async def _generate(model: str, prompt: str, images: list[bytes], schema: type[B
 async def _call_with_retries(model: str, prompt: str, images: list[bytes], schema: type[BaseModel]) -> str:
     global tokens_used
     last: Exception | None = None
-    for attempt in range(RETRIES + 1):
+    attempt = limited = 0
+    while True:
         try:
             async with _semaphore():
+                await _pace()
                 text, tokens = await asyncio.wait_for(
                     _generate(model, prompt, images, schema), CALL_TIMEOUT_S)
             tokens_used += tokens
@@ -115,12 +159,20 @@ async def _call_with_retries(model: str, prompt: str, images: list[bytes], schem
         except Exception as e:  # noqa: BLE001 - transport/API errors
             last = e
             code = getattr(e, "code", None)
-            if isinstance(code, int) and 400 <= code < 500 and code not in (408, 429):
-                raise  # bad model name / key / request: retrying cannot help
-            if attempt < RETRIES:
-                await asyncio.sleep(BACKOFF_S * 2**attempt)
-    assert last is not None
-    raise last
+            if code == 429 and limited < RATE_LIMIT_RETRIES:  # rate limited: wait as told, don't count
+                limited += 1
+                delay = _retry_delay_s(e)
+                if delay > RATE_LIMIT_MAX_WAIT_S:
+                    raise QuotaExhausted(f"Gemini quota exhausted for {model}; API asks to wait {delay:.0f} s") from e
+                log.warning("gemini 429; waiting %.0f s (%d/%d)", delay, limited, RATE_LIMIT_RETRIES)
+                await asyncio.sleep(delay)
+                continue
+            if isinstance(code, int) and 400 <= code < 500 and code != 408:
+                raise  # bad model name / key / request (or quota still exhausted): retrying cannot help
+            if attempt >= RETRIES:
+                raise
+            await asyncio.sleep(BACKOFF_S * 2**attempt)
+            attempt += 1
 
 
 async def _structured(model: str, prompt: str, images: list[ImageLike], schema: type[T],

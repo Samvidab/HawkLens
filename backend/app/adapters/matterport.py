@@ -37,8 +37,10 @@ Q_BASICS = """query Basics($id: ID!) { model(id: $id) {
 
 Q_PANOS = """query Panos($id: ID!) { model(id: $id) {
   panoLocations { id label position { x y z } skybox(resolution: "2k") { status children } }
-  view(type: "matterport.model.defurnished") { id }
 } }"""
+
+# Separate: not every model has a defurnished view, and asking for a missing one fails the query.
+Q_DEFURNISHED = """query Defurnished($id: ID!) { model(id: $id) { view(type: "matterport.model.defurnished") { id } } }"""
 
 Q_ROOMS = """query Rooms($id: ID!) { model(id: $id) {
   floors { id label vertices { id position { x y } } edges { id type thickness vertices { id } } }
@@ -141,6 +143,14 @@ async def panoramas(model_id: str) -> list[PanoramaRef]:
             skybox_urls=sky.get("children") or [] if sky.get("status") == "available" else [],
         ))
     return out
+
+
+async def defurnished_view(model_id: str) -> str | None:
+    try:
+        m = (await graph("defurnished", Q_DEFURNISHED, {"id": model_id}))["model"]
+    except MatterportError:
+        return None
+    return (m.get("view") or {}).get("id")
 
 
 async def pano_face(pano: PanoramaRef, face: int) -> Path:

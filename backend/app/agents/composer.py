@@ -20,7 +20,7 @@ from app.agents.llm import text_json
 from app.guardrails import check_numbers, fill_placeholders
 from app.schemas.claims import Claim
 from app.schemas.layout import MAX_WHY, MAX_WIDGETS, Layout, Situation, WidgetSpec
-from app.storage import data_path, write_json
+from app.storage import data_path, read_json, write_json
 from app.widgets.registry import WIDGETS, RegistryError
 from app.widgets.resolver import ResolveContext, ResolveError, resolve_layout, resolve_widget
 from app.widgets.templates import stock_title, stock_why, template_for
@@ -245,10 +245,13 @@ async def compose(run_id: str, action_type: str, view: "View") -> tuple[Layout, 
 
 
 def save_state(run_id: str, layout: Layout, goal: dict | None, plan_id: str | None, view: dict | None = None) -> dict:
-    state = {"run_id": run_id, "goal": goal, "plan_id": plan_id, "view": view or {},
-             "layout": layout.model_dump(mode="json"),
-             "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    write_json(data_path("runs", run_id, "state.json"), state)
+    """Merge the composer's fields into runs/<id>/state.json (graph.py writes survey status/results there too)."""
+    path = data_path("runs", run_id, "state.json")
+    state = read_json(path, {}) or {}
+    state.update({"run_id": run_id, "goal": goal, "plan_id": plan_id, "view": view or {},
+                  "layout": layout.model_dump(mode="json"),
+                  "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+    write_json(path, state)
     return state
 
 

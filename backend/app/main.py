@@ -1,18 +1,21 @@
-import json
-
 import asyncio
+import json
+import logging
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import events, media
+from app.agents import graph
 from app.agents.replan import ReplanError, replan
 from app.config import get_settings
 from app.envutil import env_value
-from app.schemas.goal import OwnerAction
+from app.schemas.goal import Goal, OwnerAction
 from app.schemas.layout import Layout
 from app.storage import data_path, read_json
 from app.widgets.registry import json_schemas
+
+log = logging.getLogger(__name__)
 
 DEFAULT_CORS = "http://localhost:5173,http://localhost:3000"  # local frontend dev servers
 
@@ -32,8 +35,11 @@ def configure_cors(application: FastAPI) -> None:
 
 app = FastAPI(title="RetroAlpha backend")
 configure_cors(app)
-app.include_router(events.router)
-app.include_router(media.router)
+app.include_router(events.router)  # GET /events/{run_id}
+app.include_router(media.router)   # GET /media/mesh/{model_id}/{file}, GET /media/{image_id}
+
+_runs: dict[str, asyncio.Task] = {}  # keep references so background runs aren't garbage-collected
+_compose_lock = asyncio.Lock()  # engine state is process-wide; one re-plan at a time
 
 
 @app.get("/health")
@@ -46,6 +52,16 @@ def health() -> dict:
         "nessie_mode": s.nessie_mode,
         "demo_city": s.demo_city,
     }
+
+
+@app.post("/run")
+async def start_run(goal: Goal) -> dict:
+    """Start survey (→ pricing → compose, once those exist) in the background; returns run_id."""
+    run_id = graph.new_run_id()
+    task = asyncio.create_task(graph.run(goal, run_id))
+    _runs[run_id] = task
+    task.add_done_callback(lambda t: _runs.pop(run_id, None))
+    return {"run_id": run_id}
 
 
 @app.get("/registry")
@@ -63,9 +79,6 @@ def portfolio():
     return json.loads(path.read_text())
 
 
-_compose_lock = asyncio.Lock()  # engine state is process-wide; one re-plan at a time
-
-
 @app.post("/compose", response_model=Layout)
 async def compose(action: OwnerAction) -> Layout:
     """Owner action -> re-plan (agents/replan.py, TRD §9) -> new layout."""
@@ -78,8 +91,9 @@ async def compose(action: OwnerAction) -> Layout:
 
 @app.get("/state/{run_id}")
 def state(run_id: str) -> dict:
-    """Latest snapshot for a run (layout, goal, plan id) for the frontend after `done` or on reload."""
+    """Latest snapshot for a run: the survey's status/results (graph.py) plus layout, goal, plan id and
+    view (composer). Both write the same runs/<id>/state.json by merging fields."""
     st = read_json(data_path("runs", run_id, "state.json"))
     if st is None:
-        raise HTTPException(404, f"no state for run {run_id}")
+        raise HTTPException(404, f"unknown run {run_id}")
     return st
