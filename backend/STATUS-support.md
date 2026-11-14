@@ -18,6 +18,8 @@
 
 - T3.5 memo writer (`agents/memo.py`, `agents/prompts/memo.md`): Gemini fast writes placeholder-only prose (never sees figures); code substitutes; `guarded_text` rejects invented numbers, regenerates without numbers, then falls back to a template; final `check_numbers` on the substituted text; code-built appendix table; stub disclosure line. Passes the number check on 3 different plans (tests) and a live run with gemini-3.5-flash-lite. Not wired to an `approve` action yet (T3.1/T3.4). Emits kind `compose`, not `done`: the SSE live stream ends at the first `done`, so a second `done` in the same run would hide later events.
 
+- Merged `agent` (Lane A) into lane-support. Media routes (`app/media.py`, mounted in main.py): GET /media/{image_id} via data/buildings/*/images.json (served only from inside cache/ or data/), GET /media/mesh/{model_id}/{file} from cache/media/mesh/<id>/ (obj/mtl/jpg/png only; `model.obj`/`model.mtl` alias the zip's real names so resolver URLs work).
+
 ## In progress
 - nothing
 

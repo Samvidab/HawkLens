@@ -4,7 +4,7 @@ import asyncio
 
 from fastapi import FastAPI, HTTPException
 
-from app import events
+from app import events, media
 from app.agents.composer import compose_v0, save_state
 from app.agents.pricing import run_pricing
 from app.config import get_settings
@@ -15,6 +15,7 @@ from app.widgets.registry import json_schemas
 
 app = FastAPI(title="RetroAlpha backend")
 app.include_router(events.router)
+app.include_router(media.router)
 
 
 @app.get("/health")
