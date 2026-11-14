@@ -15,7 +15,20 @@
 - main.py must `include_router(events.router)` and expose `GET /registry` -> `widgets.registry.json_schemas()`
 - pricing owner must match the plans/current.json shape in `app/widgets/resolver.py` docstring (incl. per-upgrade `upfront_usd`)
 - aerial/interior authors must use claim field prefixes in `app/rules/feasibility.yaml`
-- **HUMAN: `.env` GEMINI_MODEL_VISION=gemini-3.1-pro-preview returns 404 on this key (same in main checkout .env).**
-  Models the key lists include gemini-3.5-flash, 3.6-flash, 3.7-flash, 3.8-flash, 2.5-pro (2.5-flash is closed to new users).
-  Observed 2026-11-14: 3.8-flash (= GEMINI_MODEL_FAST) gave 503 'high demand' / hung; 3.5-flash and 3.6-flash work but ~20 s per call.
-  Need a decision on which model names to put in .env (I did not edit .env).
+- (model names: resolved, see below)
+
+## Gemini model choice (resolved 2026-11-14; written to .env in support, data, and main checkouts)
+VISION=`gemini-3.6-flash`, FAST=`gemini-3.5-flash-lite`. Three trials each (one image call / one tiny text call, 60-100 s cap):
+
+| role | model | trial 1 | trial 2 | trial 3 | verdict |
+|---|---|---|---|---|---|
+| vision | gemini-pro-latest | 404 | - | - | not on key |
+| vision | gemini-3.1-pro-preview-customtools | 404 | - | - | not on key |
+| vision | gemini-3.7-flash | timeout 100 s | 503 | timeout 60 s | unreliable |
+| vision | gemini-3.6-flash | 503 | ok 3.0 s | ok 18.2 s | **chosen** (llm.py retries 5xx) |
+| vision | gemini-3.5-flash (extra baseline) | ok ~21 s (smoke) | - | ok 18.2 s | reliable, one tier older; fallback |
+| fast | gemini-3.5-flash-lite | ok 5.4 s | ok 4.0 s | ok 0.8 s | **chosen** |
+| fast | gemini-3.1-flash-lite | ok 2.4 s | timeout 100 s | ok 13.9 s | unreliable |
+| fast | gemini-3.5-flash | ok 31.5 s | ok 3.2 s | ok 5.1 s | slower, variable |
+Earlier: gemini-3.8-flash gave 503 / hang; gemini-3.1-pro-preview 404.
+Latency is high and variable (vision 3-20 s per call); plan the demo from cache.
