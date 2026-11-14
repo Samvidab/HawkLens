@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException
 
 from app import events, media
 from app.agents.composer import compose_v0, save_state
+from app.agents.finance import ApprovalError, run_finance
+from app.agents.memo import write_memo
 from app.agents.pricing import run_pricing
 from app.config import get_settings
 from app.schemas.goal import Goal, OwnerAction
@@ -49,11 +51,28 @@ _compose_lock = asyncio.Lock()  # engine state is process-wide; one re-plan at a
 PRICING_ACTIONS = {"goal", "set_target", "set_budget", "set_risk"}
 
 
+async def _approve(action: OwnerAction) -> Layout:
+    """finance -> memo -> `approved` layout. Gated on the current plan_id; a repeat approve books
+    nothing and returns the same executed layout."""
+    try:
+        await run_finance(action.run_id, action.payload.get("plan_id"))
+    except ApprovalError as e:
+        raise HTTPException(409, str(e)) from e
+    plan = read_json(data_path("plans", "current.json"))
+    if not data_path("memo", f"{plan['plan_id']}.md").exists():
+        await write_memo(action.run_id, plan)
+    layout = compose_v0(action.run_id, situation="approved")
+    save_state(action.run_id, layout, plan.get("goal"), plan["plan_id"])
+    return layout
+
+
 @app.post("/compose", response_model=Layout)
 async def compose(action: OwnerAction) -> Layout:
     """v0: re-price for goal/target/budget/risk actions, then return the portfolio_overview layout.
-    Other action types (exclude, toggle, approve, ...) arrive with T3.1 and currently just recompose."""
+    `approve` runs finance -> memo -> approved layout. Other action types (exclude, toggle, ...) arrive with T3.1 and currently just recompose."""
     async with _compose_lock:
+        if action.type == "approve":
+            return await _approve(action)
         plan = read_json(data_path("plans", "current.json"))
         goal_dict = (plan or {}).get("goal")
         if action.type in PRICING_ACTIONS:

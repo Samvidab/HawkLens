@@ -1,4 +1,4 @@
-"""UI composer v0: always the portfolio_overview template, props filled by the resolver.
+"""UI composer v0: the portfolio_overview template (or `approved` after finance), props filled by the resolver.
 
 (v1, T3.2, will detect situations and let Gemini reorder/annotate within limits.)
 A widget whose data is not ready is dropped with an `error` event rather than blanking the page.
@@ -15,8 +15,8 @@ from app.widgets.registry import RegistryError
 from app.widgets.templates import template_for
 
 
-def compose_v0(run_id: str, *, focus_building_id: str | None = None) -> Layout:
-    situation: Situation = "portfolio_overview"
+def compose_v0(run_id: str, *, focus_building_id: str | None = None,
+               situation: Situation = "portfolio_overview") -> Layout:
     ctx = ResolveContext.load(data_path(), run_id, focus_building_id=focus_building_id, situation=situation)
     kept = []
     for spec in template_for(situation):

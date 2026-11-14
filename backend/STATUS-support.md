@@ -1,6 +1,6 @@
 # STATUS — Lane B (support), branch lane-support
 
-## Done (all committed, 100 tests green)
+## Done (all committed)
 - T1.2 schemas (`app/schemas/`)
 - T1.3 LLM wrapper (`app/agents/llm.py`) — unit tests + live smoke test passed (real image + toy schema, 2nd call cached) using GEMINI_MODEL_VISION=gemini-3.5-flash override; added 60 s per-call timeout and no-retry on non-transient 4xx
 - T1.4 events bus + SSE router (`app/events.py`) — router not yet mounted in main.py (not my file)
@@ -20,8 +20,10 @@
 
 - Merged `agent` (Lane A) into lane-support. Media routes (`app/media.py`, mounted in main.py): GET /media/{image_id} via data/buildings/*/images.json (served only from inside cache/ or data/), GET /media/mesh/{model_id}/{file} from cache/media/mesh/<id>/ (obj/mtl/jpg/png only; `model.obj`/`model.mtl` alias the zip's real names so resolver URLs work).
 
+- T3.4 finance agent (`agents/finance.py`): Nessie writes only on `approve` with plan_id == plans/current.json plan_id (else 409, nothing written). Creates Retrofit Reserve, transfers total upfront, one bill per contractor type, one `act` event per call with the ID. Idempotent by plan_id; progress persisted to data/finance/<plan_id>.json after every call so a retry resumes without double-booking. `POST /compose` `approve` runs finance -> memo (skipped if already written) -> `approved` layout; repeat approve books nothing and makes no LLM call. Tested against the Nessie stub, incl. mid-way failure. Source/customer accounts come from NESSIE_CUSTOMER_ID / NESSIE_SOURCE_ACCOUNT_ID (stub defaults only in stub mode); Nessie teammate to supply real ones for live mode.
+
 ## In progress
-- nothing
+- hero MatterPak check: waiting for Lane A to extract it (no cache/media/mesh/ in this worktree or the main checkout yet)
 
 ## Blocked / needs others
 - pricing owner must match the plans/current.json shape in `app/widgets/resolver.py` docstring (incl. per-upgrade `upfront_usd`)
