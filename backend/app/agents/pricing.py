@@ -37,6 +37,10 @@ def _price_sync(goal: Goal, by_building: dict[str, list[FeasibleUpgrade]], exclu
     return {"sim": sim, "macc": bars, "opt": opt, "baseline": {b: engine.baseline(b) for b in by_building}}
 
 
+def _drift(r: dict) -> list[str]:
+    return engine.check_outputs(r["sim"], r["macc"], r["opt"], r["baseline"])
+
+
 async def run_pricing(run_id: str, goal: Goal, *, excluded_building_ids: Iterable[str] = (),
                       excluded_upgrade_ids: Iterable[str] = (), owner_included: Iterable[str] = ()) -> dict:
     """Price the surveyed portfolio for `goal`; returns (and stores) the plan dict."""
@@ -45,6 +49,8 @@ async def run_pricing(run_id: str, goal: Goal, *, excluded_building_ids: Iterabl
     exclusions = excluded_buildings + sorted(set(excluded_upgrade_ids))
     r = await asyncio.to_thread(_price_sync, goal, by_building, exclusions, owner_inc)
     opt = r["opt"]
+    if drift := _drift(r):  # live engine differs from the contract: say so, keep going with what we have
+        events.emit(run_id, "Pricing", "error", ("engine contract drift: " + "; ".join(drift))[:90])
     plan = {
         **opt,
         "goal": goal.model_dump(mode="json"),

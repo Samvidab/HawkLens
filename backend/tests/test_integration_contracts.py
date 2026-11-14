@@ -1,3 +1,4 @@
+import json
 """Contract tests: stubs must match TRD §8.1 / §8.2 signatures and shapes."""
 import inspect
 
@@ -125,3 +126,115 @@ def test_nessie_signatures_and_ids():
     assert isinstance(nes.create_bill(reserve, "solar-co", 50.0, "bill"), str)
     with pytest.raises(ValueError):
         nes.transfer("a", "b", 0, "x")
+
+
+# ---- live mode against a fake engine module (the real one is not pushed yet) --------------------
+import sys
+import types
+
+
+def fake_engine(**overrides):
+    m = types.ModuleType("app.engine")
+    calls = []
+
+    def simulate(upgrades, assumptions):
+        calls.append(("simulate", len(upgrades), assumptions))
+        return {u.upgrade_id: {k: 1 for k in eng.SIM_KEYS} | {"hist_bins": []} for u in upgrades}
+
+    def macc(exclusions):
+        calls.append(("macc", exclusions)); return {"bars": [{k: 1 for k in eng.BAR_KEYS}]}
+
+    def optimize(target_pct, risk_lambda, budget_usd, exclusions):
+        calls.append(("optimize", target_pct, risk_lambda, budget_usd, exclusions))
+        return {k: 1 for k in eng.OPT_KEYS} | {"status": "ok", "hist_bins": [{"x0": 0, "x1": 1, "count": 1}], "selected": []}
+
+    def set_assumption(key, value):
+        calls.append(("set_assumption", key, value)); return {"ok": True}
+
+    def baseline(building_id):
+        calls.append(("baseline", building_id)); return {"annual_spend_usd": 1.0, "tonnes_per_year": 2.0}
+
+    for f in (simulate, macc, optimize, set_assumption, baseline):
+        setattr(m, f.__name__, f)
+    for k, v in overrides.items():
+        setattr(m, k, v) if v is not None else delattr(m, k)
+    m.calls = calls
+    return m
+
+
+@pytest.fixture
+def live(monkeypatch):
+    def install(**ov):
+        m = fake_engine(**ov)
+        monkeypatch.setitem(sys.modules, "app.engine", m)
+        monkeypatch.setenv("ENGINE_MODE", "live"); get_settings.cache_clear(); eng.reset_stub()
+        return m
+    return install
+
+
+def test_live_mode_delegates_every_call(live):
+    m = live()
+    assert set(eng.simulate(UPS, {"discount_rate": 0.05})) == {u.upgrade_id for u in UPS}
+    eng.macc(["b1"]); eng.optimize(40, 0.5, 1000.0, ["b2"]); eng.set_assumption("k", 2); eng.baseline("b1")
+    assert [c[0] for c in m.calls] == ["simulate", "macc", "optimize", "set_assumption", "baseline"]
+    assert m.calls[0][2] == {"discount_rate": 0.05} and m.calls[2][1:] == (40, 0.5, 1000.0, ["b2"])
+
+
+def test_live_mode_accepts_get_macc_alias(live):
+    m = live()
+    m.get_macc, m.macc = m.macc, None
+    del m.macc
+    eng.macc([])
+    assert m.calls == [("macc", [])]
+    assert eng.live_contract_drift(m) == []
+
+
+def test_simulate_is_not_repeated_when_nothing_changed(live):
+    m = live()
+    a = eng.simulate(UPS, {"discount_rate": 0.07}); b = eng.simulate(UPS, {"discount_rate": 0.07})
+    assert a == b and [c[0] for c in m.calls] == ["simulate"]
+    eng.simulate(UPS, {"discount_rate": 0.05}); eng.simulate(UPS[:2], {"discount_rate": 0.05})
+    assert [c[0] for c in m.calls] == ["simulate"] * 3
+    flipped = [UPS[0].model_copy(update={"include_in_optimizer": False}), *UPS[1:2]]
+    eng.simulate(flipped, {"discount_rate": 0.05})
+    assert len([c for c in m.calls if c[0] == "simulate"]) == 4  # flag change -> new simulation
+    eng.set_assumption("x", 1); eng.simulate(flipped, {"discount_rate": 0.05})
+    assert len([c for c in m.calls if c[0] == "simulate"]) == 5  # assumption change invalidates
+
+
+def test_drift_report(live):
+    assert eng.live_contract_drift(live()) == []
+    m = live(optimize=lambda target, lam, budget, exclusions: {}, baseline=None)
+    drift = eng.live_contract_drift(m)
+    assert any("optimize" in d and "target_pct" in d for d in drift) and "missing function baseline" in drift
+    assert eng.live_contract_drift(types.ModuleType("empty")) and len(eng.live_contract_drift(types.ModuleType("empty"))) == 5
+
+
+def test_check_outputs_flags_missing_extras():
+    sim = eng.simulate(UPS, {})
+    bars, opt = eng.macc([]), eng.optimize(10, 0.5, None, [])
+    base = {"b1": eng.baseline("b1")}
+    assert eng.check_outputs(sim, bars, opt, base) == []  # the stub conforms to the contract it advertises
+    bad_sim = {k: {kk: vv for kk, vv in v.items() if kk != "upfront_usd"} for k, v in sim.items()}
+    assert "upfront_usd" in eng.check_outputs(bad_sim, bars, opt)[0]
+    gap = eng.optimize(100, 0.5, 1.0, [])
+    assert gap["status"] == "infeasible" and eng.check_outputs(sim, bars, gap) == []
+    gap_missing = {k: v for k, v in gap.items() if k != "cheapest_extra"}
+    assert "cheapest_extra" in eng.check_outputs(sim, bars, gap_missing)[0]
+    assert "x0" in eng.check_outputs(sim, bars, {**opt, "hist_bins": [{"a": 1}]})[0]
+    assert "annual_spend_usd" in eng.check_outputs(sim, bars, opt, {"b1": {"tonnes_per_year": 1}})[0]
+
+
+async def test_pricing_reports_drift_as_one_error_event(live, tmp_path, monkeypatch):
+    from app import events
+    from app.agents.pricing import run_pricing
+    from app.schemas.goal import Goal
+    from tests.test_compose_flow import put, upgrade
+    monkeypatch.setenv("DATA_DIR", str(tmp_path)); get_settings.cache_clear(); events._seq.clear()
+    m = live()
+    put(tmp_path / "buildings/b1/feasibility.json", [upgrade("b1", "rooftop_solar", "solar", 300, "kW")])
+    m.simulate = lambda upgrades, assumptions: {u.upgrade_id: {"exp_npv": 1} for u in upgrades}  # lacks upfront_usd etc.
+    await run_pricing("r", Goal(city="Houston", target_pct=10))
+    ev = [json.loads(l) for l in (tmp_path / "runs/r/events.jsonl").read_text().splitlines()]
+    errs = [e for e in ev if e["kind"] == "error"]
+    assert len(errs) == 1 and errs[0]["message"].startswith("engine contract drift: simulate") and len(errs[0]["message"]) <= 90

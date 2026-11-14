@@ -4,7 +4,8 @@ stub: deterministic placeholder pricing from fixtures/engine/stub_params.json �
       in optimize() output so the UI shows the "sample pricing" badge. Not real numbers.
 live: delegates to the in-process engine `app.engine` (quant-engine branch), whose contract adds the
       same extras this stub returns (upfront_usd, tonnes_per_year, status, p_loss, hist_bins,
-      tonnes_needed, shortfall_tonnes, cheapest_extra, baseline()).
+      tonnes_needed, shortfall_tonnes, cheapest_extra, baseline()). `live_contract_drift()` and
+      `check_outputs()` report differences from TRD §8.1; run `python -m app.integrations.engine_client`.
 """
 from __future__ import annotations
 
@@ -22,11 +23,75 @@ EXTRA_CUTS = 3
 
 _assumptions: dict[str, Any] = {}
 _state: dict[str, Any] = {"upgrades": {}, "models": {}}
+_memo: dict[str, Any] = {"key": None, "result": None}  # last simulate() inputs -> outputs
 
 
 def _live():
     from app import engine  # noqa: PLC0415 - only exists once the quant-engine branch is merged
     return engine
+
+
+def _live_fn(*names: str):
+    """First function the live engine exposes under any of `names` (PRD says get_macc, TRD/engine say macc)."""
+    eng = _live()
+    for n in names:
+        if callable(getattr(eng, n, None)):
+            return getattr(eng, n)
+    raise ImportError(f"app.engine has none of {names}")
+
+
+# ---- contract drift checks (live mode) ----------------------------------------------------------
+TRD_SIGNATURES = {  # TRD §8.1 (+ baseline, an engine extra)
+    "simulate": ["upgrades", "assumptions"], "macc": ["exclusions"],
+    "optimize": ["target_pct", "risk_lambda", "budget_usd", "exclusions"],
+    "set_assumption": ["key", "value"], "baseline": ["building_id"],
+}
+SIM_KEYS = {"exp_npv", "p_loss", "cvar5", "tonnes_lifetime", "cost_per_tonne", "hist_bins", "upfront_usd", "tonnes_per_year"}
+BAR_KEYS = {"upgrade_id", "building_id", "type", "tonnes_per_year", "cost_per_tonne"}
+OPT_KEYS = {"plan_id", "selected", "exp_npv", "cvar5", "p_hit_target", "total_upfront", "tonnes_per_year", "status",
+            "p_loss", "hist_bins", "tonnes_needed"}
+OPT_GAP_KEYS = {"shortfall_tonnes", "cheapest_extra"}  # required when status == "infeasible"
+BASELINE_KEYS = {"annual_spend_usd", "tonnes_per_year"}
+
+
+def live_contract_drift(engine_module=None) -> list[str]:
+    """Differences between the live engine's function names/parameters and TRD §8.1 (empty = none)."""
+    import inspect
+    eng = engine_module or _live()
+    out = []
+    for name, want in TRD_SIGNATURES.items():
+        alias = [name, "get_macc"] if name == "macc" else [name]
+        fn = next((getattr(eng, n) for n in alias if callable(getattr(eng, n, None))), None)
+        if fn is None:
+            out.append(f"missing function {name}")
+            continue
+        got = list(inspect.signature(fn).parameters)
+        if got != want:
+            out.append(f"{name}{tuple(got)} != TRD {tuple(want)}")
+    return out
+
+
+def check_outputs(sim: dict, bars: dict, opt: dict, base: dict[str, dict] | None = None) -> list[str]:
+    """Missing keys in engine outputs that the widgets / finance agent depend on (empty = conforms)."""
+    out = []
+    for uid, m in sim.items():
+        if miss := SIM_KEYS - set(m):
+            out.append(f"simulate[{uid}] lacks {sorted(miss)}")
+            break
+    for b in bars.get("bars", []):
+        if miss := BAR_KEYS - set(b):
+            out.append(f"macc bar lacks {sorted(miss)}")
+            break
+    need = OPT_KEYS | (OPT_GAP_KEYS if opt.get("status") == "infeasible" else set())
+    if miss := need - set(opt):
+        out.append(f"optimize lacks {sorted(miss)}")
+    elif opt["hist_bins"] and set(opt["hist_bins"][0]) != {"x0", "x1", "count"}:
+        out.append("optimize hist_bins entries are not {x0,x1,count}")
+    for bid, b in (base or {}).items():
+        if miss := BASELINE_KEYS - set(b):
+            out.append(f"baseline({bid}) lacks {sorted(miss)}")
+            break
+    return out
 
 
 def _live_mode() -> bool:
@@ -40,6 +105,7 @@ def _params() -> dict:
 def reset_stub() -> None:
     _assumptions.clear()
     _state.update(upgrades={}, models={})
+    _memo.update(key=None, result=None)
 
 
 # ---- stub math ---------------------------------------------------------------------------------
@@ -82,14 +148,24 @@ def _model(u: FeasibleUpgrade, p: dict) -> dict:
 def simulate(upgrades: list[FeasibleUpgrade], assumptions: dict | None = None) -> dict[str, dict]:
     """{upgrade_id: {exp_npv, p_loss, cvar5, tonnes_lifetime, cost_per_tonne, hist_bins,
     upfront_usd, tonnes_per_year}}"""
+    # Re-simulating is the expensive step in the real engine (Monte Carlo). When nothing it depends on
+    # changed (same upgrades, flags and assumptions) the engine's cached scenarios are still valid for
+    # macc()/optimize(), so reuse the previous result.
+    key = json.dumps([get_settings().engine_mode, assumptions or {}, [u.model_dump(mode="json") for u in upgrades]],
+                     sort_keys=True, default=str)
+    if _memo["key"] == key:
+        return dict(_memo["result"])
     if _live_mode():
-        return _live().simulate(upgrades, assumptions or {})
-    if assumptions:
-        _assumptions.update(assumptions)
-    p = _params()
-    _state["upgrades"] = {u.upgrade_id: u for u in upgrades}
-    _state["models"] = {u.upgrade_id: _model(u, p) for u in upgrades}
-    return dict(_state["models"])
+        result = _live().simulate(upgrades, assumptions or {})
+    else:
+        if assumptions:
+            _assumptions.update(assumptions)
+        p = _params()
+        _state["upgrades"] = {u.upgrade_id: u for u in upgrades}
+        _state["models"] = {u.upgrade_id: _model(u, p) for u in upgrades}
+        result = dict(_state["models"])
+    _memo.update(key=key, result=result)
+    return dict(result)
 
 
 def _eligible(exclusions: list[str], explicit_include: set[str] = frozenset()) -> list[FeasibleUpgrade]:
@@ -108,7 +184,7 @@ def _bar(u: FeasibleUpgrade) -> dict:
 def macc(exclusions: list[str]) -> dict:
     """{bars: [{upgrade_id, building_id, type, tonnes_per_year, cost_per_tonne}]} sorted ascending."""
     if _live_mode():
-        return _live().macc(exclusions)
+        return _live_fn("macc", "get_macc")(exclusions)
     bars = sorted((_bar(u) for u in _eligible(exclusions)), key=lambda b: (b["cost_per_tonne"], b["upgrade_id"]))
     return {"bars": bars}
 
@@ -167,9 +243,18 @@ def optimize(target_pct: float, risk_lambda: float, budget_usd: float | None, ex
 
 
 def set_assumption(key: str, value: Any) -> dict:
+    _memo.update(key=None, result=None)  # the engine marks its cache stale; so must we
     if _live_mode():
         return _live().set_assumption(key, value)
     _assumptions[key] = value
     if _state["upgrades"]:  # re-simulate so later optimize() calls see the new assumption
         simulate(list(_state["upgrades"].values()))
     return {"ok": True}
+
+
+if __name__ == "__main__":  # python -m app.integrations.engine_client  (live drift report)
+    try:
+        drift = live_contract_drift()
+    except ImportError as e:
+        raise SystemExit(f"live engine not importable: {e}")
+    print("\n".join(drift) or "live engine signatures match TRD §8.1")

@@ -28,6 +28,8 @@
 
 - T4.2 prep: `scripts/replay_demo.py [run_id] [--file F] [--total 35] [--fast]` replays a recorded events.jsonl offline (no keys/cache/network) as `Agent · Building · message`, coloured by kind; auto-picks the longest run. Pacing is `app.events.pace` (weighted by kind, so send_back dwells longer; ~35 s for a realistic 30-90 event run, shorter for tiny runs), shared with `GET /events/{run_id}?replay=1`. Real-time check: 6 s target -> 6.5 s. Still to do for AC-7 (not mine/not yet possible): warm the cache with a full run, run the whole demo path with wifi off.
 
+- Engine live mode (`integrations/engine_client.py`): `ENGINE_MODE=live` calls `app.engine.simulate/macc/optimize/set_assumption/baseline` (accepts `get_macc` as an alias for `macc`). `live_contract_drift()` (signatures vs TRD §8.1; run `python -m app.integrations.engine_client`) and `check_outputs()` (keys the widgets/finance need; pricing emits ONE `error` event "engine contract drift: ..." and carries on) catch drift at runtime. `simulate()` is skipped when upgrades, flags and assumptions are unchanged, so slider moves don't re-run the Monte Carlo. Tested against a fake engine module.
+
 ## In progress
 - hero MatterPak check: waiting for Lane A to extract it (no cache/media/mesh/ in this worktree or the main checkout yet)
 
@@ -51,3 +53,19 @@ VISION=`gemini-3.6-flash`, FAST=`gemini-3.5-flash-lite`. Three trials each (one 
 | fast | gemini-3.5-flash | ok 31.5 s | ok 3.2 s | ok 5.1 s | slower, variable |
 Earlier: gemini-3.8-flash gave 503 / hang; gemini-3.1-pro-preview 404.
 Latency is high and variable (vision 3-20 s per call); plan the demo from cache.
+
+## Engine contract drift for the quant teammate (checked 2026-11-14 against origin/quant-engine)
+**origin/quant-engine has no engine code yet** (only `app/engine/CLAUDE.md` + numpy/pulp in requirements.txt), so this compares their CLAUDE.md to TRD §8.1 and to how the agent side calls it. Re-run `python -m app.integrations.engine_client` once `app.engine` exists.
+1. **Names:** PRD FR-12 says `get_macc`; TRD and their CLAUDE.md say `macc`. We call `macc` (alias `get_macc` also accepted). Nothing to change if they export `macc`.
+2. **Extras we depend on** (not in TRD §8.1, but in their CLAUDE.md; please keep them): `simulate` -> `upfront_usd`, `tonnes_per_year` per upgrade (plan_table, Nessie bills use `upfront_usd`; without it finance refuses to book); `optimize` -> `status`, `p_loss`, `hist_bins`, `tonnes_needed`, and when infeasible `shortfall_tonnes`, `cheapest_extra` [{upgrade_id, cost_per_tonne, tonnes_per_year}]; `baseline(building_id)` -> `{annual_spend_usd, tonnes_per_year}`. Output shapes we check: hist_bins = [{x0,x1,count}] (30 bins).
+3. **target_pct scale:** their doc marks 0-100 as "unconfirmed". Agent side sends 0-100 (Goal.target_pct, slider 0-80, default 40). Please confirm.
+4. **FeasibleUpgrade class:** their doc mirrors it in `engine/models.py` until schemas land. We pass instances of `app.schemas.upgrades.FeasibleUpgrade` (on lane-support/agent). Please accept those (or `model_validate` them); ids are `"<building_id>:<type>"`.
+5. **Owner-included unverified upgrades:** we send them in `simulate()` with `include_in_optimizer=True` (a copy); upgrades with the flag False are left unflagged. No separate "explicit include" parameter is used.
+6. **Exclusions:** we pass excluded building ids and excluded upgrade ids together in one list to `macc` and `optimize` (matches their doc). `macc` therefore omits excluded buildings' bars.
+7. **Building inputs:** their `buildings.py` reads profile.json + interior.json. `floor_area_sqft` / `envelope_area_sqft` exist only for the hero (interior.json); other buildings fall back to `rba_sqft`. Sizes come from FeasibleUpgrade anyway.
+8. **Baseline from Nessie:** for `NESSIE_MODE=live` they call `nessie_client.get_bills`; our `Bill` is `{bill_id, building_id, month 'YYYY-MM', amount_usd, kwh|None}` (integrations/nessie_client.py; the Nessie teammate may change it, tell both).
+9. **One upgrade per building per category:** site engineer can emit two `envelope` upgrades for a building (window_upgrade + insulation); the optimizer will pick at most one. Expected, just so it is not a surprise.
+10. **State:** `macc`/`optimize` use the latest `simulate`; we call `simulate` (memoised) before every `macc`/`optimize` and serialise actions behind one lock, but the engine cache is per process: **run uvicorn with a single worker** (DEPLOY.md says so).
+11. **Speed:** an owner action must finish < 3 s including `simulate`+`macc`+`optimize`+`baseline` per building; `simulate` is skipped when nothing changed, so `optimize` is the hot path (their target < 1 s for 10 buildings).
+12. **Their own inconsistency:** CLAUDE.md says `PULP_CBC_CMD` no longer exists and to use `COIN_CMD`, but the latest commit message says "solve with PULP_CBC_CMD". Whichever works, the CBC binary must exist on the Vultr box (see DEPLOY.md).
+13. **requirements.txt:** their branch adds `numpy==2.4.6` and `pulp[cbc]==3.3.2`; ours has other edits, expect a trivial merge conflict.
