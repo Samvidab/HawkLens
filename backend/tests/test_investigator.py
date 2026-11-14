@@ -132,3 +132,57 @@ async def test_inspect_node_falls_back_to_fixed_pipeline(env, monkeypatch):
 
     monkeypatch.setenv("AGENTIC_SURVEY", "false")
     assert not investigator.enabled()
+
+
+async def test_one_scan_per_building_and_no_identical_reinspection(env, monkeypatch, tmp_path):
+    from app.adapters.types import PanoramaRef
+    from app.agents import interior
+    inv = Investigation(profile().model_copy(update={"matterport_model_id": "hero1"}), None, None)
+    pano_calls = []
+
+    async def fake_room_panos(mid):
+        return [{"room_id": f"r{mid}", "pano_ids": [], "dimensions": {}}]
+
+    async def fake_panoramas(mid):
+        return [PanoramaRef(model_id=mid, pano_id=f"q{i}", xyz=(i, 0, 0), skybox_urls=[]) for i in range(20)]
+
+    async def fake_fetch(mid, k):
+        pano_calls.append(k)
+        p = PanoramaRef(model_id=mid, pano_id=f"p{k}", xyz=(0, 0, 0), skybox_urls=[])
+        img = overhead(tmp_path).model_copy(update={"image_id": f"mpp_{k}", "source": "matterport_pano"})
+        return [p] * k, [img]
+
+    async def fake_vision(prompt, images, schema):
+        return interior.unknown_observation()
+    monkeypatch.setattr(investigator.mp, "room_panos", fake_room_panos)
+    monkeypatch.setattr(investigator.mp, "panoramas", fake_panoramas)
+    monkeypatch.setattr(investigator.interior, "fetch_images", fake_fetch)
+    monkeypatch.setattr(investigator.llm, "vision_json", fake_vision)
+
+    await inv.inspect_interior(Step(reason="", tool="inspect_interior", model_id="hero1"))
+    assert pano_calls == [5]
+    with pytest.raises(investigator.ToolError, match="already inspected"):
+        await inv.inspect_interior(Step(reason="", tool="inspect_interior"))
+    await inv.inspect_interior(Step(reason="", tool="inspect_interior", count=20))  # wider look, capped
+    assert pano_calls == [5, investigator.MAX_PANOS]
+    with pytest.raises(investigator.ToolError, match="one scan per building"):
+        await inv.get_matterport_rooms(Step(reason="", tool="get_matterport_rooms", model_id="aaa"))
+
+
+def test_reason_keeps_acronyms(env):
+    inv = Investigation(profile(), None, None)
+    assert inv.feed_reason(Step(reason="HVAC unclear, need more panoramas", tool="inspect_interior")) == \
+        "HVAC unclear, need more panoramas"
+
+
+def test_finalize_clears_stale_interior_files(env):
+    from app.agents import store
+    p = profile().model_copy(update={"building_id": "x1", "showcase_url": None})
+    d = store.building_dir("x1")
+    d.mkdir(parents=True, exist_ok=True)
+    for n in ("interior.json", "rooms.json", "interior_scan.json"):
+        (d / n).write_text("{}")
+    graph.clear_interior(p)
+    assert not any((d / n).exists() for n in ("interior.json", "rooms.json", "interior_scan.json"))
+    graph.clear_interior(p.model_copy(update={"showcase_url": "https://my.matterport.com/show/?m=x"}))
+    assert json.loads((d / "interior_scan.json").read_text())["showcase_url"].endswith("m=x")

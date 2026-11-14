@@ -23,7 +23,7 @@ from pydantic import BaseModel  # noqa: E402
 
 from app.adapters.cache import write_json_atomic  # noqa: E402
 from app.agents import graph, llm, records, store  # noqa: E402
-from app.events import load_events  # noqa: E402
+from app.events import load_events, reset_run  # noqa: E402
 from app.schemas.goal import Goal, OwnerAction  # noqa: E402
 
 
@@ -47,6 +47,12 @@ async def probe() -> int:
         return 2 if code == 429 else 1
 
 
+def fresh_run(run_id: str) -> None:
+    """A re-run replaces the old activity feed instead of appending to it."""
+    reset_run(run_id)
+    (store.run_dir(run_id) / "events.jsonl").unlink(missing_ok=True)
+
+
 def summarize(run_id: str) -> dict:
     ev = load_events(run_id)
     out = {"run_id": run_id,
@@ -63,6 +69,10 @@ def summarize(run_id: str) -> dict:
             st[c["status"]] = st.get(c["status"], 0) + 1
         out["buildings"][b["building_id"]] = {"name": b["name"], "claims": st,
                                               "interior": (d / "interior.json").exists()}
+        trace = d / "investigation.json"
+        if trace.exists() and json.loads(trace.read_text()).get("run_id") == run_id:  # investigator tool calls
+            out["buildings"][b["building_id"]]["investigation"] = [
+                f"{s['tool']}: {s['reason']}" for s in json.loads(trace.read_text())["steps"]]
     return out
 
 
@@ -74,6 +84,7 @@ async def warm() -> int:
     city = records.load_portfolio().get("city", "Houston")
 
     print(f"phase 1: hero {hero}")
+    fresh_run("warm_hero")
     await graph.run(Goal(city=city, target_pct=40, building_ids=[hero]), "warm_hero")
 
     print("phase 2: full pipeline")
@@ -83,6 +94,7 @@ async def warm() -> int:
     async def compose() -> None:
         await replan(OwnerAction(run_id=run_id, type="goal", payload=goal.model_dump(mode="json")))
 
+    fresh_run(run_id)
     await graph.run_full(goal, run_id, compose)
     summary = {"hero_run": summarize("warm_hero"), "full_run": summarize(run_id)}
     write_json_atomic(store.run_dir(run_id) / "warm_summary.json", summary)

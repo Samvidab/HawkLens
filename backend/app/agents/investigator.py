@@ -38,6 +38,7 @@ PROMPT_PATH = Path(__file__).parent / "prompts" / "investigator.md"
 MAX_CALLS = 8
 MAX_ROOMS = 4
 MAX_SCANS_LISTED = 4
+MAX_PANOS = 8  # a second, wider look when the first 5 (interior.MAX_PANOS) were unclear
 MAX_FEED = 90  # events.MAX_MESSAGE: "<action>: <reason>" must fit
 WIDE_FACTOR = 3.0  # wider context: 3x the building's own crop (neighbours, trees)
 
@@ -119,7 +120,8 @@ class Investigation:
                 .replace("{{building}}", self.building_card())
                 .replace("{{history}}", hist)
                 .replace("{{max_calls}}", str(MAX_CALLS))
-                .replace("{{max_panos}}", str(interior.MAX_PANOS))
+                .replace("{{max_panos}}", str(MAX_PANOS))
+                .replace("{{default_panos}}", str(interior.MAX_PANOS))
                 .replace("{{max_rooms}}", str(MAX_ROOMS))
                 .replace("{{calls_left}}", str(MAX_CALLS - len(self.history))))
 
@@ -138,6 +140,8 @@ class Investigation:
             raise ToolError("no scan chosen yet: call find_matterport_scans and get_matterport_rooms first")
         if model_id not in self.scan_ids():
             raise ToolError(f"unknown model_id {model_id}: use one from find_matterport_scans")
+        if model_id != self.model_id and self.interior_obs is not None:
+            raise ToolError(f"scan `{self.model_id}` is already inspected; one scan per building")
         if model_id != self.model_id:
             self.model_id = model_id
             self.room_info = await mp.room_panos(model_id)
@@ -235,7 +239,11 @@ class Investigation:
         mid = await self._ensure_model(step.model_id)
         if step.room_ids:
             return await self._room_panoramas(mid, step.room_ids)
-        k = max(1, min(interior.MAX_PANOS, step.count or interior.MAX_PANOS))
+        k = max(1, min(MAX_PANOS, step.count or interior.MAX_PANOS))
+        if self.base_panos and k == len(self.base_panos):
+            raise ToolError(f"those {k} panoramas are already pulled; ask for more (up to {MAX_PANOS}) or move on")
+        if k > len(self.all_panos) and self.base_panos and len(self.base_panos) >= len(self.all_panos):
+            raise ToolError("every panorama of this scan is already pulled")
         self.base_panos, self.base_images = await interior.fetch_images(mid, k)
         self.interior_obs = None
         return (f"{len(self.base_panos)} panoramas spread across the scan, {len(self.base_images)} views "
@@ -266,7 +274,9 @@ class Investigation:
                 + ("" if self.wide else "; wider context not pulled"))
 
     async def inspect_interior(self, step: Step) -> str:
-        if not self.base_images or (step.count and step.count != len(self.base_panos)):
+        if self.interior_obs is not None and not step.count:
+            raise ToolError("already inspected these panoramas; pass a larger count for new ones, or move on")
+        if not self.base_images or (step.count and min(step.count, MAX_PANOS) != len(self.base_panos)):
             await self.get_panoramas(Step(reason="", tool="get_panoramas", model_id=step.model_id, count=step.count))
         try:
             obs = await llm.vision_json(interior.prompt_for(self.profile, self.base_images, self.base_panos),
@@ -315,12 +325,19 @@ class Investigation:
                 break
             reason = f"{reason} {w}".strip()
         reason = reason.rstrip(" .,;:")
-        if reason:
+        if reason and not reason[:2].isupper():  # keep acronyms (HVAC, LED)
             reason = reason[0].lower() + reason[1:]
         sources = [self.profile.model_dump(mode="json"), self.goal.model_dump(mode="json") if self.goal else {},
                    self.record or {}, [h["result"] for h in self.history]]
         if not reason or check_numbers(reason, sources):
             return DEFAULT_REASON[step.tool]
+        return reason
+
+    def display(self, reason: str, step: Step) -> str:
+        """Feed text: keep a leading proper noun (the building's name) capitalised."""
+        first = step.reason.split()[0] if step.reason.split() else ""
+        if first and first in self.profile.name.split() and reason.lower().startswith(first.lower()):
+            return first + reason[len(first):]
         return reason
 
     async def run(self) -> None:
@@ -331,8 +348,8 @@ class Investigation:
                 log.warning("investigator decision failed for %s: %s", self.profile.building_id, e)
                 self.emit("error", f"investigator could not decide ({type(e).__name__}); finishing")
                 break
-            reason = self.feed_reason(step)
-            self.emit("decide", f"{action_text(step, self)}: {reason}")
+            reason = self.feed_reason(step)  # this exact text goes back into later prompts (cache keys)
+            self.emit("decide", f"{action_text(step, self)}: {self.display(reason, step)}")
             if step.tool == "finish":
                 self.history.append({"tool": "finish", "args": {}, "reason": reason, "result": "done"})
                 break
@@ -440,7 +457,7 @@ def action_text(step: Step, inv: Investigation) -> str:
         if step.room_ids:
             n = len(inv._room_ids(step.room_ids)) or len(step.room_ids[:MAX_ROOMS])
             return f"pulling panoramas of {n} room{'s' if n != 1 else ''}"
-        k = max(1, min(interior.MAX_PANOS, step.count or interior.MAX_PANOS))
+        k = max(1, min(MAX_PANOS, step.count or interior.MAX_PANOS))
         return f"pulling {k} panorama{'s' if k != 1 else ''} across the scan"
     if t == "label_rooms":
         n = len(inv._room_ids(step.room_ids)) if step.room_ids else len(inv.room_info[:MAX_ROOMS])
