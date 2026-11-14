@@ -34,6 +34,8 @@ Phase 1 done (AC-1). **Phase 2 done live** (Gemini via Vertex AI, 2026-11-14 ~19
   - Two fixes behind that: (1) verifier makes one call per inspector **and claim family**, so room labels are judged apart, on their rooms' images (the combined call had ~25 images); (2) bug: the base interior re-check was sent room images its prompt didn't list (it then marked unlisted images and the verifier rejected the re-check); now it gets only its listed images. (1) also restores the exact base-claims input that produced the original doubt; disclosed, not forced.
   - **T4.4 check**: `scripts/replay_demo.py warm_full` shows room labels, the send_back, the re-check and `Workspace ready`. Full pipeline replays with `CACHE_MODE=read_only` (same plan, same send_back).
 
+- **Final engine (CVaR), merge `8e76ad5`** of `agent` (clean; 493 tests pass). Read-only replay `ro_engine_final` (40%, risk_lambda 0.2): same survey + send_back, plan `64f6562caa73` ok, 23/23 upgrades, 3,865 t/yr (needed 3,480; baseline now 8,700.5), p(hit) 0.90, upfront $17.55M, E[NPV] −$3.29M, CVaR5 −$10.17M, p(loss) 0.83, `risk_supported: true`; composer + memo served from cache. Target sweep (λ 0.2): 20% ok, 15 upgrades; 60% infeasible, 1,356 t/yr short (ceiling 44%). Table + changed-number flags in `docs/agent/PITCH-FACTS.md`. `data/plans/current.json` now holds the 40% plan.
+
 ## Blocked / open
 - Gemini blocker resolved by Vertex AI. History: free-tier 20/day cap (429), then prepaid credits depleted (402); the overnight 30-min retry loop was not started in time (my error), later replaced by an immediate run after the Vertex merge.
 - **MatterPak not downloadable**: all 37 portfolio models report `unlocked` but resources `unavailable`. The Showcase tour covers the 3D view meanwhile.
@@ -50,6 +52,6 @@ Phase 1 done (AC-1). **Phase 2 done live** (Gemini via Vertex AI, 2026-11-14 ~19
 
 ## Notes
 - venv: main checkout `backend/.venv` (Python 3.11.9, no pip). The engine merge needs `pulp[cbc]`; installed the pinned requirements with `uv pip install --python …/.venv/bin/python -r requirements.txt` (CBC solver available).
-- Tests: 410 pass (both lanes + engine; samples test needs the Nessie stub IDs, see Lane B requests) + live-marked.
+- Tests: 493 pass (after the final-engine merge) (both lanes + engine; samples test needs the Nessie stub IDs, see Lane B requests) + live-marked.
 - Port 8765 is taken by another process; I run the API on 8791.
 - `COSTAR_KIT_DIR` added to this worktree's `backend/.env`. CoStar CDN photos (403) skipped by decision.
