@@ -46,6 +46,8 @@
 
 - **Gemini on Vertex AI** (AI Studio prepaid credit was empty, HTTP 402). `llm.make_client()` picks the endpoint: `GOOGLE_GENAI_USE_VERTEXAI=true` + `VERTEX_API_KEY` -> `genai.Client(vertexai=True, api_key=VERTEX_API_KEY)`; flag true without that key -> Application Default Credentials with `GOOGLE_CLOUD_PROJECT`/`_LOCATION`; flag off -> the old AI Studio `GEMINI_API_KEY` client. Settings are read from the process env or backend/.env (the SDK ignores .env). HTTP 402 -> `OutOfCredit` (a `QuotaExhausted`): one attempt, no retry, no fallback model, clear message (live check against the empty AI Studio account: raised in 0.6 s). Vertex model check with the API key (2026-11-14): `gemini-3.6-flash` ok 4.0 s, `gemini-3.5-flash` ok 2.6 s (the fallback), `gemini-3.5-flash-lite` ok 1.0 s: **all three exist, no renames needed**. Live `vision_json` on Vertex: 4.2 s, repeat 0.05 s from cache; `text_json` 0.8 s. All three .env files already have GOOGLE_GENAI_USE_VERTEXAI=true and VERTEX_API_KEY; the data worktree and main checkout use them once they merge this llm.py.
 
+- **Nessie (origin/nessie_data merged, her code untouched).** `integrations/nessie_client.py` now has `NESSIE_MODE=live`: a thin wrapper that loads her `nessie/client.py` (auth + base URL) and `get_bills.py`; reserve account, transfer and contractor bills are our own calls (her scripts hardcode ids / cannot be called with ours). Tested against a fake Nessie server that enforces the real-API rules (`tests/fake_nessie.py`, `tests/test_nessie_live.py`): approve moves the money, one bill per contractor, second approve posts nothing, a failure part-way returns HTTP 502 and the retry resumes without double-booking. **Not yet run against the real sandbox: `NESSIE_API_KEY` is in no .env.** `scripts/nessie_live_check.py [--yes]` does one real approve and reads it back (dry run by default). Finance now uses her reserve account name "Hawk Lens Retrofit Reserve" (get-or-create, so it reuses the one she seeded); stub mode always uses fixed stub ids (samples/tests no longer depend on .env).
+
 ## In progress
 - hero MatterPak check: waiting for Lane A to extract it (no cache/media/mesh/ in this worktree or the main checkout yet)
 
@@ -130,3 +132,95 @@ Method: read the code, ran her 82 engine tests (all pass), then drove `optimizer
 3. `min_p_hit` default 0.8 makes plans overshoot the target (internal target 12 % for a 10 % ask, etc.) and `status: "ok"` can still have `p_hit_target` 0.5 with `met_min_p_hit: false` (probe at 25 %). That is fine for us (we show `p_hit_target` and the shortfall), just be sure it is what you intend for the demo.
 4. Our `FeasibleUpgrade` is passed to you as plain dicts (your mirror class rejects our instances); once your branch imports `app.schemas.upgrades.FeasibleUpgrade` nothing changes for us.
 5. Real data check pending: your `PROPERTY_TYPE_TO_BENCHMARK` against the CoStar `property_type` values in lane-data's `data/buildings/*/profile.json`; Houston only.
+
+
+## Nessie: for the Nessie teammate (origin/nessie_data @ a758c33, checked 2026-11-14)
+### I need from you (blocks the real end-to-end test)
+1. **`NESSIE_API_KEY`**: the key in your `nessie/.env` (gitignored, so it is in no .env we can see). Put it in `backend/.env` as `NESSIE_API_KEY=...` (this worktree; copies in the other two checkouts if wanted). Then `cd backend && python scripts/nessie_live_check.py` (dry run) and `... --yes` (writes to the sandbox: reuses your reserve account, one transfer up to min($250k, half the operating balance), one bill per contractor type, then reads it back).
+2. **Confirm these ids exist in the sandbox** (we took them from your code, they are not secrets): customer `4dba3d91-00ae-405b-bdf1-aac090f66996` (account.py, finance.py), operating account "Hawk Lens Operating" `3e4f8885-befb-4d0f-85ad-545b776f0888` (finance.py, funding.py, get_bills.py, upload_bills.py, test_bill.py, test_transfer.py), reserve "Hawk Lens Retrofit Reserve" `37f8e523-1f9d-435d-8102-eef7f8dfc05b` (test_deposit.py only; finance.create_reserve_account finds it by nickname). These are now `NESSIE_CUSTOMER_ID` and `NESSIE_SOURCE_ACCOUNT_ID` (= the operating account) in all three backend .env files.
+3. **Does Nessie accept our transfer call?** We POST `/accounts/{operating}/transfers` with `{medium: "balance", payee_id: <reserve>, amount, transaction_date, status, description}`. Your `funding.py` posts without `medium`/`payee_id` and notes "Bank balances unchanged". If your tests showed a different body moves the money (or that this body is rejected), tell us the working body.
+4. **Contractor bills:** we POST `/accounts/{reserve}/bills` with `{status: "pending", payee: "<contractor type>", nickname: "<plan>: <contractor>", payment_date: today, recurring_date: 1, payment_amount}` (your upload_bills.py shape). Tell us if `payee` must be a merchant created with merchants.py (we use free text like "Solar installer").
+
+### Comparison with what we need (TRD §8.2 + finance agent + engine baseline)
+| We need | Hers | Gap |
+|---|---|---|
+| `get_bills(building_id) -> list[Bill]` | `get_bills.get_bills()` returns ALL bills of the operating account; `energy.get_annual_spend` filters by nickname prefix `<building>_<electricity|gas>_<MM>` | No per-building call, no year in the nickname (we take it from `payment_date`), amounts only (no kWh). **Seeded bills use `sample_001`, not our portfolio ids (CoStar ids like 23551), so no real building has bills yet.** |
+| `create_account(customer, nickname)` | `finance.create_reserve_account()` (fixed customer + nickname, get-or-create, prints, returns the account) | Hardcoded ids; `account.create_account()` is not idempotent (creates "Hawk Lens Operating" every run) |
+| `transfer(from, to, amount, description) -> id` | `funding.fund_retrofit(amount, approved)` | Fixed source, no destination (`payee_id`/`medium` missing), returns None, interactive `input()` in `__main__`, and **blocks every later funding once one record is "allocated"** (funding_ledger.json), so it cannot serve a second plan |
+| `create_bill(account, merchant, amount, description) -> id` | only `upload_bills.py` (utility bills, fixed account, reads `nessie/sample_bills.json` relative to the repo root cwd) | no callable for contractor bills |
+| `Bill` shape | dicts: `_id, nickname, payee, payment_date, payment_amount, status` | We map to `Bill{bill_id, building_id, month 'YYYY-MM', amount_usd, kwh=None, utility}` |
+| engine `baseline()` | not wired: the engine (her step 6) uses benchmark kWh/sqft x rate and has a TODO for Nessie bills | Needs your bills keyed by real building ids; then the engine can switch to `get_bills` |
+
+### Changes to your code that would let us call it directly (all optional; the wrapper works without them)
+1. One config source: read `NESSIE_API_KEY`, `NESSIE_CUSTOMER_ID`, operating/reserve ids from env instead of 6 hardcoded copies (finance.py, funding.py, account.py, get_bills.py, upload_bills.py, test_*.py). Our wrapper currently overrides `get_bills.ACCOUNT_ID` at runtime with `NESSIE_SOURCE_ACCOUNT_ID`.
+2. Make it importable: a package (`nessie/__init__.py`) with relative imports instead of `from client import ...` (we put `nessie/` on `sys.path` to import it); build `API_KEY` lazily, not at import; fix `upload_bills.py`/`energy.py` paths so they do not depend on the cwd. `requests` was missing from backend/requirements.txt (added).
+3. `fund_retrofit` / a new `transfer(from_id, to_id, amount, description)`: pass `medium` + `payee_id`, return the transfer id, no `input()`, no global block (idempotency per plan id is handled by our finance agent).
+4. `get_bills(building_id=None, utility=None)` returning parsed records (building, utility, month, year, amount); and re-seed with the portfolio's real building ids and 12 months (the engine wants a trailing year).
+5. Do not write secrets/ids into `funding_ledger.json`-style files that get committed; the ledger currently records one $10,000 "allocated" entry that is not a real balance movement.
+
+
+## For the frontend teammate
+Review of `origin/ui-first-draft` @ 10be5c2 (read-only; its tip is already in our history through `nessie_data`, we did not merge it separately). 21 Figma screens, React 18 + react-router + Tailwind, `frontend/src/pages/*`. Compared with `docs/agent/03-APP-FLOW-UIUX.md` and `docs/agent/samples/`.
+
+### Verdict
+**It is a static prototype: it makes no API calls at all.** No `fetch`, no `EventSource`, no API base URL (`VITE_*`) and no dev proxy in `vite.config.js`; every number comes from hard-coded constants in each page or from `lib/model.js` (`deriveModel`, which scales one Figma data point: 40 % -> 1032 t/yr, $1280k). So none of the four contracts is used, and none of the 15 widget types is rendered from data. Details below.
+
+### 1. API contract (App Flow §1-3, TRD §9): nothing wired
+| Contract | What the UI does today | What it must do |
+|---|---|---|
+| `POST /run` (Goal) | `StartSurvey.jsx` shows static "Houston, 8 buildings, 40 %, Budget $1500k, Balanced risk" and navigates on click. No goal form. | Build a `Goal` `{city, building_ids?, target_pct, budget_usd?, risk_lambda}` from real inputs (App Flow §2.1: portfolio checkboxes from `GET /portfolio`, target slider, budget, risk) and POST it; keep the returned `run_id` (router state/URL/context: no screen carries one today). |
+| `GET /events/{run_id}` (SSE) | `SurveyInProgress.jsx` / `SurveyComplete.jsx` render a fixed 6-line `EVENTS` array and fixed progress ("6 / 8 complete"). | `new EventSource(API + '/events/' + runId)`; render `{ts, agent, building_name, kind, message, evidence_id}`; colour by `kind`; **call `es.close()` on the `done` event** (the server closes the stream there and EventSource would otherwise auto-reconnect and replay everything). Derive the chips/progress from events (`building_id` + `kind`), not constants. The "Use cached demo survey" button should open `?replay=1` of a recorded run (30-40 s paced). |
+| `GET /state/{run_id}` | never called | After `done` (and on page reload): fetch it; it holds `layout`, `goal`, `plan_id`, `view`, plus the survey's `status`/`results`. Poll or retry if `layout` is missing (status `ready` appears when pricing+compose finished; `error` = run finished without a workspace). |
+| `POST /compose` (OwnerAction `{run_id, type, payload}`) | local `useState` only | See the action table in section 2. Send on slider release (or every >= 400 ms), keep old data with a shimmer while it runs; show 409 (stale plan) / 422 / 502 (Nessie) messages. |
+| `GET /registry`, `/portfolio`, `/media/{image_id}`, `/media/mesh/...` | never called | `/portfolio` for the goal form; `/media/{id}` for evidence images; mesh for hero_3d. |
+| CORS / base URL | none | Add `VITE_API_URL` (or a Vite `server.proxy`). Backend allows `http://localhost:5173` and `:3000` by default; set `CORS_ORIGINS` on the server for the deployed origin. |
+
+### 2. Owner actions: screen control -> action (all missing)
+| Screen control | OwnerAction |
+|---|---|
+| Portfolio: target slider/steps (`Portfolio.jsx` `onChangeTarget`/`onStep`) | `set_target {target_pct}` |
+| Plan preferences: budget chips, risk chips (Cautious/Balanced/Growth) | `set_budget {budget_usd}`, `set_risk {risk_lambda}` (map the 3 labels to e.g. 0.2 / 0.5 / 0.8; send `null` budget for "none") |
+| Building details: include toggles (`BuildingDetails.jsx`, local state) | `toggle_upgrade {upgrade_id, on}`; for unverified rows an "Include anyway" -> `include_unverified {upgrade_id}` |
+| Building details "Exclude building" -> `/building-excluded` | `exclude_building {building_id}`; **`BuildingExcluded.jsx` has no "include again" button** -> needs `include_building {building_id}` |
+| Click a building / plan row / bar | `open_building {building_id}` (back = `open_building {building_id: null}`); curve bar -> `select_bar {upgrade_id}` |
+| Financing approval consent + confirm (`FinancingApproval.jsx` -> `/funding-confirmation`) | `approve {plan_id}` with `plan_id` from the `financing_card` props; success layout situation is `approved` (financing executed + memo) |
+| (nothing) goal form submit | `POST /run` (or action `goal`) |
+
+### 3. Widgets: UI element vs props in `docs/agent/samples/`
+| widget | UI analogue | mismatches |
+|---|---|---|
+| `target_control` | Portfolio `CarbonGoal` | slider is **0-60 %** (`TARGET_MAX = 60`); spec says 0-80, default 40. Needs `p_hit_target`, `tonnes_needed`, `tonnes_planned` (UI shows a derived "confidence" 35-99 % and "Your goal is covered / Over your budget"): "covered" must come from `plan.status` (`ok`/`infeasible`) and `p_hit_target`, not from `investment <= budget`. **`risk_supported` is false for now: disable/hide the risk control** (it still exists in Plan preferences). |
+| `portfolio_3d` | static SVG (`portfolio-3d.svg`), one clickable "Midtown office" | needs 8 real buildings from `buildings[]` (`lat/lon`, `footprint_wkt`, `height_m`, `excluded`, `overlays`, `color_value`). No 3D library in `package.json` (no `three`); either add one or draw footprints in 2D from `footprint_wkt`. |
+| `hero_3d` | `ExpandedBuildingModel.jsx` (static SVG) | not implemented. Props: `mode` mesh (OBJ/MTL via `/media/mesh/...`, pins) or `showcase` (iframe `showcase_url`); hide when the widget is absent. |
+| `abatement_curve` | `PlanDetails` `CUT_BARS`/`COST_BARS` (hand-placed rects, 8 fixed bars) | must be drawn from `bars[]` (`cost_per_tonne` sign, width = `tonnes_per_year`, `in_plan`, click -> `select_bar`). Labels "Solar · group A" do not exist: use `building_name` + `type`. |
+| `plan_table` | `PlanDetails` `ROWS` (3 rows aggregated per upgrade *type*: "6 buildings · 6 bills") | API rows are **per upgrade per building** with `size`, `upfront_usd`, `exp_npv`, `cost_per_tonne`, `tonnes_per_year`, `verified`, `owner_included`; aggregate client-side if you want the 3-row look. Money is raw **USD**, UI uses "$120k" strings. Show a "sample pricing" badge when `sample_pricing` is true (stub engine only). |
+| `risk_histogram` | `RiskAndTarget` `BINS` (18 bars) | API has **30 bins** `{x0,x1,count}`; axis ticks are fixed ($-400k..$1200k): compute from `x0/x1`. Also shows `exp_npv`, `cvar5` ("worst 5 % average"), `p_loss` (all USD, can be null). |
+| `evidence_gallery` | `SurveyEvidence` (3 static PNGs) | images must come from `/media/{image_id}`; **draw `marks`** (normalized `bbox` x0,y0,x1,y1 or `polygon`; the UI draws none); show `status` (verified / sent_back / unverified / rejected) and `verifier_notes`; "Usable roof area 1,200 m² / Proposed solar 120 kW / CO2 avoided 96 t" are not in this widget: they come from `upgrade_list` (size) and `plan_table`/`abatement_curve` (tonnes). |
+| `facade_compass` | none | not implemented (`facades.{N,E,S,W}.glazing_ratio / window_count_est`). |
+| `floor_plan` | none | not implemented (`rooms[]`, `polygon` may be empty: list rooms with areas). |
+| `upgrade_list` | `BuildingDetails` `UPGRADES` (led/solar/hvac keys) | API has 6 types (`rooftop_solar, cool_roof, window_upgrade, heat_pump, insulation, led_retrofit`) with `verified` badge (`verified/unverified/assumed`), `include_in_optimizer`, `in_plan`, `owner_included`, `highlighted`, `reason`, `confidence`, evidence ids. |
+| `building_header` | `BuildingDetails` `PROFILE` | maps to `profile` + `baseline.{annual_spend_usd, tonnes_per_year}` ("Annual emissions/energy spend"); some fields may be null. |
+| `target_gap_card` | none (only the "Over your budget" text) | not implemented: shortfall + up to 3 `cheapest_extra` (may be empty). The `target_gap` layout (situation) has no screen. |
+| `financing_card` | `FinancingApproval` + `FundingConfirmation` + `FundingAccount` | ALLOCATIONS are per upgrade type ("8 buildings · 8 bills"); API gives **one bill per contractor type** (`bills[{contractor, amount}]`, at most 6) and `nessie_ids` (`account`, `transfer`, `bill: <contractor>`). Step text "allocate the funds to the 18 upgrades" and "Simulated confirmation · No real account or money movement" must change (Nessie live = a real sandbox transfer; stub = simulated: show `state` and the ids). Handle approve errors 409/502 and the idempotent second approve. |
+| `memo` | `InvestmentMemo.jsx` (fixed 1-page layout, static metrics) | API gives `markdown` with a table and (stub engine) an italic "Sample pricing" line; `package.json` has no markdown renderer. |
+| `activity_feed` | `SurveyInProgress` list; "Activity" box in `PlanDetails` | the feed widget carries only `run_id`: open the SSE yourself. Event has no `meta` second line (UI shows e.g. "Vexcel · Evidence 12"): use `evidence_id`/`building_name`, or drop the line. Agent names are `Orchestrator, Records, Aerial, Interior, Verifier, Pricing, Composer, Finance, Memo` (UI says "Records analyst", "Aerial inspector"...). |
+
+### 4. Situations (App Flow §6) the UI cannot show yet
+`portfolio_overview` ~ Portfolio + Plan; `building_detail` ~ Building (+ Insights/Evidence); `approved` ~ Funding confirmation. **No screen** for `target_gap` (target unreachable) and `verification_issue` (unverified/rejected findings shown first with the verifier note). The layout's `situation` plus `widgets[].why` lines (one explanation per widget) are not displayed anywhere.
+
+### 5. Architecture decision to make
+The backend returns a **layout** (ordered widgets with `size` full/wide/half/side on a 12-column grid, `why`, resolved `props`); the UI is fixed absolutely-positioned 1440x980 pages. Either (a) render each Figma screen from `layout.widgets` by `type` (a widget registry in React, grid from `size`), or (b) keep fixed pages and read the data from specific widgets/`plan` fields, which ignores the composer (the "agent composes the UI" story) and the situation logic. The widget-per-component route also fixes the responsive/fixed-size problem; Tailwind absolute pixel layouts cannot place a variable number of widgets.
+
+### 6. Number and unit conventions
+Money from the API is raw USD (can be negative, can be `null`); show "$1280k" client-side. Tonnes are per year. Percent fields (`p_hit_target`, `p_loss`, `usable_roof_fraction`, `glazing_ratio`) are 0-1; `target_pct` and slider values are 0-100. `confidence` in the UI ("Baseline simulation confidence 87 %") has no direct field: the closest are `p_hit_target` (chance to hit the target) and `p_loss`; decide which one the label means.
+
+### 7. Backend gaps found while reviewing (ours, not the frontend's)
+1. `upgrade_list` rows lack per-upgrade `tonnes_per_year`, `upfront_usd`, `exp_npv` (the evidence/building screens show them); they exist in `plan.simulate` and could be added to the props.
+2. No endpoint for the Assumptions screen (`Assumptions.jsx`: baseline, electricity rate, grid factor, discount rate, scenarios) although the engine has them in `assumptions.json` + sources.
+3. Documents screen lists PDF/CSV files (survey, assumptions, upgrade schedule) that nothing generates; only the memo markdown exists.
+4. No per-building survey progress in `/state` until the run ends (derive from events) and no total portfolio baseline in any widget.
+5. `evidence_gallery` items carry no verifier score/confidence number (UI copy says "verified at 0.91 confidence").
+Say which of these you want and I will add them.
+
+### 8. Suggested order
+1. `api.js` (`VITE_API_URL`, `post/get`) + a `RunContext` (run_id, layout, plan, error). 2. Goal form -> `POST /run` -> SSE feed -> `done` -> `GET /state`. 3. Render `layout.widgets` through a type->component registry (start with `target_control`, `plan_table`, `abatement_curve`, `risk_histogram`, `financing_card`), then `portfolio_3d`/`evidence_gallery` with marks. 4. Wire the actions in section 2. 5. Add the missing widgets and the two missing situations. Use `docs/agent/samples/*.json` as fixtures until the server is up; `cd backend && scripts/run_server.sh` serves the real API, `scripts/smoke_test.py` shows every call.

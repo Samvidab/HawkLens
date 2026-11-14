@@ -8,6 +8,7 @@ pillow==13.0.0
 pulp[cbc]==3.3.2
 pydantic==2.14.3
 pydantic-settings==2.16.3
+requests==2.34.2
 pyproj==3.7.2
 pytest==9.2.0
 pytest-asyncio==1.5.0
