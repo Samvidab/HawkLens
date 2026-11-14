@@ -46,7 +46,7 @@ def data(tmp_path):
         upgrade("b1", "rooftop_solar", "solar", 75, "kW", claims=["k1"]),
         upgrade("b1", "window_upgrade", "envelope", 9000, "sqft", verified="unverified", claims=["k2"])])
     write(tmp_path / "buildings/b2/feasibility.json", [upgrade("b2", "led_retrofit", "lighting", 120000, "sqft", "assumed")])
-    write(tmp_path / "buildings/b1/verification.json", [
+    write(tmp_path / "buildings/b1/claims.json", [
         Claim(claim_id="k1", building_id="b1", agent="aerial", field="roof.existing_solar", value=False, confidence=0.9,
               evidence_ids=["img1"], status="verified", marks=[Mark(image_id="img1", label="roof", bbox=(0, 0, 1, 1))]),
         Claim(claim_id="k2", building_id="b1", agent="aerial", field="facade.S.glazing", value=0.55, confidence=0.5,
@@ -185,3 +185,27 @@ def test_target_gap_card_prefers_the_engines_cheapest_extra(data):
     write(data / "plans/current.json", plan)
     got = widgets(resolve_layout(ResolveContext.load(data, "r1"), "target_gap"))["target_gap_card"]
     assert got.props["cheapest_extra"] == [] and got.props["shortfall_tonnes"] == 300.0
+
+
+def test_claims_come_from_claims_json_and_the_verifier_log_is_ignored(data):
+    """Lane A's survey writes claims.json (list[Claim]) and verification.json (verifier rounds, a different shape)."""
+    (data / "buildings/b1/verification.json").write_text(json.dumps([
+        {"claim_id": "k1", "field": "roof.existing_solar", "value": False, "loop": 0, "score": 1.0, "note": "ok", "status": "verified", "question": None}]))
+    ctx = ResolveContext.load(data, "r1")
+    assert [c.claim_id for c in ctx.claims["b1"]] == ["k1", "k2"] and ctx.claims["b1"][1].status == "rejected"
+    assert resolve_layout(ctx, "verification_issue").widgets  # no ValidationError
+
+
+def test_malformed_optional_files_never_blank_the_workspace(data):
+    (data / "buildings/b1/claims.json").write_text(json.dumps([{"claim_id": "x"}]))  # not Claim-shaped
+    (data / "buildings/b2/interior.json").write_text("{not json")
+    (data / "buildings/b2/feasibility.json").write_text(json.dumps({"oops": 1}))
+    ctx = ResolveContext.load(data, "r1")
+    assert ctx.claims["b1"] == [] and "b2" not in ctx.interior and ctx.upgrades["b2"] == []
+    failed = set()
+    for spec in template_for("portfolio_overview"):  # the composer drops a widget that cannot resolve, it does not fail the page
+        try:
+            resolve_widget(spec, ctx)
+        except ResolveError:
+            failed.add(spec.type)
+    assert failed == {"plan_table"}  # the plan still selects b2's upgrades, whose file is unreadable

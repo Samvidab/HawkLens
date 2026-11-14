@@ -11,7 +11,7 @@
       "title": "Evidence to review",
       "why": "Claims the verifier could not confirm come first.",
       "size": "wide",
-      "data_ref": "buildings/*/verification.json",
+      "data_ref": "buildings/*/claims.json",
       "props": {
         "items": [
           {

@@ -304,7 +304,7 @@
       "title": "Evidence",
       "why": "The images behind each finding, with verifier status.",
       "size": "wide",
-      "data_ref": "buildings/*/verification.json",
+      "data_ref": "buildings/*/claims.json",
       "props": {
         "items": [
           {

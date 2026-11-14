@@ -19,7 +19,7 @@ f = FakeNessie(balance={balance}).install_plain()
 atexit.register(lambda: open({str(tmp_path / 'writes.json')!r}, 'w').write(json.dumps(f.writes)))
 """)
     env = {"PATH": os.environ["PATH"], "PYTHONPATH": f"{tmp_path}:{BACKEND}", "NESSIE_CUSTOMER_ID": CUSTOMER,
-           "NESSIE_SOURCE_ACCOUNT_ID": OPERATING}
+           "NESSIE_SOURCE_ACCOUNT_ID": OPERATING, "RETROALPHA_ENV_FILE": str(tmp_path / "no.env")}  # not this machine's .env
     if key:
         env["NESSIE_API_KEY"] = key
     r = subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, env=env, cwd=BACKEND, timeout=120)

@@ -12,13 +12,15 @@ plans/current.json (written by the pricing node; keys beyond these are ignored)
   by_building{building_id:{exp_npv,cvar5,p_loss,hist_bins}}   (optional, per-building risk)
   baseline{building_id:{annual_spend_usd,tonnes_per_year}}    (optional)
   bills[{contractor,amount}], financing{state,nessie_ids}      (written by finance agent)
-buildings/<id>/verification.json = list[Claim] with final statuses
+buildings/<id>/claims.json = list[Claim] with final statuses (written by the survey; verification.json is the verifier's
+  round-by-round log {claim_id, loop, score, note, question, status} and is NOT read here)
 buildings/<id>/rooms.json (optional) = list[Room]
 memo/<plan_id>.md
 """
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +39,8 @@ from app.schemas.upgrades import FeasibleUpgrade
 from app.widgets.registry import validate_layout, validate_props
 from app.widgets.templates import template_for
 
+log = logging.getLogger(__name__)
+
 CONTRACTOR = {"rooftop_solar": "Solar installer", "cool_roof": "Roofing contractor",
               "window_upgrade": "Glazing contractor", "heat_pump": "HVAC contractor",
               "insulation": "Insulation contractor", "led_retrofit": "Electrical contractor"}
@@ -49,8 +53,24 @@ class ResolveError(ValueError):
     pass
 
 
+def _tolerant(fn, default, what: str):
+    """Optional inputs must never blank the whole workspace: a malformed file means 'no data', and is logged."""
+    try:
+        return fn()
+    except Exception as e:  # noqa: BLE001
+        log.warning("ignoring unreadable %s: %s", what, str(e)[:160])
+        return default
+
+
 def _read(path: Path, default=None):
-    return json.loads(path.read_text()) if path.exists() else default
+    """JSON file or `default`; a corrupt file is logged and treated as missing (a corrupt profile.json skips the building)."""
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text())
+    except ValueError as e:
+        log.warning("ignoring corrupt %s: %s", path, e)
+        return default
 
 
 def _fmt_size(u: FeasibleUpgrade) -> str:
@@ -96,12 +116,14 @@ class ResolveContext:
                 continue
             ctx.profiles[bid] = BuildingProfile.model_validate(prof)
             if (a := _read(bdir / "aerial.json")) is not None:
-                ctx.aerial[bid] = AerialFindings.model_validate(a)
+                if (v := _tolerant(lambda: AerialFindings.model_validate(a), None, f"{bid}/aerial.json")) is not None:
+                    ctx.aerial[bid] = v
             if (i := _read(bdir / "interior.json")) is not None:
-                ctx.interior[bid] = InteriorFindings.model_validate(i)
-            ctx.upgrades[bid] = TypeAdapter(list[FeasibleUpgrade]).validate_python(
-                _read(bdir / "feasibility.json", []))
-            ctx.claims[bid] = TypeAdapter(list[Claim]).validate_python(_read(bdir / "verification.json", []))
+                if (v := _tolerant(lambda: InteriorFindings.model_validate(i), None, f"{bid}/interior.json")) is not None:
+                    ctx.interior[bid] = v
+            ctx.upgrades[bid] = _tolerant(lambda: TypeAdapter(list[FeasibleUpgrade]).validate_python(
+                _read(bdir / "feasibility.json", [])), [], f"{bid}/feasibility.json")
+            ctx.claims[bid] = _tolerant(lambda: TypeAdapter(list[Claim]).validate_python(_read(bdir / "claims.json", [])), [], f"{bid}/claims.json")
             ctx.rooms[bid] = _read(bdir / "rooms.json", [])
             if (scan := _read(bdir / "interior_scan.json")) is not None:
                 ctx.scans[bid] = scan
@@ -284,7 +306,7 @@ def _evidence_gallery(ctx: ResolveContext) -> tuple[str, dict]:
             verifier_notes=[c.verifier_note for c in cs if c.verifier_note]))
     if ctx.situation == "verification_issue":
         items.sort(key=lambda i: -STATUS_BADNESS[i["status"]])  # stable: issues first
-    return "buildings/*/verification.json", dict(items=items[:MAX_GALLERY_ITEMS])
+    return "buildings/*/claims.json", dict(items=items[:MAX_GALLERY_ITEMS])
 
 
 def _facade_compass(ctx: ResolveContext) -> tuple[str, dict]:
