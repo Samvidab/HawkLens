@@ -10,17 +10,19 @@ The final run `warm_full` (live, Vertex AI) and its offline replay `ro_investiga
 
 ## Summary
 
-| Building (built) | CoStar record | Vexcel aerial | Matterport interior | Investigator calls | Claims: verified / unverified / rejected | Rooms labelled | Verified 3D equipment positions |
+| Building (built) | CoStar record | Vexcel aerial | Matterport interior | Investigator calls | Claims: verified / unverified / rejected | Rooms labelled | 3D tags on screen (verified positions in the data) |
 |---|---|---|---|---|---|---|---|
-| Paragon Center I (1984) | ✓ (+ detail pull) | ✓ overhead + wider context | ✓ scan `FTkFHSZ4isL` | 8 (call limit) | 9 / 1 / 0 | 2 | 4 |
-| Southwest Center (1984) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `BfYuPVALqi5` | 7 | 10 / 1 / 1 | 4 | 2 (lighting only) |
-| CityNorth 6 (1987) | ✓ (+ detail pull) | ✓ overhead + wider context | ✓ scan `qcdyTgY98qu` | 8 (call limit) | 9 / 0 / 0 | 1 | 5 |
-| Denmark House (1982) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `4z2y8ayqrWs` | 7 | 9 / 1 / 0 | 2 | 4 |
-| Harwin Plaza II (1983, hero) | ✓ | ✓ overhead | ✓ scan `hu9LX64osUN` | 6 | 10 / 1 / 0 | 3 | 5 |
-| Brookhollow Two (1972) | ✓ | ✓ overhead | ✓ scan `BfjYay5KMPo` | 6 | 12 / 0 / 0 | 4 | 2 |
-| Legacy Pointe (1975) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `FNC3RNdVtoP` | 7 | 8 / 1 / 0 | 1 | 5 |
-| 7900 Fannin (2004) | ✓ | ✓ overhead | listed only, **not inspected** (investigator's choice) | 4 | 5 / 0 / 0 | 0 | none ("unknown") |
-| **Total** | 8 of 8 | 8 of 8 (wider context on 2) | 7 of 8 inspected | 53 | **72 / 5 / 1 (78)** | **17** | **27 on 7 buildings** |
+| Paragon Center I (1984) | ✓ (+ detail pull) | ✓ overhead + wider context | ✓ scan `FTkFHSZ4isL` | 8 (call limit) | 9 / 1 / 0 | 2 | 3 (4) |
+| Southwest Center (1984) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `BfYuPVALqi5` | 7 | 10 / 1 / 1 | 4 | 2 (2), lighting only |
+| CityNorth 6 (1987) | ✓ (+ detail pull) | ✓ overhead + wider context | ✓ scan `qcdyTgY98qu` | 8 (call limit) | 9 / 0 / 0 | 1 | 2 (5) |
+| Denmark House (1982) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `4z2y8ayqrWs` | 7 | 9 / 1 / 0 | 2 | 4 (4) |
+| Harwin Plaza II (1983, hero) | ✓ | ✓ overhead | ✓ scan `hu9LX64osUN` | 6 | 10 / 1 / 0 | 3 | 5 (5) |
+| Brookhollow Two (1972) | ✓ | ✓ overhead | ✓ scan `BfjYay5KMPo` | 6 | 12 / 0 / 0 | 4 | 2 (2) |
+| Legacy Pointe (1975) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `FNC3RNdVtoP` | 7 | 8 / 1 / 0 | 1 | 5 (5) |
+| 7900 Fannin (2004) | ✓ | ✓ overhead | listed only, **not inspected** (investigator's choice) | 4 | 5 / 0 / 0 | 0 | 0 (none, "unknown") |
+| **Total** | 8 of 8 | 8 of 8 (wider context on 2) | 7 of 8 inspected | 53 | **72 / 5 / 1 (78)** | **17** | **23 on 7 buildings** (27) |
+
+3D tags are Lane B's on-screen count (Lane B's Playwright report `frontend/e2e/screens/co2-tags-report.json` (gitignored; `npx playwright test -c playwright.emissions.config.js`), from `GET /co2_equipment/{building_id}`): lighting fixtures and air diffusers only. The 4 verified HVAC pins that aren't air diffusers aren't tagged: Paragon Center I's thermostat, and CityNorth 6's exposed ductwork (2) and exposed VAV box and ductwork (1).
 
 "CoStar record ✓" means the records agent read the building's kit record every time. "+ detail pull" means the investigator also called `get_costar_record` for more fields. All 8 buildings' Matterport tours are public (`tour.json`, branch `emissions-3d`).
 
