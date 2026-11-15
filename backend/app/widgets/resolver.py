@@ -344,9 +344,13 @@ def _upgrade_list(ctx: ResolveContext) -> tuple[str, dict]:
 def _building_header(ctx: ResolveContext) -> tuple[str, dict]:
     bid = _need_focus(ctx)
     base = ctx.plan.get("baseline", {}).get(bid, {})
+    from app.agents import emissions_3d, store  # Lane A's files, read as written (None when off / not built)
+    tour_path = store.building_dir(bid) / "tour.json"
     return f"buildings/{bid}/profile.json", dict(
         profile=ctx.profiles[bid].model_dump(),
-        baseline=dict(annual_spend_usd=base.get("annual_spend_usd"), tonnes_per_year=base.get("tonnes_per_year")))
+        baseline=dict(annual_spend_usd=base.get("annual_spend_usd"), tonnes_per_year=base.get("tonnes_per_year")),
+        emissions_3d=emissions_3d.load(bid),
+        tour=json.loads(tour_path.read_text()) if tour_path.exists() else None)
 
 
 def _target_gap_card(ctx: ResolveContext) -> tuple[str, dict]:

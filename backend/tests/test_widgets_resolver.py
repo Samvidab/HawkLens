@@ -216,3 +216,27 @@ def test_upgrade_list_rows_carry_the_engines_numbers(data):
     rows = {r["upgrade"]["upgrade_id"]: r for r in widgets(resolve_layout(ctx, "building_detail"))["upgrade_list"].props["upgrades"]}
     assert rows["b1:rooftop_solar"]["upfront_usd"] == 60000.0 and rows["b1:rooftop_solar"]["exp_npv"] == 900.0
     assert rows["b1:window_upgrade"]["upfront_usd"] is None  # not priced by the engine: null, not a made-up number
+
+
+def test_building_header_carries_emissions_3d_and_tour_as_written(data, monkeypatch):
+    """Lane A's emissions_breakdown.json (only when EMISSIONS_3D is on) and tour.json reach the building page unchanged."""
+    from app.config import get_settings
+    monkeypatch.setenv("DATA_DIR", str(data))
+    get_settings.cache_clear()
+    try:
+        breakdown = {"building_id": "b1", "label": "building-wide estimate, shown where observed",
+                     "top": [{"end_use": "Lighting", "pct_of_building": {"value": 25.0, "estimate": True, "basis": "t"},
+                              "citation": {"citation": "TEST"}, "evidence": "unknown", "positions": "unknown"}]}
+        tour = {"building_id": "b1", "model_id": "m1", "visibility": "public", "available": True, "showcase_url": "https://my.matterport.com/show/?m=m1"}
+        write(data / "buildings/b1/emissions_breakdown.json", breakdown)
+        write(data / "buildings/b1/tour.json", tour)
+        hdr = lambda: widgets(resolve_layout(ResolveContext.load(data, "r1", focus_building_id="b1"), "building_detail"))["building_header"].props
+        monkeypatch.setenv("EMISSIONS_3D", "false")
+        assert hdr()["emissions_3d"] is None and hdr()["tour"] == tour  # off: no breakdown; the tour fact is still real
+        monkeypatch.setenv("EMISSIONS_3D", "true")
+        assert hdr()["emissions_3d"] == breakdown
+        (data / "buildings/b1/tour.json").unlink()
+        (data / "buildings/b1/emissions_breakdown.json").unlink()
+        assert hdr()["emissions_3d"] is None and hdr()["tour"] is None  # not built: nothing invented
+    finally:
+        get_settings.cache_clear()

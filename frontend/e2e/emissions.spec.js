@@ -30,10 +30,11 @@ test('every building page: tour via the SDK where there is one, tags only from d
   for (const b of portfolio.buildings) {
     const layout = await post('/compose', { run_id, type: 'open_building', payload: { building_id: b.building_id } })
     const hero = layout.widgets.find((w) => w.type === 'hero_3d')?.props
-    const profile = layout.widgets.find((w) => w.type === 'building_header')?.props?.profile
-    const tourUrl = (hero?.mode === 'showcase' && hero.showcase_url) || profile?.showcase_url || null
-    const em = layout.widgets.find((w) => w.type === 'emissions_3d')?.props
-    const expectedTags = (em?.sources || []).slice(0, 3).flatMap((s) => (s.positions || []).filter((p) => [p.x, p.y, p.z].every(Number.isFinite))).length
+    const header = layout.widgets.find((w) => w.type === 'building_header')?.props
+    const tourUrl = (hero?.mode === 'showcase' && hero.showcase_url) || header?.profile?.showcase_url || (header?.tour?.available && header.tour.showcase_url) || null
+    const em = header?.emissions_3d || null
+    const expectedTags = (em?.top || []).slice(0, 3)
+      .flatMap((r) => (Array.isArray(r.positions) ? r.positions : []).filter((p) => Array.isArray(p.xyz) && p.xyz.length === 3 && p.xyz.every(Number.isFinite))).length
 
     await page.goto('/building')
     await expect(page.getByRole('heading', { name: b.name })).toBeVisible({ timeout: 20_000 })
@@ -71,14 +72,14 @@ test('tag pipeline with the real SDK (synthetic test data, test browser only)', 
   for (let i = 0; i < 120 && !st?.layout; i++) { await new Promise((r) => setTimeout(r, 500)); st = await (await fetch(`${API}/state/${run_id}`)).json().catch(() => null) }
   const layout = await post('/compose', { run_id, type: 'open_building', payload: { building_id: hero.building_id } })
   test.skip(!layout.widgets.some((w) => w.type === 'hero_3d' && w.props.showcase_url), 'hero has no tour')
-  const synthetic = { id: 'test', type: 'emissions_3d', title: '', why: '', size: 'wide', data_ref: '', props: { building_id: hero.building_id, sources: [
-    { source: 'TEST lighting', share_pct: 40, citation: 'TEST', evidence: ['TEST'], positions: [{ x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }] },
-    { source: 'TEST cooling', share_pct: 30, citation: 'TEST', evidence: [], positions: [{ x: 0, y: 1, z: 1 }] },
-    { source: 'TEST plug', share_pct: 10, citation: 'TEST', evidence: [], positions: [] },
-  ] } }
+  const row = (end_use, pct, positions) => ({ end_use, category: 'test', pct_of_building: { value: pct, estimate: true, basis: 'TEST' },
+    citation: { citation: 'TEST' }, evidence: 'unknown', positions })
+  const synthetic = { building_id: hero.building_id, label: 'building-wide estimate, shown where observed', top: [
+    row('TEST lighting', 40, [{ xyz: [0, 1, 0] }, { xyz: [1, 1, 0] }]), row('TEST cooling', 30, [{ xyz: [0, 1, 1] }]), row('TEST plug', 10, 'unknown')] }
   await page.route(`${API}/state/${run_id}`, async (route) => {
     const res = await route.fetch(); const body = await res.json()
-    if (body.layout) body.layout.widgets.push(synthetic)
+    const hdr = body.layout?.widgets?.find((w) => w.type === 'building_header')
+    if (hdr) hdr.props.emissions_3d = synthetic
     await route.fulfill({ response: res, json: body })
   })
   await page.addInitScript((id) => sessionStorage.setItem('hawklens.runId', id), run_id)

@@ -1,13 +1,15 @@
 // Emissions in 3D: the top-3 CO2 sources of a building, from the run's layout only.
 //
-// Proposed contract (Lane A owns the data; nothing here is computed or filled in by the frontend):
-//   layout widget type "emissions_3d", props:
-//   { building_id, sources: [{ source: "Lighting",            // what emits
-//                              share_pct: 31.0,                 // % of the building's CO2 (an estimate)
-//                              citation: "CBECS 2018 office end-use share",
-//                              evidence: ["Fluorescent fixtures seen in panorama 4"],  // what the survey observed
-//                              positions: [{ x, y, z }] }] }    // Showcase coordinates where it was observed
-// A source without positions gets no tag (legend only). No widget -> legend says "not available".
+// Data (Lane A, backend/app/agents/emissions_3d.py -> emissions_breakdown.json), passed through by the resolver as
+// building_header.props.emissions_3d (null when EMISSIONS_3D is off or the breakdown is not built):
+//   { label: "building-wide estimate, shown where observed",
+//     top: [{ end_use, category,
+//             pct_of_building: { value: 25.0 | "unknown", estimate: true, basis },
+//             citation: { citation, url, scope, basis },
+//             evidence: [{ claim_id, value, status, evidence_note? }] | "unknown",
+//             positions: [{ xyz: [x, y, z], label, claim_id, kind, note }] | "unknown" }] }
+// and building_header.props.tour (tour.json: { available, showcase_url, visibility, basis }).
+// Nothing here is computed: a source without positions gets no tag, anything missing reads "unknown"/"not available".
 
 import { widget } from './viewModels'
 
@@ -25,29 +27,53 @@ export const SHARE_COLORS = [
 ]
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v)
-const isPos = (p) => p && isNum(p.x) && isNum(p.y) && isNum(p.z)
+const pctOf = (r) => (isNum(r?.pct_of_building?.value) ? r.pct_of_building.value : null)
 const pctText = (v) => (isNum(v) ? `${Math.round(v * 10) / 10}%` : 'unknown %')
 
-/** The top-3 sources as given by the backend, sorted by share; null when the layout has no emissions data. */
+const evidenceLine = (e) => [
+  `${String(e.claim_id || 'claim').split('.').slice(1).join('.') || e.claim_id || 'finding'}: ${e.value ?? 'unknown'}`,
+  e.status ? `(${e.status})` : '',
+  e.evidence_note ? `— ${e.evidence_note}` : '',
+].filter(Boolean).join(' ')
+
+const positionsOf = (r) => (Array.isArray(r?.positions) ? r.positions : [])
+  .filter((p) => Array.isArray(p?.xyz) && p.xyz.length === 3 && p.xyz.every(isNum))
+  .map((p) => ({ x: p.xyz[0], y: p.xyz[1], z: p.xyz[2], label: p.label || null, note: p.note || null }))
+
+/** The breakdown as the backend wrote it (or null). */
+export const breakdownOf = (layout) => widget(layout, 'building_header')?.emissions_3d ?? null
+
+/** The top-3 sources as given by the backend, sorted by share; null when the layout has no breakdown. */
 export function emissionSources(layout) {
-  const w = widget(layout, 'emissions_3d')
-  if (!w || !Array.isArray(w.sources) || !w.sources.length) return null
-  return [...w.sources]
-    .filter((s) => s && s.source)
-    .sort((a, b) => (isNum(b.share_pct) ? b.share_pct : -1) - (isNum(a.share_pct) ? a.share_pct : -1))
+  const e = breakdownOf(layout)
+  if (!e || !Array.isArray(e.top) || !e.top.length) return null
+  const basis = e.label || BASIS_NOTE
+  return [...e.top]
+    .filter((r) => r && r.end_use)
+    .sort((a, b) => (pctOf(b) ?? -1) - (pctOf(a) ?? -1))
     .slice(0, 3)
-    .map((s, i) => {
-      const citation = s.citation || 'citation not available'
-      const evidence = (s.evidence || []).filter(Boolean)
+    .map((r, i) => {
+      const citation = r.citation?.citation || 'citation not available'
+      const evidence = Array.isArray(r.evidence) ? r.evidence.map(evidenceLine) : ['Evidence: unknown']
+      const positions = positionsOf(r)
+      const where = positions.find((p) => p.note)?.note
       return {
-        source: s.source,
-        share: isNum(s.share_pct) ? s.share_pct : null,
+        source: r.end_use,
+        share: pctOf(r),
         color: SHARE_COLORS[i],
-        label: `${s.source}: ${pctText(s.share_pct)} of building CO₂ (estimated, ${citation})`,
-        description: [...(evidence.length ? evidence : ['Evidence not available']), BASIS_NOTE].join('\n\n'),
-        positions: (s.positions || []).filter(isPos),
+        label: `${r.end_use}: ${pctText(pctOf(r))} of building CO₂ (estimated, ${citation})`,
+        description: [...evidence, where ? `Tag position: ${where}` : '', basis].filter(Boolean).join('\n\n'),
+        positions,
       }
     })
+}
+
+/** The tour link: the hero_3d showcase, else the profile's, else tour.json's when Matterport reports it viewable. */
+export function tourUrlOf(layout) {
+  const hero = widget(layout, 'hero_3d')
+  const header = widget(layout, 'building_header')
+  return (hero?.mode === 'showcase' && hero.showcase_url) || header?.profile?.showcase_url
+    || (header?.tour?.available && header.tour.showcase_url) || null
 }
 
 /** Showcase model id from a showcase_url (".../show/?m=ID..."), else null. */

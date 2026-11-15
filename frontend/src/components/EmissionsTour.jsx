@@ -1,8 +1,7 @@
 // The building's Matterport tour through the Showcase SDK, with one tag per observed position of its top-3 CO2 sources.
 // No tour, no SDK key, or the SDK fails -> legend only (never fake positions or data). The legend is always shown.
 import { useEffect, useRef, useState } from 'react'
-import { BASIS_NOTE, emissionSources, sdkKey, modelIdOf, tagDescriptors } from '../lib/emissions'
-import { widget } from '../lib/viewModels'
+import { BASIS_NOTE, emissionSources, modelIdOf, sdkKey, tagDescriptors, tourUrlOf } from '../lib/emissions'
 
 const SDK_TIMEOUT_MS = 25_000
 
@@ -30,9 +29,7 @@ export function EmissionsLegend({ sources, note, className = '' }) {
 
 export default function EmissionsTour({ layout }) {
   const sources = emissionSources(layout)
-  const hero = widget(layout, 'hero_3d')
-  const profile = widget(layout, 'building_header')?.profile
-  const url = (hero?.mode === 'showcase' && hero.showcase_url) || profile?.showcase_url || null
+  const url = tourUrlOf(layout)
   const modelId = url ? modelIdOf(url) : null
   const key = sdkKey()
   const [status, setStatus] = useState(!modelId ? 'no-tour' : !key ? 'no-key' : 'loading')
