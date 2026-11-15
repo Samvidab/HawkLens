@@ -1,0 +1,122 @@
+
+/* Floating mode switch */
+.mission-toggle {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  z-index: 10000;
+  padding: 11px 17px;
+  border: 1px solid #405b4d;
+  border-radius: 6px;
+  background: #15251e;
+  color: #c4f5d3;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.25s ease;
+}
+
+.mission-toggle:hover {
+  background: #264535;
+  box-shadow: 0 0 18px #6ee7a444;
+}
+
+.mission-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #79e6a3;
+  box-shadow: 0 0 9px #79e6a3;
+}
+
+.mission-toggle.is-active {
+  border-color: #79e6a3;
+}
+
+/* Dark mission-control environment */
+body.mission-mode {
+  background: #07120e;
+}
+
+/* Background behind the dashboard */
+body.mission-mode .topo-background {
+  background: #07120e;
+}
+
+body.mission-mode .topo-background ellipse {
+  stroke: #3caa73;
+  opacity: 0.3;
+}
+
+/* Darken the existing white dashboard and cards */
+body.mission-mode .bg-white {
+  background-color: #101d17 !important;
+}
+
+body.mission-mode .bg-\[\#f5f7f2\] {
+  background-color: #1a3024 !important;
+}
+
+body.mission-mode .bg-model {
+  background-color: #263d30 !important;
+}
+
+/* Typography */
+body.mission-mode .text-ink {
+  color: #e2f4e8 !important;
+}
+
+body.mission-mode .text-muted {
+  color: #96b3a1 !important;
+}
+
+body.mission-mode .text-brand {
+  color: #8be5ad !important;
+}
+
+/* Accent colors */
+body.mission-mode .bg-brand {
+  background-color: #347b52 !important;
+}
+
+body.mission-mode .border-line {
+  border-color: #365341 !important;
+}
+
+body.mission-mode .bg-line {
+  background-color: #365341 !important;
+}
+
+/* Give the dashboard a subtle technical glow */
+body.mission-mode section {
+  transition: background-color 0.35s ease,
+              border-color 0.35s ease;
+}
+
+body.mission-mode section:hover {
+  box-shadow: 0 0 18px rgba(75, 190, 119, 0.08);
+}
+
+/* Preserve image colors */
+body.mission-mode img,
+body.mission-mode iframe {
+  filter: none;
+}
+
+/* Make the top navigation match */
+body.mission-mode nav {
+  background: #101d17 !important;
+  border-color: #365341;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-toggle,
+  body.mission-mode section {
+    transition: none;
+  }
+}

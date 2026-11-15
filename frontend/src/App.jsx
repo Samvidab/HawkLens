@@ -22,6 +22,8 @@ import ExpandedPortfolioModel from './pages/ExpandedPortfolioModel'
 import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
+import MissionControl from './components/MissionControl'
+import CommandPalette from './components/CommandPalette'
 
 
 export default function App() {
@@ -29,6 +31,7 @@ export default function App() {
     <BrowserRouter>
       <GoalProvider>
       <ToastProvider>
+        <MissionControl />
         
         <Routes>
           <Route path="/" element={<Portfolio />} />
