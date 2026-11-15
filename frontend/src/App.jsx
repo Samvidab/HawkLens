@@ -23,11 +23,13 @@ import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
 
+
 export default function App() {
   return (
     <BrowserRouter>
       <GoalProvider>
       <ToastProvider>
+        
         <Routes>
           <Route path="/" element={<Portfolio />} />
           <Route path="/plan" element={<PlanDetails />} />
