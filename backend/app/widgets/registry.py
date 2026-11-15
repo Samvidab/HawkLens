@@ -49,6 +49,19 @@ class Room(Props):
     area_sqft: float | None = None
 
 
+class TraceFact(Props):
+    id: str
+    text: str
+    source: str
+
+
+class TraceStep(Props):  # one investigator step, verbatim from buildings/<id>/investigation.json
+    feed_line: str  # the exact line the activity feed showed (composed by code from the tool's return)
+    tool: str
+    facts_quoted: list[TraceFact] = []
+    image_ids: list[str] = []
+
+
 class Bar(Props):
     upgrade_id: str
     building_id: str
@@ -235,6 +248,10 @@ def _d(type_: str, model: type[Props], size: Size, emits: tuple[str, ...] = (), 
     return WidgetDef(type_, model, size, emits, desc, req)
 
 
+class InvestigationTrace(Props):
+    steps: list[TraceStep]  # in the order the investigator took them
+
+
 WIDGETS: dict[str, WidgetDef] = {w.type: w for w in [
     _d("target_control", TargetControl, "full", ("set_target", "set_budget", "set_risk"), "Goal sliders and p(hit)"),
     _d("portfolio_3d", Portfolio3D, "wide", ("open_building", "exclude_building", "include_building"), "Buildings in 3D"),
@@ -251,6 +268,7 @@ WIDGETS: dict[str, WidgetDef] = {w.type: w for w in [
     _d("financing_card", FinancingCard, "half", ("approve",), "Plan financing and Approve"),
     _d("memo", Memo, "wide", (), "Investment memo"),
     _d("activity_feed", ActivityFeed, "side", (), "Live agent events (frontend reads SSE)"),
+    _d("investigation_trace", InvestigationTrace, "wide", (), "The investigator's recorded steps for this building"),
 ]}
 
 

@@ -13,8 +13,17 @@ SAMPLES = BACKEND.parent / "docs" / "agent" / "samples"
 SITUATIONS = {"portfolio_overview", "target_gap", "verification_issue", "building_detail", "approved"}
 
 
+WIDGET_PROP_SAMPLES = {"investigation_trace.json"}  # props of one widget, not a layout
+
+
 def layouts():
-    return sorted(p for p in SAMPLES.glob("*.json") if p.name != "registry.json")
+    return sorted(p for p in SAMPLES.glob("*.json") if p.name != "registry.json" and p.name not in WIDGET_PROP_SAMPLES)
+
+
+def test_widget_prop_samples_validate_against_the_registry():
+    from app.widgets.registry import validate_props
+    for name in WIDGET_PROP_SAMPLES:
+        validate_props(name.removesuffix(".json"), json.loads((SAMPLES / name).read_text()))
 
 
 def test_every_situation_has_a_sample():
