@@ -1,6 +1,7 @@
 // Tiny client for the HawkLens backend (Matterport property data).
-// Base URL can be overridden with VITE_API_BASE; defaults to the local dev backend.
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+// Base URL comes from VITE_API_URL (set in frontend/.env locally, and in Vercel's
+// environment for production). Falls back to the local dev backend if unset.
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export async function fetchProperties({ q, limit = 100, offset = 0 } = {}) {
   const params = new URLSearchParams()
