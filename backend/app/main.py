@@ -10,6 +10,7 @@ from app.agents import graph
 from app.agents.replan import ReplanError, register_survey_runner, replan
 from app.config import get_settings
 from app.envutil import env_value
+from app.matterport.routes import router as matterport_router
 from app.schemas.goal import Goal, OwnerAction
 from app.schemas.layout import Layout
 from app.storage import data_path, read_json
@@ -37,6 +38,7 @@ app = FastAPI(title="RetroAlpha backend")
 configure_cors(app)
 app.include_router(events.router)  # GET /events/{run_id}
 app.include_router(media.router)   # GET /media/mesh/{model_id}/{file}, GET /media/{image_id}
+app.include_router(matterport_router)  # GET /properties, /properties/{id}, /properties/{id}/thumbnail
 register_survey_runner(graph.survey_runner)  # replan's `goal` action surveys missing buildings via Lane A's graph
 
 _runs: dict[str, asyncio.Task] = {}  # keep references so background runs aren't garbage-collected
