@@ -104,3 +104,9 @@ against any API that is not the sandbox in read-only mode. Port 8100 (`E2E_API_U
 DEMO_DATA_DIR=<data dir> CACHE_DIR=<warm cache> PYTHON=<python with backend deps> npx playwright test
 DEMO_DATA_DIR=<data dir> CACHE_DIR=<warm cache> PYTHON=<python with backend deps> npx playwright test -c playwright.emissions.config.js
 ```
+
+## Investigator steps on the building page
+Below the building page, the investigator's recorded steps as a numbered list: the feed line each step showed, the facts it
+quoted (with their source) and thumbnails of the images it returned (`/media/{id}`). Data: `GET /investigation_trace/{id}`,
+which returns exactly the `investigation_trace` widget's props (Lane A's resolver, validated by the registry). It is served
+on its own because building layouts already hold the maximum of 8 widgets. No trace -> "Investigation steps not available".

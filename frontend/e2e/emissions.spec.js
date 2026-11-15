@@ -52,6 +52,18 @@ test('every building page: tour via the SDK, one tag per verified CO2 source loc
     if (!co2.items.length) await expect(page.getByTestId('co2-none')).toHaveText('No verified CO₂ sources located in this scan')
     await expect(page.getByText(/seen \(verified\)/)).toHaveCount(co2.items.length)
 
+    // the investigator's recorded steps under the page: numbered, verbatim, one thumbnail per image id
+    const traceRes = await fetch(`${API}/investigation_trace/${b.building_id}`)
+    const trace = traceRes.ok ? await traceRes.json() : null
+    const traceBox = page.getByTestId('investigation-trace')
+    if (trace) {
+      await expect(traceBox.locator('[data-trace-step]')).toHaveCount(trace.steps.length, { timeout: 15_000 })
+      for (const [k, st] of trace.steps.entries()) await expect(traceBox.locator(`[data-trace-step="${k + 1}"]`)).toContainText(st.feed_line)
+      await expect(traceBox.locator('[data-trace-image]')).toHaveCount(trace.steps.reduce((n, st) => n + st.image_ids.length, 0))
+    } else {
+      await expect(page.getByTestId('trace-na')).toBeVisible()
+    }
+
     // click every tagged item in the list: the tour moves to its panorama (the tour itself reports the sweep) and opens its tag
     let visited = 0
     if (status === 'ready') {
@@ -77,7 +89,7 @@ test('every building page: tour via the SDK, one tag per verified CO2 source loc
     report.push({
       building: b.name, building_id: b.building_id, scan: co2.model_id, tour: co2.tour_url ? co2.tour_model_id : null, status,
       verified_items: co2.items.length, lighting: co2.items.filter((i) => i.kind === 'lighting').length,
-      hvac: co2.items.filter((i) => i.kind === 'hvac').length, tags, visited,
+      hvac: co2.items.filter((i) => i.kind === 'hvac').length, tags, visited, trace_steps: trace ? trace.steps.length : null,
     })
   }
   fs.writeFileSync(`${SHOTS}/co2-tags-report.json`, JSON.stringify(report, null, 2))

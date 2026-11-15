@@ -302,3 +302,12 @@ Say which of these you want and I will add them.
   /health sandbox=true; e2e/guard.js refuses any other API (checked with a fake non-sandbox server). Demo data dirs
   checksummed before/after every run: unchanged.
 - lane-support after the merge: 554 passed, 1 skipped; frontend 218; Playwright 5/5 + 8-building suite green.
+
+## Merge origin/lane-data (investigation_trace) (2026-11-14)
+- Conflicts in resolver.py (kept both: images.json sources + Lane A's traces) and STATUS-A.md (kept both). Registry and
+  samples merged cleanly; make_samples produces no diff.
+- GET /investigation_trace/{id}: the widget's props via resolve_widget (registry-validated); 404 when no trace. Not added to
+  the building layout (already MAX_WIDGETS = 8; adding it would change the layout contract and the composer).
+- Building page: numbered list of the steps (feed line, quoted facts, image thumbnails) below the fixed frame.
+- 560 passed, 2 skipped; frontend 220; Playwright 5/5 + 8-building suite (tags, clicks and trace steps per building); demo
+  data dirs unchanged.

@@ -1794,6 +1794,92 @@
         "title": "ActivityFeed",
         "type": "object"
       }
+    },
+    "investigation_trace": {
+      "description": "The investigator's recorded steps for this building",
+      "default_size": "wide",
+      "emits": [],
+      "required": [
+        "steps"
+      ],
+      "props_schema": {
+        "$defs": {
+          "TraceFact": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "source"
+            ],
+            "title": "TraceFact",
+            "type": "object"
+          },
+          "TraceStep": {
+            "additionalProperties": false,
+            "properties": {
+              "feed_line": {
+                "title": "Feed Line",
+                "type": "string"
+              },
+              "tool": {
+                "title": "Tool",
+                "type": "string"
+              },
+              "facts_quoted": {
+                "default": [],
+                "items": {
+                  "$ref": "#/$defs/TraceFact"
+                },
+                "title": "Facts Quoted",
+                "type": "array"
+              },
+              "image_ids": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "title": "Image Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "feed_line",
+              "tool"
+            ],
+            "title": "TraceStep",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/$defs/TraceStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "title": "InvestigationTrace",
+        "type": "object"
+      }
     }
   }
 }

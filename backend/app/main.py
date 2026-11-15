@@ -86,6 +86,23 @@ def assumptions(city: str | None = None) -> dict:
             "notes": a.get("_notes", [])}
 
 
+@app.get("/investigation_trace/{building_id}")
+def investigation_trace(building_id: str) -> dict:
+    """The investigation_trace widget's props for one building (Lane A's resolver, validated by the registry): the
+    investigator's recorded steps. Served on its own because building layouts already hold the maximum of widgets."""
+    from app.schemas.layout import WidgetSpec
+    from app.widgets.resolver import ResolveContext, ResolveError, resolve_widget
+    data = get_settings().data_dir
+    if not (data / "buildings" / building_id / "profile.json").exists():
+        raise HTTPException(404, f"unknown building {building_id}")
+    ctx = ResolveContext.load(data, "", focus_building_id=building_id)
+    spec = WidgetSpec(id="investigation_trace", type="investigation_trace", title="Investigation", why="", size="wide")
+    try:
+        return resolve_widget(spec, ctx).props
+    except ResolveError as e:  # no trace, or one recorded before feed lines existed: say so, never fill in
+        raise HTTPException(404, str(e)) from e
+
+
 @app.get("/co2_equipment/{building_id}")
 async def co2_equipment(building_id: str) -> dict:
     """Verified CO2-emitting equipment seen inside the building (lighting fixtures, air diffusers) with the claim, the

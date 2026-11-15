@@ -3,6 +3,7 @@ import Page from '../components/Page'
 import { Estimate, NA, Sources, Stub, useStub } from '../components/Truth'
 import { FootprintMap, hasFootprints } from '../components/widgets'
 import Co2Tour from '../components/Co2Tour'
+import InvestigationTrace from '../components/InvestigationTrace'
 import { emissions3dOn } from '../lib/co2Tags'
 import { useBuildingFocus } from '../lib/store'
 import { buildingModel as selectBuilding, buildingTotals, upgradeRows, widget } from '../lib/viewModels'
@@ -66,7 +67,7 @@ export default function BuildingDetails() {
   }
 
   return (
-    <Page active="portfolio">
+    <Page active="portfolio" fluid>
       {/* Header */}
       <button
         type="button"
@@ -233,6 +234,11 @@ export default function BuildingDetails() {
       >
         View portfolio plan&nbsp;&nbsp;→
       </button>
+
+      {/* below the fixed frame: the investigator's recorded steps (investigation_trace widget props) */}
+      <div className="pt-[1000px] px-[56px] pb-[56px]">
+        <InvestigationTrace key={bm.id} buildingId={bm.id} />
+      </div>
     </Page>
   )
 }

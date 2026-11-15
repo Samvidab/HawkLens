@@ -53,6 +53,8 @@ export const getRegistry = () => request('GET', '/registry')
 /** The quant engine's sourced pricing assumptions for a city (GET /assumptions). */
 /** Verified CO2-emitting equipment seen inside a building, for the 3D tour tags (GET /co2_equipment/{id}). */
 export const getCo2Equipment = (buildingId) => request('GET', `/co2_equipment/${encodeURIComponent(buildingId)}`)
+/** The investigation_trace widget's props for a building (GET /investigation_trace/{id}): the investigator's recorded steps. */
+export const getInvestigationTrace = (buildingId) => request('GET', `/investigation_trace/${encodeURIComponent(buildingId)}`)
 export const getAssumptions = (city) => request('GET', `/assumptions${city ? `?city=${encodeURIComponent(city)}` : ''}`)
 
 /** goal: { city, building_ids?, target_pct (0-100), budget_usd?, risk_lambda (0-1) } */
