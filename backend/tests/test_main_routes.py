@@ -90,3 +90,13 @@ def test_cors_covers_the_sse_stream_and_regex(monkeypatch, tmp_path):
     r = c.get("/events/cr?replay=1&delay=0", headers={"Origin": "https://pr-12-retroalpha.vercel.app"})
     assert r.headers["access-control-allow-origin"] == "https://pr-12-retroalpha.vercel.app"
     get_settings.cache_clear()
+
+
+def test_assumptions_route_serves_the_engine_file():
+    """The Assumptions screen shows the engine's real, sourced values: the route returns them as stored."""
+    from app.engine.models import ASSUMPTIONS_PATH
+    stored = json.loads(ASSUMPTIONS_PATH.read_text())
+    c = TestClient(app)
+    r = c.get("/assumptions?city=houston").json()
+    assert r["city"] == "Houston" and r["city_values"] == stored["cities"]["Houston"] and r["global"] == stored["global"]
+    assert c.get("/assumptions?city=Nowhere").json()["city_values"] is None
