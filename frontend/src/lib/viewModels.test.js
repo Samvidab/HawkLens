@@ -177,3 +177,11 @@ describe('survey screens from the activity events', () => {
     expect(vm.surveySummary(null)).toBeNull()
   })
 })
+
+it('preserves recorded financing and memo across layouts using the matching backend plan only', () => {
+  const state = { plan_id: 'p', plan: { plan_id: 'p', total_upfront: 100, financing: { state: 'executed', nessie_ids: { account: 'stub-account' } }, bills: [] }, memo_markdown: 'Recorded test memo' }
+  expect(vm.financingModel(overview, state).executed).toBe(true)
+  expect(vm.memoMarkdown(overview, state)).toBe('Recorded test memo')
+  expect(vm.memoMarkdown(overview, { ...state, plan_id: 'another-plan' })).toBeNull()
+  expect(vm.financingModel(overview, { ...state, plan_id: 'another-plan' }).executed).toBe(false)
+})

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import LiveMemo from '../components/LiveMemo'
 import { Sources, Stub, useStub } from '../components/Truth'
 import { useOverview } from '../lib/store'
 import { Markdown, downloadText } from '../lib/markdown'
@@ -10,7 +11,7 @@ export default function Documents() {
   const navigate = useNavigate()
   const run = useOverview()
   const { nessie } = useStub()
-  const memo = memoMarkdown(run.layout)
+  const memo = memoMarkdown(run.layout, run.state)
   const fin = financingModel(run.layout, run.state)
   const docs = [
     memo && { key: 'memo', title: 'Investment memo', meta: `Markdown · plan ${fin?.planId || ''}`, open: () => navigate('/investment-memo'), highlight: true },
@@ -31,7 +32,7 @@ export default function Documents() {
         <div className="absolute left-0 top-[27px] w-[768px] flex flex-col gap-[8px]">
           {!docs.length && (
             <p className="px-[20px] py-[16px] text-muted text-[14px]">
-              No documents yet. The investment memo is written when you approve the plan.
+              No saved documents yet. Generate a draft memo in the panel, or review financing separately.
             </p>
           )}
           {docs.map((d) => (
@@ -53,18 +54,7 @@ export default function Documents() {
         <div className="flex items-center justify-between h-[47px] px-[25px] bg-[#f5f7f2]">
           <p className="font-medium text-muted text-[10px] tracking-[1px]">MEMO PREVIEW</p>
         </div>
-        <div className="h-[520px] overflow-y-auto px-[29px] py-[20px]">
-          {memo ? <Markdown text={memo} /> : <p className="text-muted text-[13px]">The memo is not available yet.</p>}
-        </div>
-        {memo && (
-          <button
-            type="button"
-            onClick={() => downloadText(`memo-${fin?.planId || 'plan'}.md`, memo)}
-            className="absolute left-[29px] top-[583px] font-medium text-brand text-[13px] hover:underline"
-          >
-            Download memo&nbsp;&nbsp;↓
-          </button>
-        )}
+        <div className="h-[578px] overflow-y-auto"><LiveMemo /></div>
       </section>
 
       <Sources banking />

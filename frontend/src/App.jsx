@@ -23,7 +23,11 @@ import ExpandedPortfolioModel from './pages/ExpandedPortfolioModel'
 import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
-import { RequireRun } from './components/Truth'
+import History from './pages/History'
+import Research from './pages/Research'
+import MissionControl from './components/MissionControl'
+import ClickSteam from './components/ClickSteam'
+import { BackendStatus, RequireRun } from './components/Truth'
 
 // Strict demo mode (always on): a page that needs a run shows "no survey data yet" instead of prototype content.
 const gate = (el, need = 'layout', active = 'portfolio') => <RequireRun need={need} active={active}>{el}</RequireRun>
@@ -32,7 +36,9 @@ const gate = (el, need = 'layout', active = 'portfolio') => <RequireRun need={ne
 export function AppRoutes() {
   return (
         <Routes>
-          <Route path="/" element={gate(<Portfolio />)} />
+          <Route path="/history" element={<History />} />
+          <Route path="/research" element={gate(<Research />, 'portfolio')} />
+          <Route path="/" element={gate(<Portfolio />, 'portfolio')} />
           <Route path="/plan" element={gate(<PlanDetails />, 'layout', 'plan')} />
           <Route path="/building" element={gate(<BuildingDetails />)} />
           <Route path="/start-survey" element={gate(<StartSurvey />, 'portfolio')} />
@@ -63,6 +69,9 @@ export default function App() {
     <BrowserRouter>
       <RunProvider demoRunId={import.meta.env.VITE_DEMO_RUN_ID}>
         <ToastProvider>
+          <MissionControl />
+          <ClickSteam />
+          <BackendStatus />
           <AppRoutes />
         </ToastProvider>
       </RunProvider>

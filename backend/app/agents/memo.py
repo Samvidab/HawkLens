@@ -133,8 +133,8 @@ FALLBACK = (
     "using {{n_upgrades}} upgrades across {{n_buildings}} buildings.\n\n"
     "It costs {{total_upfront}} upfront ({{budget}}), with an expected net present value of "
     "{{exp_npv}}. {{return_summary}} In the worst 5 percent of outcomes the value is {{cvar5}}, and the chance of a loss is {{p_loss}}.\n\n"
-    "The probability of hitting the target is {{p_hit_target}}. Every upgrade is backed by images the agents inspected "
-    "and checked."
+    "The probability of hitting the target is {{p_hit_target}}. Review recorded evidence and verification status; "
+    "assumed upgrades are not observed findings."
 )
 
 

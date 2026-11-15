@@ -21,13 +21,13 @@ export default function PlanPreferences() {
     setBudget(tm.budgetUsd == null ? 'No cap' : usdK(tm.budgetUsd))
     setRisk(riskLabel(tm.riskLambda))
   }, [tm?.budgetUsd, tm?.riskLambda]) // eslint-disable-line react-hooks/exhaustive-deps
-  const pickBudget = (o) => { setBudget(o.label); run.setPrefs({ budget_usd: o.usd }); if (run.layout) run.act('set_budget', { budget_usd: o.usd }).catch(() => {}) }
+  const pickBudget = (o) => { setBudget(o.label); run.setPrefs({ budget_usd: o.usd }); if (run.layout) run.act('set_budget', { budget_usd: o.usd }).catch(() => setBudget(tm?.budgetUsd == null ? 'No cap' : usdK(tm.budgetUsd))) }
   const riskOn = !tm || tm.riskSupported // no plan yet: local choice only; with a plan, only if the engine applies risk_lambda
   const pickRisk = (r) => {
     if (!riskOn) return
     setRisk(r)
     run.setPrefs({ risk_lambda: RISK_LAMBDA[r] })
-    if (run.layout) run.act('set_risk', { risk_lambda: RISK_LAMBDA[r] }).catch(() => {})
+    if (run.layout) run.act('set_risk', { risk_lambda: RISK_LAMBDA[r] }).catch(() => setRisk(riskLabel(tm?.riskLambda)))
   }
 
   const close = () => navigate(-1)

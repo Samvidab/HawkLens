@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
+import CommandPalette from './CommandPalette'
 import { useRun } from '../lib/store'
 
 // Shared top navigation bar. `active` is one of: 'portfolio' | 'plan' | 'documents'.
@@ -16,6 +17,7 @@ export default function Navigation({ active = 'portfolio' }) {
 
   return (
     <nav className="absolute left-0 top-0 w-[1440px] h-[81px] overflow-hidden bg-white">
+      <CommandPalette />
       <button
         type="button"
         onClick={() => navigate('/')}

@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Page from '../components/Page'
 import { NA, Sources, Stub, useStub } from '../components/Truth'
-import { FootprintMap, hasFootprints } from '../components/widgets'
+import ShowcaseModal from '../components/ShowcaseModal'
 import { useGo } from '../lib/ui'
 import { useOverview } from '../lib/store'
 import { planRows, planSummary, riskLabel, targetModel, usdK, widget } from '../lib/viewModels'
+import { assetUrl } from '../lib/api'
 import { SLIDER_WIDTH, TARGET_MAX, TARGET_MIN, clampTarget } from '../lib/model'
 
-// Strict: every value comes from the run's layout (the route gate guarantees one); missing values read "not available".
+// Cards come from GET /portfolio; plan figures come from the loaded run layout. Missing values remain unavailable.
 export default function Portfolio() {
   const go = useGo()
-  const run = useOverview()
+  const run = useOverview({ requireTarget: true })
   const stub = useStub().engine
+  const [tourBuilding, setTourBuilding] = useState(null)
+  const inventory = run.portfolio?.buildings || []
   const layoutModel = run.layout ? targetModel(run.layout) : null
   const [target, setTarget] = useState(layoutModel?.target ?? run.prefs.target_pct)
   const model = layoutModel ? { ...layoutModel, target } : null
@@ -28,7 +31,7 @@ export default function Portfolio() {
   useEffect(() => {
     run.setPrefs({ target_pct: target })
     if (!run.layout || layoutModel?.target === target) return undefined
-    const t = setTimeout(() => run.act('set_target', { target_pct: target }).catch(() => {}), 400)
+    const t = setTimeout(() => run.act('set_target', { target_pct: target }).catch(() => setTarget(layoutModel.target)), 400)
     return () => clearTimeout(t)
   }, [target]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -36,8 +39,10 @@ export default function Portfolio() {
   }, [layoutModel?.target]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openBuilding = useCallback(async (id = featured?.id) => {
-    if (run.layout && id) await run.act('open_building', { building_id: id }).catch(() => {})
-    go('/building')
+    try {
+      if (run.layout && id) await run.act('open_building', { building_id: id })
+      go('/building')
+    } catch {}
   }, [run, featured, go])
 
   return (
@@ -46,7 +51,7 @@ export default function Portfolio() {
         {city ? `${city} portfolio` : 'Portfolio'}
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        {buildings ? `${buildings.length} building${buildings.length === 1 ? '' : 's'}${nExcluded ? ` · ${nExcluded} excluded` : ''}` : `Buildings ${NA}`}
+        {`${inventory.length} buildings from the recorded portfolio${nExcluded ? ` · ${nExcluded} excluded` : ''}`}
       </p>
       <LinkArrow className="left-[1055px] top-[154px]" onClick={() => go('/start-survey')}>
         Run survey
@@ -55,15 +60,13 @@ export default function Portfolio() {
         Building details
       </LinkArrow>
 
-      <PortfolioModel
-        buildings={buildings}
-        focusId={featured?.id}
-        onPick={(b) => openBuilding(b.building_id)}
-        onViewBuilding={() => openBuilding()}
-        name={featured?.name}
-        onExpand={() => go('/expanded-portfolio-model')}
-      />
+      <button className="absolute left-[56px] top-[205px] text-brand text-[12px] underline" onClick={() => go('/expanded-portfolio-model')}>Explore footprint map ↗</button>
+      <button className="absolute left-[270px] top-[205px] text-brand text-[12px] underline" onClick={() => go('/history')}>Saved plans & survey history →</button>
+      <button className="absolute left-[560px] top-[205px] text-brand text-[12px] underline" onClick={() => go('/research')}>Energy & source research →</button>
+      <PortfolioModel buildings={inventory} onTour={setTourBuilding} onDetails={openBuilding} hasRun={!!run.layout} />
+      {tourBuilding && <ShowcaseModal building={tourBuilding} onClose={() => setTourBuilding(null)} />}
 
+      {run.layout ? (
       <CarbonGoal
         target={target}
         model={model}
@@ -78,6 +81,16 @@ export default function Portfolio() {
           : `Budget and risk ${NA}`}
         busy={run.busy > 0}
       />
+
+      ) : (
+        <section className="absolute left-[944px] top-[231px] w-[410px] p-6" data-testid="no-data">
+          <h2 className="font-semibold text-ink text-[20px]">No plan loaded</h2>
+          <p className="mt-3 text-muted text-[14px]">Costs, emissions and optimization results are not available until a survey is loaded.</p>
+          <button className="mt-5 text-brand underline" onClick={() => go('/start-survey')}>Start a survey →</button>
+          {run.demoRunId && <button className="block mt-4 text-brand underline" disabled={run.phase === 'surveying'}
+            onClick={() => run.start({}, { replay: true })}>{run.phase === 'surveying' ? 'Loading recorded survey…' : 'Load recorded survey'}</button>}
+        </section>
+      )}
 
       <h2 className="absolute left-[56px] top-[704px] whitespace-nowrap font-semibold text-ink text-[20px]">
         Recommended upgrades
@@ -111,45 +124,29 @@ function LinkArrow({ className = '', children, onClick }) {
   )
 }
 
-function PortfolioModel({ buildings, focusId, onPick, onViewBuilding, onExpand, name }) {
+export function PortfolioModel({ buildings, onTour, onDetails, hasRun }) {
   return (
-    <section className="absolute left-[56px] top-[231px] w-[848px] h-[420px] overflow-hidden rounded-[8px] bg-model">
-      <p className="absolute left-[23px] top-[21px] whitespace-nowrap font-medium text-ink text-[15px]">
-        Your buildings
-      </p>
-      <p className="absolute left-[23px] top-[46px] whitespace-nowrap text-muted text-[13px]">
-        {name ? `Click a footprint to open a building, or explore ${name}.` : 'Click a footprint to open a building.'}
-      </p>
-
-      <div className="absolute left-[23px] top-[76px] w-[600px] h-[290px]">
-        {hasFootprints(buildings)
-          ? <FootprintMap buildings={buildings} focusId={focusId} onPick={onPick} height={290} />
-          : <p className="text-muted text-[13px]">Building footprints not available.</p>}
+    <section className="absolute left-[56px] top-[231px] w-[848px] h-[420px] rounded-[8px] bg-model p-5">
+      <h2 className="font-medium text-ink text-[15px]">Your buildings</h2>
+      <p className="mt-1 text-muted text-[12px]">Recorded CoStar properties · Matterport tours of the surveyed spaces</p>
+      <div className="grid grid-cols-4 gap-3 mt-4" data-testid="portfolio-cards">
+        {buildings.map((b) => (
+          <article key={b.building_id} data-building-id={b.building_id} className="rounded-md bg-white p-3 shadow-sm min-w-0 h-[149px] relative overflow-hidden">
+            {b.thumbnail_url && <img src={assetUrl(b.thumbnail_url)} alt={`Recorded Matterport thumbnail of ${b.name}`} className="absolute right-0 top-0 w-[70px] h-[40px] object-cover" loading="lazy" onError={e => {e.currentTarget.style.display='none'}} />}
+            <h3 className="font-medium text-ink text-[12px] truncate" title={b.name || ''} style={{maxWidth:b.thumbnail_url?'100px':undefined}}>{b.name || 'Name not available'}</h3>
+            <p className="text-muted text-[10px] truncate mt-1" title={b.address || ''}>{b.address || 'Address not available'}</p>
+            <p className="text-muted text-[10px] mt-2">{b.sqft == null ? 'Area not available' : `${Number(b.sqft).toLocaleString()} sq ft`}</p>
+            <p className="text-muted text-[10px]">Built {b.year_built ?? 'not available'} · {b.stories == null ? 'Floors not available' : `${b.stories} floors`}</p>
+            <p className="text-muted text-[9px] mt-1">{b.thumbnail_url ? 'Recorded Matterport image' : 'Thumbnail not available'}</p>
+            <div className="flex justify-between gap-1 mt-2 text-[11px] text-brand">
+              <button disabled={!b.showcase_url} onClick={() => onTour(b)} className="underline disabled:text-muted disabled:no-underline"
+                aria-label={`Open tour of ${b.name || b.building_id}`}>{b.showcase_url ? 'Open tour ↗' : 'Tour unavailable'}</button>
+              {hasRun && <button onClick={() => onDetails(b.building_id)} className="underline" aria-label={`Details for ${b.name || b.building_id}`}>Details →</button>}
+            </div>
+          </article>
+        ))}
       </div>
-
-      {name && (
-        <div className="absolute left-[640px] top-[90px] w-[190px] h-[49px] rounded-[5px] bg-white overflow-hidden shadow-sm">
-          <span className="absolute left-[12px] top-[8px] whitespace-nowrap font-medium text-ink text-[13px]">{name}</span>
-          <button
-            type="button"
-            onClick={onViewBuilding}
-            className="absolute left-[12px] top-[29px] whitespace-nowrap text-brand text-[11px] hover:underline"
-          >
-            View building&nbsp;&nbsp;→
-          </button>
-        </div>
-      )}
-
-      <p className="absolute left-[23px] top-[384px] whitespace-nowrap text-muted text-[11px]">
-        Footprints from the building records, drawn in 2D · dark = selected, grey = excluded
-      </p>
-      <button
-        type="button"
-        onClick={onExpand}
-        className="absolute left-[736px] top-[378px] whitespace-nowrap text-muted text-[12px] hover:text-ink"
-      >
-        Expand ↗
-      </button>
+      <p className="text-muted text-[10px] mt-3">Tours show recorded scans, which may cover a tenant suite rather than the whole building.</p>
     </section>
   )
 }
@@ -157,7 +154,7 @@ function PortfolioModel({ buildings, focusId, onPick, onViewBuilding, onExpand, 
 function CarbonGoal({ target, model: m, stub, onChangeTarget, onStep, onEdit, onReview, onCheckGap, budgetText, busy }) {
   const model = m || { covered: null, tonnes: null, statusLabel: `Plan ${NA}`, annualLabel: '', investmentLabel: NA, netValueLabel: NA }
   return (
-    <section className="absolute left-[944px] top-[231px] w-[440px] h-[420px] overflow-hidden">
+    <section className="absolute left-[944px] top-[231px] w-[440px] h-[440px] overflow-visible">
       <div className="absolute left-0 top-0 w-px h-[420px] bg-line" />
 
       <p className="absolute left-[32px] top-[8px] whitespace-nowrap font-medium text-ink text-[16px]">
@@ -244,7 +241,7 @@ function CarbonGoal({ target, model: m, stub, onChangeTarget, onStep, onEdit, on
       <button
         type="button"
         onClick={onCheckGap}
-        className="absolute left-[250px] top-[440px] whitespace-nowrap font-medium text-brand text-[13px] hover:underline"
+        className="absolute left-[250px] top-[425px] whitespace-nowrap font-medium text-brand text-[13px] hover:underline"
       >
         Check target gap&nbsp;&nbsp;→
       </button>
@@ -303,7 +300,7 @@ function TargetSlider({ target, onChange }) {
 
 function UpgradeSummary({ onOpen, rows, stub }) {
   const list = rows.map((r) => ({ name: r.name, detail: r.coverage, cost: r.cost }))
-  if (!list.length) return <p className="absolute left-[56px] top-[790px] text-muted text-[13px]">No upgrades in the plan.</p>
+  if (!list.length) return <p className="absolute left-[56px] top-[790px] text-muted text-[13px]">Upgrade results not available.</p>
   return (
     <section className="absolute left-[56px] top-[783px] w-[1328px] h-[133px] overflow-hidden">
       {list.map((u, i) => {

@@ -32,7 +32,7 @@ const cells = (row) => row.trim().replace(/^\||\|$/g, '').split('|').map((c) => 
 
 export function Markdown({ text }) {
   if (!text) return null
-  const blocks = String(text).replace(/\r/g, '').split(/\n{2,}/)
+  const blocks = String(text).replace(/\r/g, '').replace(/^(#{1,6}[^\n]+)$/gm, '\n$1\n').trim().split(/\n{2,}/)
   return (
     <div className="space-y-3 text-[13px] leading-[1.6] text-ink">
       {blocks.map((b, i) => {

@@ -50,7 +50,7 @@ export function Sources({ banking = false, className = 'absolute left-[56px] top
   const h = run.health
   return (
     <p className={`${className} whitespace-nowrap text-muted text-[11px]`} data-testid="sources">
-      Survey data from the backend · Pricing: {engine ? <>sample prices (stub engine)<Stub /></> : h ? 'quant engine' : `engine mode ${NA}`}
+      Survey data from the backend · Pricing: {engine ? <>sample prices (stub engine)<Stub /></> : h ? 'quant engine (modeled estimates)' : `engine mode ${NA}`}
       {banking && <> · Banking: {nessie ? <>simulated (stub Nessie)<Stub title="Simulated booking, nothing is sent to a bank" /></> : h ? 'Nessie sandbox (no real money)' : `Nessie mode ${NA}`}</>}
     </p>
   )
@@ -59,7 +59,7 @@ export function Sources({ banking = false, className = 'absolute left-[56px] top
 /** What a page shows when it needs data the run does not have (never prototype content). */
 export function NoData({ title = 'No survey data yet', detail, active = 'portfolio' }) {
   const run = useRun()
-  const loading = run.runId && run.phase !== 'error' && !run.layout
+  const loading = run.connectionLoading || (run.runId && run.phase !== 'error' && !run.layout)
   return (
     <Page active={active}>
       <div className="absolute left-[56px] top-[150px] w-[900px]" data-testid="no-data">
@@ -84,4 +84,16 @@ export function RequireRun({ need = 'layout', children, active }) {
   }
   if (need === 'run') return run.runId ? children : <NoData active={active} title="No survey running" />
   return run.layout ? children : <NoData active={active} />
+}
+
+// Shared action errors remain visible on fixed pages and modal screens alike.
+export function BackendStatus() {
+  const run = useRun()
+  return <>
+    {run.error && <div role="alert" className="fixed left-4 right-4 top-2 z-[100] rounded border border-[#b4532f] bg-white p-3 text-[13px] text-[#9a493c] shadow">
+      Backend request failed: {run.error}. Displayed results may be from the last successful request.
+      {run.runId && <button className="ml-3 underline" onClick={() => run.refresh().catch(() => {})}>Retry loading saved state</button>}
+    </div>}
+    {run.busy > 0 && <div role="status" className="fixed bottom-3 right-4 z-[90] rounded bg-white p-2 text-[12px] shadow">Updating from the backend…</div>}
+  </>
 }

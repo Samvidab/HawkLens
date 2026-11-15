@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import RecordedImage from '../components/RecordedImage'
 import { useBuildingFocus } from '../lib/store'
 import { mediaUrl } from '../lib/api'
 import { buildingModel, evidenceModel } from '../lib/viewModels'
@@ -10,7 +11,9 @@ export default function ExpandedSurveyImage() {
   const navigate = useNavigate()
   const run = useBuildingFocus()
   const bm = buildingModel(run.layout)
-  const main = mainEvidence(evidenceModel(run.layout, mediaUrl)?.items || [])
+  const location = useLocation()
+  const items = evidenceModel(run.layout, mediaUrl)?.items || []
+  const main = items.find(i => i.id === location.state?.imageId) || mainEvidence(items)
 
   return (
     <Page nav={false}>
@@ -28,7 +31,7 @@ export default function ExpandedSurveyImage() {
       <div className="absolute left-[56px] top-[115px] w-[1328px] h-[787px] overflow-hidden bg-model">
         {main ? (
           <>
-            <img src={main.url} alt={main.title} className="w-full h-full object-contain" />
+            <RecordedImage image={main} />
           </>
         ) : <p className="p-6 text-muted text-[14px]">No survey image for this building.</p>}
       </div>

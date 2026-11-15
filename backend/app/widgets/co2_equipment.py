@@ -73,6 +73,15 @@ async def build(building_id: str) -> dict:
         it["pano_id"] = pano.pano_id if pano else None
         it["image_id"] = image
         it["image_url"] = f"/media/{image}" if image else None
+        # Image marks are 2D evidence, not model coordinates. PanoramaRef records no
+        # skybox extrinsics, so neither a bounding-box centre nor pin.xyz is a fixture.
+        claim = claims[it["claim"]["claim_id"]]
+        prefix = f"mpp_{model}_{pano.pano_id}_" if pano else None
+        it["image_marks"] = [m for m in claim.get("marks", [])
+                             if prefix and m.get("image_id", "").startswith(prefix)
+                             and m.get("image_id") in it["claim"]["evidence_ids"]]
+        it["placement"] = {"type": "observation", "label": "Photo taken here",
+                           "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."}
     tour = _read(d / "tour.json", None) or {}
     viewable = bool(tour.get("available") and tour.get("showcase_url"))
     return {

@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import RecordedImage from '../components/RecordedImage'
 import { Sources } from '../components/Truth'
 import { useBuildingFocus } from '../lib/store'
 import { mediaUrl } from '../lib/api'
@@ -18,12 +19,13 @@ export default function SurveyEvidence() {
   const run = useBuildingFocus()
   const items = evidenceModel(run.layout, mediaUrl)?.items || []
   const bm = buildingModel(run.layout)
-  const main = mainEvidence(items)
+  const location = useLocation()
+  const main = items.find(i => i.id === location.state?.imageId) || mainEvidence(items)
   const details = main ? main.summaries.slice(0, 3).map((s) => { const [k, ...v] = String(s).split(': '); return [k, v.join(': ')] }) : []
   // which in-plan upgrades this image supports (upgrade.evidence_ids)
   const supports = main ? (upgradeRows(run.layout) || []).filter((u) => u.evidenceIds.includes(main.id)) : []
   const inPlan = supports.filter((u) => u.on)
-  const sources = items.slice(0, 3).map((i, n) => ({
+  const sources = items.map((i, n) => ({
     key: i.id, img: i.url, title: i.title, left: n * 450, provider: i.provider,
     kind: `${i.status} · ${i.summaries.length} finding${i.summaries.length === 1 ? '' : 's'}`,
   }))
@@ -50,21 +52,7 @@ export default function SurveyEvidence() {
         {!main && <p className="absolute left-[24px] top-[24px] text-muted text-[14px]">No survey images for this building.</p>}
         {main && (
           <>
-            <img src={main.url} alt={main.title} className="absolute inset-0 w-full h-full object-cover" />
-            {main.marks.filter((m) => m.image_id === main.id && m.bbox).map((m, i) => (
-              <div key={i} className="absolute border-2 border-white rounded-[3px] shadow" title={m.label}
-                style={{ left: `${m.bbox[0] * 100}%`, top: `${m.bbox[1] * 100}%`, width: `${(m.bbox[2] - m.bbox[0]) * 100}%`, height: `${(m.bbox[3] - m.bbox[1]) * 100}%` }} />
-            ))}
-            <div className="absolute left-[16px] top-[16px] h-[30px] px-[11px] rounded-[4px] bg-white flex items-center">
-              <span className="font-medium text-ink text-[12px]">{main.provider} · {main.title}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => go('/expanded-survey-image')}
-              className="absolute left-[723px] top-[382px] w-[109px] h-[36px] rounded-[5px] bg-white text-left"
-            >
-              <span className="ml-[15px] text-muted text-[12px]">Enlarge ↗</span>
-            </button>
+            <RecordedImage image={main} />
           </>
         )}
       </section>
@@ -103,14 +91,14 @@ export default function SurveyEvidence() {
       </section>
 
       {/* Survey sources */}
-      <section className="absolute left-[56px] top-[744px] w-[1328px] h-[165px] overflow-hidden">
+      <section className="absolute left-[56px] top-[744px] w-[1328px] h-[165px] overflow-x-auto">
         <p className="absolute left-0 top-0 font-semibold text-ink text-[18px]">Survey sources</p>
         {!sources.length && <p className="absolute left-0 top-[42px] text-muted text-[13px]">No images.</p>}
         {sources.map((s) => (
           <div key={s.key}>
             <button
               type="button"
-              onClick={() => go('/expanded-survey-image')}
+              onClick={() => navigate('/expanded-survey-image', {state:{imageId:s.key}})}
               className="absolute top-[42px] w-[168px] h-[106px] rounded-[6px] overflow-hidden bg-model"
               style={{ left: `${s.left}px` }}
             >

@@ -15,7 +15,10 @@ export default function Assumptions() {
   const [a, setA] = useState(null)
   const [err, setErr] = useState(null)
   useEffect(() => {
-    getAssumptions(run.portfolio?.city).then(setA).catch((e) => setErr(e.message))
+    let alive = true
+    setA(null); setErr(null)
+    getAssumptions(run.portfolio?.city).then((a) => alive && setA(a)).catch((e) => alive && setErr(e.message))
+    return () => { alive = false }
   }, [run.portfolio?.city])
   const g = a?.global || {}
   const c = a?.city_values || {}
@@ -55,6 +58,12 @@ export default function Assumptions() {
               <p className="font-medium text-ink text-[13px]">Sources as recorded</p>
               {g.source && <p><span className="font-medium">Global: </span>{g.source}</p>}
               {c.source && <p><span className="font-medium">{a.city}: </span>{c.source}</p>}
+              {Object.entries(a.upgrades || {}).map(([type, input]) => <div key={type}>
+                <p className="font-medium text-ink">{type.replaceAll('_', ' ')}</p>
+                <p>{input.source || 'Source unavailable'}</p>
+              </div>)}
+              <p>These are model assumptions, not measured building consumption or contractor quotes.</p>
+              {(a.notes || []).map((note, i) => <p key={i}>{typeof note === 'string' ? note : JSON.stringify(note)}</p>)}
             </div>
           )}
         </div>

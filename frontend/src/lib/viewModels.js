@@ -178,7 +178,7 @@ export function riskModel(layout) {
     axis: [0, 0.25, 0.5, 0.75, 1].map((f) => ({ label: signedAxis(xmin + f * span), left: HIST.left + f * HIST.width - 14 })),
     expNpv: signedUsdK(h.exp_npv), pLoss: h.p_loss == null ? NA : `${(h.p_loss * 100).toFixed(1)}%`,
     worst5: signedUsdK(h.cvar5), scope: h.scope,
-    scenarios: bins.reduce((s, b) => s + (b.count || 0), 0), // the histogram counts every simulated scenario once
+    scenarios: bins.reduce((s, b) => s + (b.count || 0), 0), // displayed counts; the engine trims tail percentiles from its histogram
   }
 }
 const signedAxis = (v) => (Math.abs(v) < 500 ? '$0k' : `${v < 0 ? '−' : ''}$${Math.abs(Math.round(v / 1000)).toLocaleString('en-US')}k`)
@@ -244,20 +244,23 @@ export function evidenceModel(layout, mediaUrl) {
 
 // ---- Financing / approval ----------------------------------------------------------------------------------------------
 export function financingModel(layout, state) {
+  const plan = state?.plan?.plan_id && state.plan.plan_id === state.plan_id ? state.plan : null
+  const saved = plan?.financing
   const f = widget(layout, 'financing_card')
   const planId = planIdOf(layout, state)
   const t = widget(layout, 'plan_table')
-  if (!f && !t) return null
-  const bills = f?.bills?.length ? f.bills.map((b) => ({ name: b.contractor, amount: usdK(b.amount) }))
+  if (!f && !t && !plan) return null
+  const recordedBills = f?.bills || plan?.bills
+  const bills = recordedBills?.length ? recordedBills.map((b) => ({ name: b.contractor, amount: usdK(b.amount) }))
     : null
   return {
-    planId, executed: f?.state === 'executed', nessieIds: f?.nessie_ids ?? null,
-    total: usdK(f?.total_upfront_usd ?? t?.totals?.upfront_usd), totalUsd: f?.total_upfront_usd ?? t?.totals?.upfront_usd ?? null,
+    planId, executed: (saved?.state ?? f?.state) === 'executed', nessieIds: saved?.nessie_ids ?? f?.nessie_ids ?? null,
+    total: usdK(f?.total_upfront_usd ?? t?.totals?.upfront_usd ?? plan?.total_upfront), totalUsd: f?.total_upfront_usd ?? t?.totals?.upfront_usd ?? plan?.total_upfront ?? null,
     bills, upgrades: t ? t.rows.length : null,
   }
 }
 
-export const memoMarkdown = (layout) => widget(layout, 'memo')?.markdown ?? null
+export const memoMarkdown = (layout, state) => widget(layout, 'memo')?.markdown || (state?.plan?.plan_id && state.plan.plan_id === state.plan_id ? state.memo_markdown : null) || null
 
 // ---- Survey screens: from the activity events -----------------------------------------------------------------------------
 export const clock = (ts) => (ts ? new Date(ts).toISOString().slice(11, 19) : '')

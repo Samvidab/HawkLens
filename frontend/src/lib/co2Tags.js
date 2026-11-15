@@ -1,7 +1,7 @@
 // Verified CO2-emitting equipment in the 3D tour (VITE_EMISSIONS_3D). Data: GET /co2_equipment/{building_id}
 // (backend/app/widgets/co2_equipment.py): only lighting fixtures and air diffusers that the agents saw and the verifier
 // confirmed, each with its claim, the verifier's result and the panorama it was seen in. No shares, tonnes or plan links.
-// A tag is anchored on the tour's own sweep for that panorama (matched by id), so no coordinate is converted or guessed;
+// An observation marker is anchored on the tour's own sweep for that panorama (matched by id), so no coordinate is converted or guessed;
 // an item whose panorama is not in the tour gets no tag.
 
 /** VITE_EMISSIONS_3D=1 turns the feature on (read at call time so tests can stub it). */
@@ -11,8 +11,8 @@ export const sdkKey = () => import.meta.env.VITE_MATTERPORT_SDK_KEY || ''
 
 export const NO_SOURCES = 'No verified CO₂ sources located in this scan'
 export const KIND = {
-  lighting: { name: 'Lighting', css: '#e0a800', rgb: { r: 0.88, g: 0.66, b: 0 }, stem: 0.6 },
-  hvac: { name: 'Ventilation / HVAC', css: '#2f7fd1', rgb: { r: 0.18, g: 0.5, b: 0.82 }, stem: 0.45 },
+  lighting: { name: 'Lighting', css: '#e0a800', rgb: { r: 0.88, g: 0.66, b: 0 } },
+  hvac: { name: 'Ventilation / HVAC', css: '#2f7fd1', rgb: { r: 0.18, g: 0.5, b: 0.82 } },
 }
 
 /** Showcase model id from a showcase_url (".../show/?m=ID..."), else null. */
@@ -51,12 +51,17 @@ export function tagPlan(items, sweeps, apiBase) {
     const k = KIND[it.kind]
     if (!s?.position || !k) return
     placed.add(i)
-    // the tag stands on the floor under the panorama (its puck), so it is in view from that panorama when the camera
-    // looks down; anchored at the camera position itself it would be behind the lens
-    targets.push({ index: i, sweepId: s.id, heading: s.rotation?.y ?? null })
+    // Preserve the observation marker. Never promote a scan position to a fixture
+    // anchor, and never add a guessed height or a decorative equipment stem.
+    // Face 0 is documented by the recorder as the ceiling face. This selects the
+    // ceiling view only; it does not locate a particular fixture within that face.
+    // Horizon-face yaw cannot be inferred from a face number without extrinsics.
+    const ceiling = it.image_marks?.some((m) => m.image_id === it.image_id && m.image_id.endsWith('_0'))
+    targets.push({ index: i, sweepId: s.id || s.sid || s.uuid,
+      rotation: { x: ceiling ? 90 : 0, y: s.rotation?.y ?? 0 } })
     descriptors.push({
-      label: tagLabel(it), description: tagDescription(it, apiBase), color: k.rgb,
-      anchorPosition: { ...(s.puckPosition || s.position) }, stemVector: { x: 0, y: k.stem, z: 0 },
+      label: 'Photo taken here', description: `Photo taken here. Fixture position has not been established.\n\n${tagLabel(it)}\n\n${tagDescription(it, apiBase)}`, color: k.rgb,
+      anchorPosition: { ...(s.puckPosition || s.position) }, stemVector: { x: 0, y: 0, z: 0 },
     })
   })
   return { descriptors, placed, targets }

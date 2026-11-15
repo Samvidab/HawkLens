@@ -27,8 +27,7 @@ export default function PlanDetails() {
   const tableH = rows.length > 3 ? 90 + rows.length * rowH + 12 : 193
   const pickBar = async (b) => {
     if (!b.upgradeId) return
-    await run.act('select_bar', { upgrade_id: b.upgradeId }).catch(() => {})
-    navigate('/building')
+    try { await run.act('select_bar', { upgrade_id: b.upgradeId }); navigate('/building') } catch {}
   }
 
   return (

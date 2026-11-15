@@ -73,6 +73,10 @@ async def test_build_matches_the_panorama_by_exact_position(bdir, monkeypatch):
     out = await co2.build("b1")
     assert out["model_id"] == "M1" and out["tour_url"] == "https://my.matterport.com/show/?m=M1" and out["tags_in_tour"] is True
     hvac, light = out["items"]
+    assert hvac["placement"]["type"] == "observation"
+    assert hvac["placement"]["label"] == "Photo taken here"
+    assert "calibrated" in hvac["placement"]["reason"]
+    assert hvac["image_marks"] == []
     assert (hvac["pano_id"], hvac["image_id"], hvac["image_url"]) == ("pA", "mpp_M1_pA_3", "/media/mpp_M1_pA_3")
     assert (light["pano_id"], light["image_id"], light["image_url"]) == (None, None, None)  # no panorama there: not guessed
 
@@ -92,3 +96,20 @@ def test_route(bdir, monkeypatch):
     assert c.get("/co2_equipment/b1").json() == {"building_id": "b1", "model_id": None, "tour_model_id": None, "tour_url": None,
                                                   "tour_basis": None, "tags_in_tour": False, "items": []}
     assert c.get("/co2_equipment/nope").status_code == 404
+
+
+async def test_matching_image_marks_are_returned_without_changing_claims(bdir, monkeypatch):
+    cid = "b1.interior.lighting"
+    c = CLAIM(cid, "fluorescent", ev=["mpp_M_pA_0", "mpp_M_pB_0"])
+    c["marks"] = [{"image_id": "mpp_M_pA_0", "label": "troffer", "bbox": [0.1, 0.2, 0.4, 0.5]},
+                  {"image_id": "mpp_M_pB_0", "label": "troffer", "bbox": [0, 0, 1, 1]}]
+    write(bdir, {"model_id": "M", "pins": [PIN(cid, "troffer", [1, 2, 3])]}, [c])
+
+    async def panos(_):
+        return [PanoramaRef(pano_id="pA", model_id="M", xyz=(1, 2, 3), skybox_urls=[])]
+    monkeypatch.setattr(mp, "panoramas", panos)
+    before = (bdir / "claims.json").read_bytes()
+    item = (await co2.build("b1"))["items"][0]
+    assert item["image_marks"] == c["marks"][:1]
+    assert item["placement"]["type"] == "observation"
+    assert (bdir / "claims.json").read_bytes() == before

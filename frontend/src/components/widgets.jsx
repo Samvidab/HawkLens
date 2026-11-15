@@ -64,7 +64,7 @@ const rings = (wkt) => (String(wkt || '').match(/\(([^()]+)\)/g) || []).map((r) 
 
 export const hasFootprints = (buildings) => (buildings || []).some((b) => rings(b.footprint_wkt).length > 0)
 
-/** Real building footprints (WKT from the records) drawn in 2D. buildings: [{building_id, name, footprint_wkt, excluded}].
+/** Backend footprint geometry (including estimated shapes) drawn in 2D. buildings: [{building_id, name, footprint_wkt, excluded}].
  *  Returns null when no footprint is recorded, so the caller shows "not available". */
 export function FootprintMap({ buildings, focusId, onPick, height = 260, className = '' }) {
   const shapes = buildings.map((b) => ({ b, rings: rings(b.footprint_wkt) })).filter((s) => s.rings.length)
@@ -95,7 +95,7 @@ function Portfolio3D({ p }) {
   return (
     <div className="space-y-2">
       {hasFootprints(p.buildings) ? svg : <Empty>Footprints not available.</Empty>}
-      <p className="text-[11px] text-muted">Footprints in 2D from the building records (a 3D view is not available). Click a building to open it.</p>
+      <p className="text-[11px] text-muted">2D footprint geometry from backend profiles; estimated shapes are not surveyed boundaries. See building details for the source. Click a building to open it.</p>
       <ul className="grid grid-cols-2 gap-x-4 text-[12px]">
         {p.buildings.map((b) => (
           <li key={b.building_id} className="flex justify-between border-b border-line/60 py-1">

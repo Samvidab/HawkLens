@@ -200,3 +200,25 @@ describe('view hooks: the layout depends on what the owner is looking at', () =>
     await waitFor(() => expect(api.compose).toHaveBeenCalledWith('run_1', 'open_building', { building_id: 'b1' }), { timeout: 3000 })
   })
 })
+
+it('serializes owner actions and refreshes the canonical state before the next action', async () => {
+  const { api } = fakeApi({ events: [ev(0, 'done')], states: [{ status: 'ready', layout: overview, plan_id: 'p' }] })
+  const { result } = renderHook(() => useRun(), { wrapper: wrap(api) })
+  await act(async () => { await result.current.start(GOAL) })
+  await waitFor(() => expect(result.current.phase).toBe('ready'))
+  const order = []
+  api.compose.mockImplementation(async (id, type) => { order.push(type); await new Promise(r => setTimeout(r, 10)); return overview })
+  await act(async () => { await Promise.all([result.current.act('set_target', { target_pct: 20 }), result.current.act('set_risk', { risk_lambda: 0.2 })]) })
+  expect(order).toEqual(['set_target', 'set_risk'])
+  expect(result.current.busy).toBe(0)
+})
+
+it('retains the saved run id and reports a resume network error instead of silently resetting it', async () => {
+  sessionStorage.setItem('hawklens.runId', 'recorded')
+  const { api } = fakeApi({ states: [Object.assign(new Error('Backend unavailable'), { status: 0 })] })
+  const { result } = renderHook(() => useRun(), { wrapper: wrap(api) })
+  await waitFor(() => expect(result.current.phase).toBe('error'))
+  expect(result.current.error).toBe('Backend unavailable')
+  expect(sessionStorage.getItem('hawklens.runId')).toBe('recorded')
+  expect(result.current.layout).toBeNull()
+})

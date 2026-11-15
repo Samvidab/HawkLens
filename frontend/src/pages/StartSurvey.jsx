@@ -116,7 +116,7 @@ export default function StartSurvey() {
       )}
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px] leading-[1.45]">
-        Buildings from GET /portfolio · the agents work from the portfolio records and the survey cache
+        {run.health?.cache_mode === 'read_only' ? 'Cache-only mode · replay uses saved survey data; new surveys cannot fetch missing external responses.' : 'Buildings from GET /portfolio · the agents work from the portfolio records and the survey cache'}
       </p>
     </Page>
   )

@@ -4,13 +4,20 @@ import { useRun } from '../lib/store'
 export default function BuildingExcluded() {
   const navigate = useNavigate()
   const run = useRun()
-  const b = useLocation().state // { id, name } from the building screen
+  const selected = useLocation().state
+  const excluded = run.state?.plan?.excluded_building_ids || []
+  const id = selected?.id || (excluded.length === 1 ? excluded[0] : null)
+  const b = id ? { id, name: selected?.name || run.portfolio?.buildings?.find((b) => b.building_id === id)?.name } : null
+  const confirmed = !!b && excluded.includes(b.id)
   const again = async () => {
-    if (run.layout && b?.id) {
-      await run.act('include_building', { building_id: b.id }).catch(() => {})
-      await run.act('open_building', { building_id: b.id }).catch(() => {})
-    }
-    navigate('/building')
+    try {
+      if (run.layout && b?.id) {
+        await run.act('include_building', { building_id: b.id })
+        await run.act('open_building', { building_id: b.id })
+      }
+      navigate('/building')
+    } catch {}
+
   }
 
   return (
@@ -25,14 +32,10 @@ export default function BuildingExcluded() {
 
         <div className="absolute left-[440px] top-[300px] w-[560px] h-[380px] rounded-[10px] bg-white overflow-hidden">
           <p className="absolute left-[28px] top-[28px] font-semibold text-ink text-[20px] leading-[1.45]">
-            {b?.name ? `${b.name} excluded` : 'Building excluded'}
+            {confirmed && b?.name ? `${b.name} excluded` : 'Exclusion status unavailable'}
           </p>
           <p className="absolute left-[28px] top-[81px] text-muted text-[14px] leading-[1.45]">
-            All upgrades for this building are off.
-            <br />
-            The portfolio baseline still includes its emissions;
-            <br />
-            only its retrofit options are excluded.
+            {confirmed ? <>All upgrades for this building are off.<br />The portfolio baseline still includes its emissions;<br />only its retrofit options are excluded.</> : 'Open a building and exclude it to view its recorded exclusion status.'}
           </p>
           <button
             type="button"
@@ -44,7 +47,7 @@ export default function BuildingExcluded() {
           <button
             type="button"
             onClick={again}
-            disabled={!b?.id}
+            disabled={!confirmed}
             className="absolute left-[28px] top-[281px] w-[504px] h-[46px] rounded-[6px] bg-model text-brand text-[13px] font-medium leading-[1.45] hover:brightness-95 transition disabled:opacity-50"
           >
             Include building again

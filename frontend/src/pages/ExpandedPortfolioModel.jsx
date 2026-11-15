@@ -10,8 +10,7 @@ export default function ExpandedPortfolioModel() {
   const run = useOverview()
   const p = widget(run.layout, 'portfolio_3d')
   const open = async (b) => {
-    await run.act('open_building', { building_id: b.building_id }).catch(() => {})
-    navigate('/building')
+    try { await run.act('open_building', { building_id: b.building_id }); navigate('/building') } catch {}
   }
 
   return (
@@ -29,7 +28,7 @@ export default function ExpandedPortfolioModel() {
 
       <section className="absolute left-[84px] top-[120px] w-[1272px] h-[780px] rounded-[12px] bg-model overflow-hidden p-[30px]">
         <p className="font-medium text-ink text-[20px]">Your buildings</p>
-        <p className="text-muted text-[15px] mb-4">Click a footprint to open its building. Footprints from the building records, drawn in 2D.</p>
+        <p className="text-muted text-[15px] mb-4">Click a footprint to open its building. Backend footprint geometry is drawn in 2D; estimated shapes are not surveyed boundaries. See building details for the source.</p>
         {hasFootprints(p?.buildings)
           ? <FootprintMap buildings={p.buildings} focusId={p.focus_building_id} onPick={open} height={620} />
           : <p className="text-muted text-[14px]">Building footprints not available.</p>}

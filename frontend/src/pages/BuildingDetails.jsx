@@ -54,8 +54,10 @@ export default function BuildingDetails() {
     await run.act(...verb).catch(() => {})
   }
   const exclude = async () => {
-    await run.act('exclude_building', { building_id: bm.id }).catch(() => {})
-    navigate('/building-excluded', { state: { id: bm.id, name: bm.name } })
+    try {
+      await run.act('exclude_building', { building_id: bm.id })
+      navigate('/building-excluded', { state: { id: bm.id, name: bm.name } })
+    } catch {}
   }
 
   if (!bm) {
@@ -110,16 +112,8 @@ export default function BuildingDetails() {
             </button>
           </div>
         )}
-        {!emissions3dOn() && (
-          <button
-            type="button"
-            onClick={() => go('/expanded-building-model')}
-            className="absolute left-[736px] top-[339px] text-muted text-[12px] hover:text-ink"
-          >
-            Expand ↗
-          </button>
-        )}
       </section>
+      <button type="button" onClick={() => go('/expanded-building-model')} className="absolute left-[56px] top-[650px] text-brand text-[13px] underline">Expand interactive building tour ↗</button>
 
       {/* Property profile */}
       <section className="absolute left-[944px] top-[262px] w-[440px] h-[375px] overflow-hidden">
@@ -195,10 +189,10 @@ export default function BuildingDetails() {
         {ups.map((u, i) => {
           const top = 105 + i * rowH
           return (
-            <div key={u.key}>
+            <div key={u.key} className={u.highlighted ? 'bg-brand/10' : undefined}>
               <div className="absolute left-0 w-[1328px] h-px bg-line" style={{ top: `${top - 8}px` }} />
               <p className="absolute left-0 font-medium text-ink text-[14px]" style={{ top: `${top}px` }}>
-                {u.name}
+                <span title={u.reason}>{u.highlighted ? 'Selected: ' : ''}{u.name}</span>{u.ownerIncluded && ' · owner-included'}
                 {u.verified === 'assumed' ? <Estimate>assumed</Estimate> : u.verified !== 'verified' ? ` · ${u.verified}` : ''}
               </p>
               <p className="absolute left-[563px] text-ink text-[14px]" style={{ top: `${top}px` }}>

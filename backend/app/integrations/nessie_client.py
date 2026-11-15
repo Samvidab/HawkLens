@@ -12,6 +12,7 @@ Signatures are the TRD's and do not change between modes.
 from __future__ import annotations
 
 import hashlib
+import math
 import importlib
 import os
 import re
@@ -153,6 +154,20 @@ _BILL_NICK = re.compile(r"^(?P<building>.+)_(?P<utility>electricity|gas)_(?P<mon
 
 
 def _live_get_bills(building_id: str) -> list[Bill]:
+    # Vedika 58ecff2: optional dedicated building-account mapping. Keep the
+    # support lane's shared-account filter and safe transfer behavior otherwise.
+    account = env_value("NESSIE_BUILDING_ACCOUNT_" + building_id.replace("-", "_").upper())
+    if account:
+        out = []
+        for item in _call("get", f"/accounts/{account}/bills"):
+            amount, paid = item.get("payment_amount"), item.get("payment_date")
+            if (not item.get("_id") or not isinstance(paid, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", paid)
+                    or isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount < 0):
+                continue
+            match = _BILL_NICK.match(str(item.get("nickname", "")))
+            out.append(Bill(bill_id=str(item["_id"]), building_id=str(building_id), month=paid[:7],
+                            amount_usd=float(amount), kwh=None, utility=match["utility"] if match else None))
+        return sorted(out, key=lambda b: b.month)
     out = []
     for b in _her()["get_bills"].get_bills():  # her function: every bill on the operating account
         m = _BILL_NICK.match(str(b.get("nickname", "")))

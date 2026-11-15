@@ -9,6 +9,7 @@ import { feedRows, surveyProgress } from '../lib/viewModels'
 export default function SurveyInProgress() {
   const navigate = useNavigate()
   const run = useRun()
+  const recorded = !!run.demoRunId && run.runId === run.demoRunId
   const total = run.state?.building_ids?.length || run.portfolio?.buildings?.length || null
   const events = feedRows(run.events, 6)
   const progress = surveyProgress(run.events, total)
@@ -26,7 +27,7 @@ export default function SurveyInProgress() {
         ←&nbsp;&nbsp;Portfolio
       </button>
       <h1 className="absolute left-[56px] top-[148px] font-semibold text-ink text-[32px] leading-[1.45]">
-        Surveying your portfolio
+        {recorded ? 'Replaying recorded survey' : 'Surveying your portfolio'}
       </h1>
       <p className="absolute left-[56px] top-[202px] text-muted text-[14px] leading-[1.45]">
         Pulling evidence, checking feasibility and verifying claims.
@@ -81,7 +82,7 @@ export default function SurveyInProgress() {
       </section>
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px] leading-[1.45]">
-        Live survey · events stream from the backend (GET /events)
+        {recorded ? 'Recorded survey replay · saved events from the backend' : 'Survey events from the backend'}
       </p>
     </Page>
   )

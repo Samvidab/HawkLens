@@ -78,6 +78,50 @@ test('every building page: tour via the SDK, one tag per verified CO2 source loc
         const tag = await box.getAttribute('data-focus-tag')
         await expect(box).toHaveAttribute('data-current-sweep', sweep, { timeout: 15_000 })
         await expect(box).toHaveAttribute('data-docked-tag', tag, { timeout: 15_000 })
+        await expect(page.getByTestId('evidence-image')).toHaveCount(0)
+        await page.getByRole('button', { name: 'Inspection Close-Up', exact: true }).click()
+        const evidence = page.getByRole('dialog')
+        await expect(evidence).toBeVisible()
+        const image = page.getByTestId('evidence-image')
+        await expect(image).toBeVisible()
+        await expect(page.getByTestId('evidence-overlay')).toBeVisible()
+        const matching = co2.items[i].image_marks.filter((m) => m.image_id === co2.items[i].image_id && m.bbox)
+        await expect(page.getByTestId('evidence-mark')).toHaveCount(matching.length)
+        const checkAlignment = async () => {
+          const bounds = await image.boundingBox()
+          const dimensions = await image.evaluate((el) => ({ w: el.naturalWidth, h: el.naturalHeight, blur: getComputedStyle(el).filter }))
+          expect(dimensions.w).toBe(2048)
+          expect(dimensions.h).toBe(2048)
+          expect(dimensions.blur).toBe('none')
+          expect(bounds.width).toBeLessThanOrEqual(dimensions.w)
+          for (const [j, mark] of matching.entries()) {
+            const rect = page.getByTestId('evidence-mark').nth(j).locator('ellipse').first()
+            // Measure stored geometry, excluding the 6px outline's painted extent.
+            const r = await rect.evaluate((el) => {
+              const b = el.getBBox()
+              const matrix = el.getScreenCTM()
+              const a = new DOMPoint(b.x, b.y).matrixTransform(matrix)
+              const z = new DOMPoint(b.x + b.width, b.y + b.height).matrixTransform(matrix)
+              return { x: a.x, y: a.y, width: z.x - a.x, height: z.y - a.y }
+            })
+            expect(Math.abs(r.x - (bounds.x + mark.bbox[0] * bounds.width))).toBeLessThan(1)
+            expect(Math.abs(r.y - (bounds.y + mark.bbox[1] * bounds.height))).toBeLessThan(1)
+            expect(Math.abs(r.width - (mark.bbox[2] - mark.bbox[0]) * bounds.width)).toBeLessThan(1)
+            expect(Math.abs(r.height - (mark.bbox[3] - mark.bbox[1]) * bounds.height)).toBeLessThan(1)
+          }
+        }
+        await checkAlignment()
+        if (visited === 0) {
+          await page.screenshot({ path: `${SHOTS}/evidence-${b.building_id}.png` })
+          await page.getByRole('button', { name: 'View at original size (1:1)' }).click()
+          await checkAlignment()
+          await page.getByRole('button', { name: 'Fit image', exact: true }).click()
+          await page.setViewportSize({ width: 1000, height: 800 })
+          await checkAlignment()
+          await page.setViewportSize({ width: 1500, height: 1050 })
+        }
+        await page.getByRole('button', { name: 'Close evidence' }).click()
+        await expect(evidence).toHaveCount(0)
         visited++
         if (visited === 1) { await page.waitForTimeout(2500); await page.screenshot({ path: `${SHOTS}/co2-${b.building_id}-item.png` }) }
       }

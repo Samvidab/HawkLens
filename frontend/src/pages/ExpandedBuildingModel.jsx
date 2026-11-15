@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
 import { useBuildingFocus } from '../lib/store'
 import { buildingModel } from '../lib/viewModels'
+import Co2Tour from '../components/Co2Tour'
+import { emissions3dOn } from '../lib/co2Tags'
 import { BuildingPicture } from './BuildingDetails'
 
 // Strict: the Matterport tour or the recorded footprint, large; never a schematic drawing.
@@ -24,7 +26,7 @@ export default function ExpandedBuildingModel() {
       </button>
 
       <section className="absolute left-[84px] top-[120px] w-[1272px] h-[780px] rounded-[12px] bg-model overflow-hidden">
-        <BuildingPicture layout={run.layout} height={640} />
+        {emissions3dOn() && bm?.id ? <Co2Tour buildingId={bm.id} /> : <BuildingPicture layout={run.layout} height={640} />}
       </section>
     </Page>
   )

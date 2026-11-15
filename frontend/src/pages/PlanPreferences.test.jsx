@@ -16,10 +16,14 @@ const withRisk = (supported, lambda = 0.2) => {
 
 function setup(layout) {
   sessionStorage.setItem('hawklens.runId', 'run_1')
+  let saved = layout
   const api = {
     getPortfolio: vi.fn(async () => ({ city: 'Houston', buildings: [] })), getHealth: vi.fn(async () => ({})),
-    getState: vi.fn(async () => ({ status: 'ready', layout, plan_id: 'p1' })),
-    compose: vi.fn(async () => layout), openEvents: vi.fn(() => () => {}), startRun: vi.fn(),
+    getState: vi.fn(async () => ({ status: 'ready', layout: saved, plan_id: 'p1' })),
+    compose: vi.fn(async (_id, type, payload) => {
+      if (type === 'set_risk') saved = withRisk(true, payload.risk_lambda)
+      return saved
+    }), openEvents: vi.fn(() => () => {}), startRun: vi.fn(),
   }
   render(<MemoryRouter><RunProvider api={api}><PlanPreferences /></RunProvider></MemoryRouter>)
   return api
@@ -45,7 +49,7 @@ describe('risk preference chips', () => {
     for (const n of ['Cautious', 'Balanced', 'Growth']) expect(chip(n).disabled).toBe(false)
     expect(chip('Balanced').getAttribute('aria-pressed')).toBe('true') // lambda 0.2 is shown as Balanced
     fireEvent.click(chip('Cautious')); await waitFor(() => expect(api.compose).toHaveBeenLastCalledWith('run_1', 'set_risk', { risk_lambda: 0.4 }))
-    expect(chip('Cautious').getAttribute('aria-pressed')).toBe('true')
+    await waitFor(() => expect(chip('Cautious').getAttribute('aria-pressed')).toBe('true'))
     fireEvent.click(chip('Growth')); await waitFor(() => expect(api.compose).toHaveBeenLastCalledWith('run_1', 'set_risk', { risk_lambda: 0 }))
     fireEvent.click(chip('Balanced')); await waitFor(() => expect(api.compose).toHaveBeenLastCalledWith('run_1', 'set_risk', { risk_lambda: 0.2 }))
     expect(api.compose).toHaveBeenCalledTimes(3)

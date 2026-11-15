@@ -89,7 +89,7 @@ export default function RiskAndTarget() {
           Worst 5% average
         </p>
         <p className="absolute left-[19px] top-[327px] text-muted text-[11px] leading-[1.45]">
-          {rm ? `${rm.scenarios.toLocaleString('en-US')} simulated scenarios` : `Scenarios ${NA}`} · {stub ? 'sample prices (stub engine)' : 'quant engine'}
+          {rm ? `${rm.scenarios.toLocaleString('en-US')} scenarios shown in histogram` : `Scenarios ${NA}`} · {stub ? 'sample prices (stub engine)' : 'quant engine'}
         </p>
       </section>
 

@@ -1,0 +1,102 @@
+{
+  "city": "Houston",
+  "generated_at": "2026-11-14T06:22:06+00:00",
+  "buildings": [
+    {
+      "building_id": "239601",
+      "name": "Paragon Center I",
+      "address": "450 Gears Rd, Houston, TX 77067",
+      "lat": 29.9465882,
+      "lon": -95.4212289,
+      "matterport_model_id": "FTkFHSZ4isL",
+      "showcase_url": "https://my.matterport.com/show/?m=FTkFHSZ4isL",
+      "stories": 8,
+      "sqft": 180030.0,
+      "year_built": 1984
+    },
+    {
+      "building_id": "239618",
+      "name": "Southwest Center",
+      "address": "6671 Southwest Fwy, houston, TX 77074",
+      "lat": 29.7145739,
+      "lon": -95.4989982,
+      "matterport_model_id": "BfYuPVALqi5",
+      "showcase_url": "https://my.matterport.com/show/?m=BfYuPVALqi5",
+      "stories": 8,
+      "sqft": 149907.0,
+      "year_built": 1984
+    },
+    {
+      "building_id": "234648",
+      "name": "CityNorth 6",
+      "address": "12450 Greenspoint Dr, Houston, TX 77060",
+      "lat": 29.948556,
+      "lon": -95.409407,
+      "matterport_model_id": "qcdyTgY98qu",
+      "showcase_url": "https://my.matterport.com/show/?m=qcdyTgY98qu",
+      "stories": 14,
+      "sqft": 356468.0,
+      "year_built": 1987
+    },
+    {
+      "building_id": "239890",
+      "name": "Denmark House",
+      "address": "12777 Jones Rd, Houston, TX 77070",
+      "lat": 29.9581009,
+      "lon": -95.5859031,
+      "matterport_model_id": "4z2y8ayqrWs",
+      "showcase_url": "https://my.matterport.com/show/?m=4z2y8ayqrWs",
+      "stories": 4,
+      "sqft": 119388.0,
+      "year_built": 1982
+    },
+    {
+      "building_id": "23551",
+      "name": "Harwin Plaza II Bldg",
+      "address": "7457 Harwin Dr, Houston, TX 77036",
+      "lat": 29.7164302,
+      "lon": -95.5148383,
+      "matterport_model_id": "hu9LX64osUN",
+      "showcase_url": "https://my.matterport.com/show/?m=hu9LX64osUN",
+      "stories": 3,
+      "sqft": 105717.0,
+      "year_built": 1983
+    },
+    {
+      "building_id": "239731",
+      "name": "Brookhollow Two",
+      "address": "9800 Northwest Fwy, Houston, TX 77092",
+      "lat": 29.804894,
+      "lon": -95.451614,
+      "matterport_model_id": "BfjYay5KMPo",
+      "showcase_url": "https://my.matterport.com/show/?m=BfjYay5KMPo",
+      "stories": 6,
+      "sqft": 100763.0,
+      "year_built": 1972
+    },
+    {
+      "building_id": "362982",
+      "name": "Legacy Pointe",
+      "address": "9700 Bissonnet St, Houston, TX 77036",
+      "lat": 29.6774165,
+      "lon": -95.5453569,
+      "matterport_model_id": "FNC3RNdVtoP",
+      "showcase_url": "https://my.matterport.com/show/?m=FNC3RNdVtoP",
+      "stories": 2,
+      "sqft": 525580.0,
+      "year_built": 1975
+    },
+    {
+      "building_id": "6550930",
+      "name": "7900 Fannin",
+      "address": "7900 Fannin St, Houston, TX 77054",
+      "lat": 29.6915081,
+      "lon": -95.4034524,
+      "matterport_model_id": "YJLLXyw1xbf",
+      "showcase_url": "https://my.matterport.com/show/?m=YJLLXyw1xbf",
+      "stories": 4,
+      "sqft": 175923.0,
+      "year_built": 2004
+    }
+  ]
+}
