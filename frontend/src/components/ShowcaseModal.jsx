@@ -1,4 +1,5 @@
 import { showcaseSrc } from '../lib/api'
+import Co2Highlight from './Co2Tour'
 
 // Full-frame overlay that embeds the interactive Matterport Showcase tour for one
 // model. Click the backdrop or the close button to dismiss.
@@ -38,14 +39,17 @@ export default function ShowcaseModal({ property, onClose }) {
             </button>
           </div>
         </div>
-        <iframe
-          title={`Matterport tour of ${property.name || property.id}`}
-          src={showcaseSrc(property.id)}
-          className="flex-1 w-full"
-          frameBorder="0"
-          allow="xr-spatial-tracking; fullscreen"
-          allowFullScreen
-        />
+        {/* VITE_EMISSIONS_3D: verified CO2 tags + list when this model is a scan our agents surveyed; otherwise the iframe as is */}
+        <Co2Highlight modelId={property.id}>
+          <iframe
+            title={`Matterport tour of ${property.name || property.id}`}
+            src={showcaseSrc(property.id)}
+            className="flex-1 w-full"
+            frameBorder="0"
+            allow="xr-spatial-tracking; fullscreen"
+            allowFullScreen
+          />
+        </Co2Highlight>
       </div>
     </div>
   )
