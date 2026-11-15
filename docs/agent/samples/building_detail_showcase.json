@@ -30,6 +30,7 @@
           "rba_sqft": 900000.0,
           "occupancy_pct": 88.0,
           "matterport_model_id": "SYNTH-MODEL",
+          "showcase_url": null,
           "source_fields": {
             "stories": "NumberOfStories",
             "rba_sqft": "RBA",

@@ -4,8 +4,11 @@ Survey subgraph:
     records → inspect (aerial ∥ interior on the hero) → site_engineer → verify ─┬─► finalize
                                                           ▲                     │ claims sent back
                                                           └──── reinspect ◄─────┘
-Control flow is deterministic; Gemini only writes the orchestrator's plan lines (checked
-for invented numbers, template fallback) and does the inspectors'/verifier's vision work.
+inspect: with AGENTIC_SURVEY (default on) the investigator agent (agents/investigator.py) chooses
+which evidence to pull per building; the fixed aerial ∥ interior pipeline is its fallback.
+Graph edges are fixed; inside `inspect` the investigator (Gemini) chooses each tool call. Gemini
+also writes the orchestrator's plan lines (checked for invented numbers, template fallback) and
+does the inspectors'/verifier's vision work.
 Concurrency: at most MAX_CONCURRENT_BUILDINGS surveys at once (semaphore per run).
 """
 from __future__ import annotations
@@ -53,6 +56,8 @@ class SurveyState(TypedDict, total=False):
     upgrades: list[FeasibleUpgrade]
     sent_back: dict[str, str]  # claim_id → verifier question (T2.2)
     _verify_round: int
+    goal: Goal  # optional: the owner's goal, for the investigator
+    investigation: list[dict]  # investigator tool calls (AGENTIC_SURVEY)
 
 
 async def records_node(s: SurveyState) -> dict:
@@ -60,6 +65,20 @@ async def records_node(s: SurveyState) -> dict:
 
 
 async def inspect_node(s: SurveyState) -> dict:
+    from app.agents import investigator
+    if investigator.enabled():
+        try:
+            return await investigator.investigate(s["profile"], s["run_id"], s.get("goal"), bool(s.get("hero")))
+        except Exception as e:  # noqa: BLE001 - the fixed pipeline below is the fallback
+            log.exception("investigator failed for %s", s["building_id"])
+            emit(s["run_id"], "Investigator", "error",
+                 f"investigator failed ({type(e).__name__}); running the fixed survey", s["building_id"],
+                 building_name=s["profile"].name)
+    return await fixed_inspect(s)
+
+
+async def fixed_inspect(s: SurveyState) -> dict:
+    """The fixed pipeline: aerial always, interior on the hero's scan."""
     profile = s["profile"]
     tasks = [aerial.inspect(profile, s["run_id"])]
     interior_mod = _interior()
@@ -123,9 +142,23 @@ async def finalize_node(s: SurveyState) -> dict:
     aerial.save(profile, state["aerial"])
     if state.get("interior"):
         _interior().save(profile, state["interior"])
+    else:
+        clear_interior(profile)
     store.save_claims(bid, state["claims"])
+    # Contract with widgets/resolver.py: verification.json = list[Claim] with final statuses.
+    write_json_atomic(store.building_dir(bid) / "verification.json",
+                      [c.model_dump(mode="json") for c in state["claims"]])
     write_json_atomic(store.building_dir(bid) / "feasibility.json", [u.model_dump(mode="json") for u in ups])
     return {"upgrades": ups, "claims": state["claims"], "aerial": state["aerial"]}
+
+
+def clear_interior(profile: BuildingProfile) -> None:
+    """No interior this run (e.g. the investigator chose not to pull one): drop files from an earlier
+    run so the widgets don't show stale findings. The hero's tour link survives (records agent)."""
+    d = store.building_dir(profile.building_id)
+    for name in ("interior.json", "rooms.json", "interior_scan.json"):
+        (d / name).unlink(missing_ok=True)
+    records.publish_showcase(profile)
 
 
 def _interior():
@@ -188,7 +221,16 @@ def survey_graph():
     return _survey_graph
 
 
+def _agentic() -> bool:
+    from app.agents import investigator
+    return investigator.enabled()
+
+
 def template_plan(n: int, city: str, k: int, hero_name: str | None) -> list[str]:
+    if _agentic():
+        return [f"Plan: survey {n} {city} buildings, {k} at a time",
+                "Each: an investigator agent picks the evidence to pull, then site engineer rules",
+                "Verifier checks every claim against its images and sends doubts back"]
     steps = [f"Plan: survey {n} {city} buildings, {k} at a time",
              "Each: CoStar records, Vexcel roof inspection, site engineer rules, verifier"]
     if hero_name:
@@ -204,10 +246,15 @@ async def write_plan(goal: Goal, names: list[str], k: int, hero_name: str | None
         "You are the orchestrator of a building-retrofit survey team. Write 2 to 4 plan steps for a live activity "
         "feed, each one short factual line under 80 characters, present tense, no filler.\n"
         f"City: {goal.city}. Buildings to survey ({len(names)}): {', '.join(names)}. At most {k} surveyed at once. "
-        f"Interior (Matterport) survey: {hero_name or 'none'}. Owner target: cut CO2 {goal.target_pct:g}%.\n"
-        "Steps per building: CoStar records, Vexcel aerial roof inspection, site-engineer feasibility rules, "
-        "verifier checks each claim against its image and sends doubtful ones back. "
-        "Use only numbers given here.")
+        + (f"Owner target: cut CO2 {goal.target_pct:g}%.\n"
+           "Per building, an investigator agent decides which evidence to pull (CoStar record, Vexcel overhead "
+           "and wider aerial context, Matterport 3D scans) and when to stop; then site-engineer feasibility "
+           "rules; then the verifier checks each claim against its images and sends doubtful ones back. "
+           if _agentic() else
+           f"Interior (Matterport) survey: {hero_name or 'none'}. Owner target: cut CO2 {goal.target_pct:g}%.\n"
+           "Steps per building: CoStar records, Vexcel aerial roof inspection, site-engineer feasibility rules, "
+           "verifier checks each claim against its image and sends doubtful ones back. ")
+        + "Use only numbers given here.")
     try:
         out = await llm.text_json(prompt, PlanSteps)
         steps = [" ".join(x.split()) for x in out.steps[:4]]
@@ -247,7 +294,8 @@ async def orchestrator_plan(s: RunState) -> dict:
 
 
 def fan_out(s: RunState) -> list[Send]:
-    return [Send("survey", {"run_id": s["run_id"], "building_id": b, "hero": b == s.get("hero_id")})
+    return [Send("survey", {"run_id": s["run_id"], "building_id": b, "hero": b == s.get("hero_id"),
+                            "goal": s.get("goal")})
             for b in s["building_ids"]]
 
 

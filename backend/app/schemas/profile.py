@@ -20,4 +20,5 @@ class BuildingProfile(BaseModel):  # data/buildings/<id>/profile.json
     rba_sqft: float | None = None
     occupancy_pct: float | None = None
     matterport_model_id: str | None = None
+    showcase_url: str | None = None  # Matterport 3D tour (iframe) for public/unlisted hero models (Lane A)
     source_fields: dict[str, str]  # which CoStar fields fed each value

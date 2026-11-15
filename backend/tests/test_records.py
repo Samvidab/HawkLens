@@ -63,11 +63,45 @@ async def test_run_writes_profile_and_event(data_dir, monkeypatch):
         assert str(pid) == "23347"
         return REC
 
+    async def fake_basics(m):
+        return {"visibility": "public"}
+
     monkeypatch.setattr(records.costar, "get_property", fake_get)
+    monkeypatch.setattr(records.mp, "basics", fake_basics)
     reset_run("r1")
     p = await records.run("23347", run_id="r1")
     saved = json.loads((data_dir / "buildings" / "23347" / "profile.json").read_text())
     assert saved["matterport_model_id"] == "hu9" and saved == p.model_dump(mode="json")
+    assert saved["showcase_url"] == "https://my.matterport.com/show/?m=hu9"
+    scan = json.loads((data_dir / "buildings" / "23347" / "interior_scan.json").read_text())
+    assert scan == {"model_id": "hu9", "showcase_url": "https://my.matterport.com/show/?m=hu9"}
     [ev] = load_events("r1")
     assert ev.agent == "Records" and ev.kind == "fetch" and ev.building_name == "333 Northbelt"
     assert ev.message == "12 stories, 213,281 sq ft, built 1980, class B"
+
+
+async def test_showcase_only_for_playable_models(monkeypatch):
+    vis = {"pub": "public", "unl": "unlisted", "priv": "private"}
+
+    async def fake_basics(m):
+        if m == "err":
+            raise RuntimeError("api down")
+        return {"visibility": vis[m]}
+
+    monkeypatch.setattr(records.mp, "basics", fake_basics)
+    assert await records.showcase_url("pub") == "https://my.matterport.com/show/?m=pub"
+    assert await records.showcase_url("unl") == "https://my.matterport.com/show/?m=unl"
+    assert await records.showcase_url("priv") is None
+    assert await records.showcase_url("err") is None
+    assert await records.showcase_url(None) is None
+
+
+def test_publish_showcase_keeps_existing_scan(data_dir):
+    p = records.map_record(REC, matterport_model_id="hu9").model_copy(
+        update={"showcase_url": "https://my.matterport.com/show/?m=hu9"})
+    scan_path = data_dir / "buildings" / "23347" / "interior_scan.json"
+    scan_path.parent.mkdir(parents=True)
+    scan_path.write_text(json.dumps({"model_id": "hu9", "rooms": [{"room_id": "r"}], "mesh_url": None}))
+    records.publish_showcase(p)
+    scan = json.loads(scan_path.read_text())
+    assert scan["rooms"] == [{"room_id": "r"}] and scan["showcase_url"].endswith("m=hu9")
