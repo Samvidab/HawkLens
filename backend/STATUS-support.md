@@ -311,3 +311,5 @@ Say which of these you want and I will add them.
 - Building page: numbered list of the steps (feed line, quoted facts, image thumbnails) below the fixed frame.
 - 560 passed, 2 skipped; frontend 220; Playwright 5/5 + 8-building suite (tags, clicks and trace steps per building); demo
   data dirs unchanged.
+
+- 2026-11-15 final-ui bdda661 (local, not pushed): cards + ⌘K from GET /portfolio only; "Top verified CO₂ areas" (≤3, never padded); 8→7 text. Vitest 29 pass; Playwright light+dark pass on a 7-building temp data copy. lane-data merge: already up to date. Lane A's 7-building portfolio.json and new plan are not pushed yet.
