@@ -26,6 +26,7 @@ from app.integrations import engine_client as engine
 from app.schemas.goal import Goal
 from app.schemas.upgrades import FeasibleUpgrade
 from app.storage import data_path, read_json, write_json
+from app.widgets.resolver import CONTRACTOR
 
 log = logging.getLogger(__name__)
 RECONCILE_TOLERANCE_USD = 0.01
@@ -130,7 +131,8 @@ def bundles(items: list[dict]) -> list[dict]:
     """Line items grouped by upgrade type; sums only, in descending upfront order."""
     acc: dict[str, dict] = {}
     for r in items:
-        b = acc.setdefault(r["type"], {"type": r["type"], "n_upgrades": 0, "building_ids": [],
+        b = acc.setdefault(r["type"], {"type": r["type"], "contractor": CONTRACTOR.get(r["type"]),
+                                       "n_upgrades": 0, "building_ids": [],
                                        "upfront_usd": 0.0, "tonnes_per_year": 0.0, "exp_npv": 0.0})
         b["n_upgrades"] += 1
         if r["building_id"] not in b["building_ids"]:
@@ -159,7 +161,7 @@ def _no_data_plan(goal: Goal, coverage: dict, exclusions: list[str], reason: str
         "exp_npv": None, "cvar5": None, "p_loss": None, "p_hit_target": None,
         "total_upfront": None, "tonnes_per_year": None, "tonnes_needed": None,
         "shortfall_tonnes": None, "cheapest_extra": [], "hist_bins": [],
-        "reconciles": False, "risk_supported": False,
+        "reconciles": False, "risk_supported": False, "tonnes_margin": None, "profitable_tonnes_per_year": None,
         "macc": {"bars": []}, "simulate": {}, "baseline": base,
     }
 
@@ -195,8 +197,15 @@ async def run_pricing(run_id: str, goal: Goal, *, excluded_building_ids: Iterabl
         if drift := _drift(r):  # live engine differs from the contract: say so, keep going with what we have
             events.emit(run_id, "Pricing", "error", ("engine contract drift: " + "; ".join(drift))[:90])
         items = line_items(opt["selected"], r["sim"], by_building, names)
+        bars = r["macc"].get("bars", [])
+        tpy, need = opt.get("tonnes_per_year"), opt.get("tonnes_needed")
         plan = {
             **opt,
+            # planned minus needed, t/yr (>= 0 when the target is met); the gap card shows it as-is
+            "tonnes_margin": (tpy - need) if isinstance(tpy, (int, float)) and isinstance(need, (int, float)) else None,
+            # abatement-curve summary: CO2 of the eligible upgrades that pay for themselves (cost per tonne < 0)
+            "profitable_tonnes_per_year": sum(b["tonnes_per_year"] for b in bars
+                                              if isinstance(b.get("cost_per_tonne"), (int, float)) and b["cost_per_tonne"] < 0),
             "line_items": items,
             "bundles": bundles(items),
             "reconciles": reconciles(items, opt.get("total_upfront")),
@@ -204,7 +213,24 @@ async def run_pricing(run_id: str, goal: Goal, *, excluded_building_ids: Iterabl
             "simulate": r["sim"],
             "baseline": r["baseline"],
         }
+    sim = plan.get("simulate", {})
+    selected, excl_u = set(plan.get("selected", [])), set(excluded_upgrade_ids)
+    plan["upgrades_by_building"] = {  # every feasible upgrade, for the building page's include toggles
+        b: [{"upgrade_id": u.upgrade_id, "type": u.type, "size_value": u.size_value, "size_unit": u.size_unit,
+             "verified": u.verified, "in_plan": u.upgrade_id in selected, "excluded": u.upgrade_id in excl_u,
+             "upfront_usd": sim.get(u.upgrade_id, {}).get("upfront_usd"),
+             "tonnes_per_year": sim.get(u.upgrade_id, {}).get("tonnes_per_year"),
+             "exp_npv": sim.get(u.upgrade_id, {}).get("exp_npv")} for u in ups]
+        for b, ups in by_building.items()}
+    totals: dict[str, dict] = {}
+    for r in plan.get("line_items", []):
+        t = totals.setdefault(r["building_id"], {"n_upgrades": 0, "upfront_usd": 0.0, "tonnes_per_year": 0.0, "exp_npv": 0.0})
+        t["n_upgrades"] += 1
+        for k in ("upfront_usd", "tonnes_per_year", "exp_npv"):
+            t[k] = None if (t[k] is None or r[k] is None) else t[k] + r[k]
+    plan["building_totals"] = totals  # the selected upgrades' sums per building
     plan.update({
+        "run_id": run_id,
         "goal": goal.model_dump(mode="json"),
         "coverage": coverage,
         "building_names": {b: names.get(b, b) for b in coverage["requested"]},

@@ -162,3 +162,23 @@ async def test_goal_without_building_ids_surveys_unsurveyed_portfolio_buildings(
     from app.schemas.goal import OwnerAction
     await replan.replan(OwnerAction(run_id="r", type="goal", payload=GOAL))
     assert called == [["b1", "b2"]]
+
+
+async def test_run_with_every_survey_failed_ends_without_claiming_ready(empty, monkeypatch):
+    from app.agents import graph
+    from app.schemas.goal import OwnerAction
+
+    async def all_failed(goal, run_id):
+        res = {b: {"status": "error", "error": "CacheMiss"} for b in ("b1", "b2")}
+        graph.write_state(run_id, status="surveyed", results=res)
+        return {"run_id": run_id, "results": res}
+    monkeypatch.setattr(graph, "run", all_failed)
+    monkeypatch.setattr(replan, "_survey_runner", None)
+
+    async def compose():
+        await replan.replan(OwnerAction(run_id="rf", type="goal", payload=GOAL))
+    await graph.run_full(Goal(**GOAL), "rf", compose)
+    st = json.loads((empty / "runs/rf/state.json").read_text())
+    ev = events.load_events("rf")
+    assert st["status"] == "no_plan" and "survey" in st["reason"]
+    assert ev[-1].kind == "done" and "no plan priced" in ev[-1].message

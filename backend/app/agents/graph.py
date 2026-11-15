@@ -338,5 +338,11 @@ async def run_full(goal: Goal, run_id: str, compose) -> None:
         write_state(run_id, status="error", error=str(e)[:300], results=out["results"])
         emit(run_id, ORCH, "done", "Run finished without a workspace")
         return
+    from app.storage import data_path, read_json  # noqa: PLC0415
+    plan = read_json(data_path("plans", "current.json"), {}) or {}
+    if plan.get("status") == "no_data":  # nothing was priced: say so instead of "ready"
+        write_state(run_id, status="no_plan", results=out["results"], reason=plan.get("reason"))
+        emit(run_id, ORCH, "done", "Run finished: no plan priced (see errors above)")
+        return
     write_state(run_id, status="ready", results=out["results"])  # merges into composer's state.json
     emit(run_id, ORCH, "done", "Workspace ready")
