@@ -1,23 +1,21 @@
-"""Emissions in 3D (EMISSIONS_3D, default off): where a building's CO2 comes from, shown where observed.
+"""Emissions in 3D (EMISSIONS_3D, default off): verified equipment positions per building.
 
-Per building, two files (new; no frozen file is changed):
-- tour.json: the building's Matterport model, its visibility from the Matterport `basics` query
-  and the Showcase link when the tour is viewable (public/unlisted); otherwise "unknown"/None.
-- emissions_breakdown.json: the engine's baseline tonnes/yr x a cited end-use split for Houston
-  offices. The top 3 end uses, each with tonnes/yr and % of the building total (both marked
-  "estimate", with their basis), the citation, the verified claims that link the end use to THIS
-  building, and 3D positions (interior pins and labelled rooms where that equipment was seen).
-  No verified evidence or no position → "unknown", never guessed. Every breakdown is labelled
-  LABEL: the split is building-wide, the positions only show where its equipment was observed.
+UI path (`load()` → emissions_3d.json): only VERIFIED equipment positions, i.e. pins of verified
+interior lighting/HVAC claims, each with equipment type, claim ID, verifier result and panorama ID.
+No shares, no tonnes. A panorama ID that can't be matched exactly → "unknown"; no verified
+equipment → positions "unknown". Plus tour.json (Matterport visibility → showcase_url).
 
-Numbers: tonnes = baseline x share (rounded), % = share x 100. Nothing else is computed.
-The split comes from a source file the owner of the data provides (`source_path()`); until it
-exists, build() refuses and only the tour part runs.
+Research artifact, NOT used by the UI (kept on request): `build()`/`write()` make
+emissions_breakdown.json from the engine baseline x the verified EIA CBECS end-use split
+(agents/end_use_research.py → sources/houston_office_end_use.json).
+
+No frozen file (profile, interior.json, interior_scan.json, plans, cache entries) is written.
 """
 from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -205,8 +203,55 @@ def write(building_id: str, baseline_tonnes: float | None, split: Split) -> dict
     return out
 
 
+# --------------------------------------------------------------------------- UI: verified positions
+
+EQUIPMENT_CLAIMS = {"interior.lighting": "lighting", "interior.hvac": "hvac"}
+POSITIONS_LABEL = "verified equipment positions (scan position of the panorama where it was seen)"
+
+
+def _pano_of(image_id: str, model_id: str) -> str | None:
+    m = re.fullmatch(rf"mpp_{re.escape(model_id)}_([A-Za-z0-9]+)_\d", image_id)
+    return m.group(1) if m else None
+
+
+async def positions(building_id: str) -> dict:
+    """Verified equipment positions for the 3D view: pins of verified lighting/HVAC claims only."""
+    d = store.building_dir(building_id)
+    claims = {c["claim_id"]: c for c in _read(d / "verification.json", [])}
+    inter = _read(d / "interior.json", {}) or {}
+    model_id = inter.get("model_id")
+    pano_xyz: dict[str, tuple] | None = None
+    if model_id:
+        try:  # cached Matterport answer; used only to confirm which panorama a pin sits on
+            pano_xyz = {p.pano_id: tuple(p.xyz) for p in await mp.panoramas(model_id)}
+        except Exception:  # noqa: BLE001 - panorama IDs become "unknown"
+            pano_xyz = None
+    out = []
+    for pin in inter.get("pins") or []:
+        c = claims.get(pin["claim_id"])
+        field = pin["claim_id"].split(".", 1)[1] if "." in pin["claim_id"] else ""
+        if field not in EQUIPMENT_CLAIMS or not c or c["status"] != "verified" or pin["status"] != "verified":
+            continue  # only verified equipment
+        cands = [p for p in (_pano_of(e, model_id) for e in c["evidence_ids"]) if p] if model_id else []
+        hits = [p for p in dict.fromkeys(cands) if pano_xyz and pano_xyz.get(p) == tuple(pin["xyz"])]
+        out.append({"xyz": pin["xyz"], "equipment": EQUIPMENT_CLAIMS[field], "equipment_type": c["value"],
+                    "seen_as": pin["label"], "claim_id": c["claim_id"],
+                    "verifier": {"status": c["status"], "score": c.get("verifier_score"),
+                                 "note": c.get("verifier_note"), "loops": c.get("loops")},
+                    "pano_id": hits[0] if len(hits) == 1 else UNKNOWN, "model_id": model_id})
+    tour = _read(d / "tour.json", None)
+    return {"building_id": building_id, "label": POSITIONS_LABEL, "model_id": model_id or UNKNOWN,
+            "showcase_url": (tour or {}).get("showcase_url"), "positions": out or UNKNOWN}
+
+
+async def save_positions(building_id: str) -> dict:
+    out = await positions(building_id)
+    write_json_atomic(store.building_dir(building_id) / "emissions_3d.json", out)
+    return out
+
+
 def load(building_id: str) -> dict | None:
-    """emissions_3d for a building (for the widget/API layer), or None when off or not built."""
+    """emissions_3d for the UI: verified equipment positions only (no shares). None when off/not built."""
     if not enabled():
         return None
-    return _read(store.building_dir(building_id) / "emissions_breakdown.json", None)
+    return _read(store.building_dir(building_id) / "emissions_3d.json", None)
