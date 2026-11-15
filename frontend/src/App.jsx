@@ -24,38 +24,49 @@ import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
 import Workspace from './pages/Workspace'
+import { RequireRun } from './components/Truth'
+
+// Strict demo mode (always on): a page that needs a run shows "no survey data yet" instead of prototype content.
+const gate = (el, need = 'layout', active = 'portfolio') => <RequireRun need={need} active={active}>{el}</RequireRun>
+
+/** Every screen. Exported so tests can render any route inside their own router and run provider. */
+export function AppRoutes() {
+  return (
+        <Routes>
+          <Route path="/" element={gate(<Portfolio />)} />
+          <Route path="/plan" element={gate(<PlanDetails />, 'layout', 'plan')} />
+          <Route path="/workspace" element={<Workspace />} />
+          <Route path="/building" element={gate(<BuildingDetails />)} />
+          <Route path="/start-survey" element={gate(<StartSurvey />, 'portfolio')} />
+          <Route path="/survey-in-progress" element={gate(<SurveyInProgress />, 'run')} />
+          <Route path="/survey-complete" element={gate(<SurveyComplete />, 'run')} />
+          <Route path="/financing-approval" element={gate(<FinancingApproval />, 'layout', 'plan')} />
+          <Route path="/funding-confirmation" element={gate(<FundingConfirmation />, 'layout', 'plan')} />
+          <Route path="/documents" element={gate(<Documents />, 'layout', 'documents')} />
+          <Route path="/survey-evidence" element={gate(<SurveyEvidence />)} />
+          <Route path="/investment-memo" element={gate(<InvestmentMemo />, 'layout', 'documents')} />
+          <Route path="/risk-and-target" element={gate(<RiskAndTarget />, 'layout', 'plan')} />
+          <Route path="/plan-preferences" element={gate(<PlanPreferences />, 'layout', 'plan')} />
+          <Route path="/demo-document-notice" element={<DemoDocumentNotice />} />
+          <Route path="/assumptions" element={gate(<Assumptions />, 'layout', 'plan')} />
+          <Route path="/funding-account" element={gate(<FundingAccount />, 'layout', 'plan')} />
+          <Route path="/building-insights" element={gate(<BuildingInsights />)} />
+          <Route path="/building-excluded" element={gate(<BuildingExcluded />)} />
+          <Route path="/expanded-portfolio-model" element={gate(<ExpandedPortfolioModel />)} />
+          <Route path="/expanded-building-model" element={gate(<ExpandedBuildingModel />)} />
+          <Route path="/expanded-survey-image" element={gate(<ExpandedSurveyImage />)} />
+          <Route path="*" element={<Placeholder title="Not found" />} />
+        </Routes>
+  )
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <RunProvider demoRunId={import.meta.env.VITE_DEMO_RUN_ID}>
-      <ToastProvider>
-        <Routes>
-          <Route path="/" element={<Portfolio />} />
-          <Route path="/plan" element={<PlanDetails />} />
-          <Route path="/workspace" element={<Workspace />} />
-          <Route path="/building" element={<BuildingDetails />} />
-          <Route path="/start-survey" element={<StartSurvey />} />
-          <Route path="/survey-in-progress" element={<SurveyInProgress />} />
-          <Route path="/survey-complete" element={<SurveyComplete />} />
-          <Route path="/financing-approval" element={<FinancingApproval />} />
-          <Route path="/funding-confirmation" element={<FundingConfirmation />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/survey-evidence" element={<SurveyEvidence />} />
-          <Route path="/investment-memo" element={<InvestmentMemo />} />
-          <Route path="/risk-and-target" element={<RiskAndTarget />} />
-          <Route path="/plan-preferences" element={<PlanPreferences />} />
-          <Route path="/demo-document-notice" element={<DemoDocumentNotice />} />
-          <Route path="/assumptions" element={<Assumptions />} />
-          <Route path="/funding-account" element={<FundingAccount />} />
-          <Route path="/building-insights" element={<BuildingInsights />} />
-          <Route path="/building-excluded" element={<BuildingExcluded />} />
-          <Route path="/expanded-portfolio-model" element={<ExpandedPortfolioModel />} />
-          <Route path="/expanded-building-model" element={<ExpandedBuildingModel />} />
-          <Route path="/expanded-survey-image" element={<ExpandedSurveyImage />} />
-          <Route path="*" element={<Placeholder title="Not found" />} />
-        </Routes>
-      </ToastProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </RunProvider>
     </BrowserRouter>
   )

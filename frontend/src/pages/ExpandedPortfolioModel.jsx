@@ -1,14 +1,23 @@
 import { useNavigate } from 'react-router-dom'
-import portfolio3dLarge from '../assets/portfolio-3d-large.svg'
 import Page from '../components/Page'
+import { FootprintMap, hasFootprints } from '../components/widgets'
+import { useOverview } from '../lib/store'
+import { widget } from '../lib/viewModels'
 
+// Strict: the real footprints, large; clicking one opens that building.
 export default function ExpandedPortfolioModel() {
   const navigate = useNavigate()
+  const run = useOverview()
+  const p = widget(run.layout, 'portfolio_3d')
+  const open = async (b) => {
+    await run.act('open_building', { building_id: b.building_id }).catch(() => {})
+    navigate('/building')
+  }
 
   return (
     <Page nav={false}>
       <p className="absolute left-[56px] top-[49px] font-medium text-ink text-[18px]">
-        Your portfolio · Schematic model
+        Your portfolio · building footprints
       </p>
       <button
         type="button"
@@ -18,33 +27,12 @@ export default function ExpandedPortfolioModel() {
         Back to portfolio&nbsp;&nbsp;×
       </button>
 
-      <section className="absolute left-[84px] top-[150px] w-[1272px] h-[630px] rounded-[12px] bg-model overflow-hidden">
-        <p className="absolute left-[34.5px] top-[31.5px] font-medium text-ink text-[22.5px]">
-          Your buildings
-        </p>
-        <p className="absolute left-[34.5px] top-[69px] text-muted text-[19.5px]">
-          Select a building to see its opportunities.
-        </p>
-        <img
-          src={portfolio3dLarge}
-          alt="Schematic 3D portfolio with solar roof overlays"
-          className="absolute left-[13.5px] top-[93px] w-[1240.8px] h-[465.3px]"
-        />
-        <div className="absolute left-[742.5px] top-[180px] w-[306px] h-[73.5px] rounded-[7.5px] bg-white overflow-hidden shadow-sm">
-          <p className="absolute left-[18px] top-[12px] font-medium text-ink text-[19.5px]">
-            Midtown office
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/building')}
-            className="absolute left-[18px] top-[43.5px] text-brand text-[16.5px] hover:underline"
-          >
-            View building&nbsp;&nbsp;→
-          </button>
-        </div>
-        <p className="absolute left-[34.5px] top-[576px] text-muted text-[16.5px]">
-          Solar shown on eligible roofs
-        </p>
+      <section className="absolute left-[84px] top-[120px] w-[1272px] h-[780px] rounded-[12px] bg-model overflow-hidden p-[30px]">
+        <p className="font-medium text-ink text-[20px]">Your buildings</p>
+        <p className="text-muted text-[15px] mb-4">Click a footprint to open its building. Footprints from the building records, drawn in 2D.</p>
+        {hasFootprints(p?.buildings)
+          ? <FootprintMap buildings={p.buildings} focusId={p.focus_building_id} onPick={open} height={620} />
+          : <p className="text-muted text-[14px]">Building footprints not available.</p>}
       </section>
     </Page>
   )

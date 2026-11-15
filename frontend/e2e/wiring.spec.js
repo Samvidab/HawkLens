@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import fs from 'node:fs'
+import { ROUTES, inventedIn } from '../src/test/forbidden.js'
 
 const API = process.env.E2E_API_URL || 'http://localhost:8000'
 const SHOTS = 'e2e/screens'
@@ -39,7 +40,7 @@ test('goal form -> live survey -> workspace -> actions -> evidence -> approval, 
 
   // 3. Workspace: Portfolio shows the layout's numbers; the slider sends set_target when it settles
   await page.getByRole('button', { name: 'Open workspace' }).click()
-  await expect(page.getByText('Live backend')).toBeVisible()
+  await expect(page.getByTestId('sources')).toContainText('Pricing:')
   const slider = page.getByRole('slider', { name: 'Carbon reduction target' })
   await slider.focus()
   for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft') // 40 % -> 20 %
@@ -93,7 +94,7 @@ test('goal form -> live survey -> workspace -> actions -> evidence -> approval, 
   expect((await approved).status()).toBe(200)
   await expect(page).toHaveURL(/funding-confirmation/)
   const nessieMode = (await (await fetch(`${API}/health`)).json()).nessie_mode
-  await expect(page.getByText(nessieMode === 'live' ? /Recorded in the Nessie sandbox/ : /Simulated confirmation \(stub Nessie\)/)).toBeVisible()
+  await expect(page.getByText(nessieMode === 'live' ? /Recorded in the Nessie sandbox/ : /Simulated booking \(stub Nessie\)/)).toBeVisible()
   await expect(page.getByText(/\d+ upgrades across \d+ buildings/)).toBeVisible() // the summary is the approved plan's, not the prototype's
   await shot(page, '9-funded')
 
@@ -114,10 +115,9 @@ test('a reload resumes the run from sessionStorage and shows the same workspace'
   expect(st?.layout).toBeTruthy()
   await page.addInitScript((id) => sessionStorage.setItem('hawklens.runId', id), run_id)
   await page.goto('/plan')
-  await expect(page.getByText(/Quant engine pricing|Sample pricing/)).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByText('20% reduction goal')).toBeVisible()
+  await expect(page.getByText('20% reduction goal')).toBeVisible({ timeout: 20_000 })
   await page.reload() // and again: still resumes
-  await expect(page.getByText(/Quant engine pricing|Sample pricing/)).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('20% reduction goal')).toBeVisible({ timeout: 20_000 })
   await shot(page, '10-resumed-plan')
 })
 
@@ -135,7 +135,7 @@ test('the risk control is live: Growth -> Balanced -> Cautious re-plans and chan
   const metric = (label) => page.locator(`p:has-text("${label}") + p`).first()
   const planNumbers = async () => {
     await page.goto('/plan')
-    await expect(page.getByText(/Quant engine pricing|Sample pricing/)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/reduction goal/)).toBeVisible({ timeout: 20_000 })
     return { upfront: await metric('Upfront investment').textContent(), npv: await metric('Lifetime net value').textContent(), text: await page.locator('body').innerText() }
   }
   const pickRisk = async (name, lambda) => {
@@ -177,12 +177,32 @@ test('the risk control is live: Growth -> Balanced -> Cautious re-plans and chan
   expect(back.npv).toBe(growth.npv)
 })
 
-test('the prototype still renders without a backend (static fallback)', async ({ page }) => {
+test('strict mode: without a backend no page shows prototype data', async ({ page }) => {
   await page.route(`${API}/**`, (r) => r.abort())
   await page.addInitScript(() => sessionStorage.clear())
-  await page.goto('/')
-  await expect(page.getByText('Interactive demo')).toBeVisible()
-  await expect(page.getByText('Your goal is covered')).toBeVisible()
-  await page.goto('/plan')
-  await expect(page.getByText('1032 tonnes / year')).toBeVisible()
+  for (const route of ROUTES) {
+    await page.goto(route)
+    await expect(page.locator('body')).not.toBeEmpty()
+    if (!['/workspace', '/demo-document-notice'].includes(route)) await expect(page.getByTestId('no-data')).toBeVisible()
+    expect(inventedIn(await page.locator('body').innerText()), route).toEqual([])
+  }
+  await shot(page, '14-no-backend')
+})
+
+test('strict mode: with a real run no page shows prototype data or prototype images', async ({ page }) => {
+  const { run_id } = await (await fetch(`${API}/run`, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ city: 'Houston', target_pct: 20, risk_lambda: 0.2 }) })).json()
+  let st = null
+  for (let i = 0; i < 60 && !st?.layout; i++) { await new Promise((r) => setTimeout(r, 500)); st = await (await fetch(`${API}/state/${run_id}`)).json().catch(() => null) }
+  expect(st?.layout).toBeTruthy()
+  await page.addInitScript((id) => sessionStorage.setItem('hawklens.runId', id), run_id)
+  for (const route of ROUTES) {
+    await page.goto(route)
+    await expect(page.getByTestId('no-data')).toHaveCount(0, { timeout: 20_000 })
+    await page.waitForLoadState('networkidle')
+    expect(inventedIn(await page.locator('body').innerText()), route).toEqual([])
+    for (const src of await page.locator('img').evaluateAll((els) => els.map((e) => e.getAttribute('src') || ''))) {
+      expect(src, route).not.toMatch(/evidence-(roof|facade|interior)|portfolio-3d|building-model/)
+    }
+  }
 })

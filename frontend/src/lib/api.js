@@ -50,6 +50,8 @@ async function request(method, path, body, fetchImpl = globalThis.fetch) {
 export const getHealth = () => request('GET', '/health')
 export const getPortfolio = () => request('GET', '/portfolio')
 export const getRegistry = () => request('GET', '/registry')
+/** The quant engine's sourced pricing assumptions for a city (GET /assumptions). */
+export const getAssumptions = (city) => request('GET', `/assumptions${city ? `?city=${encodeURIComponent(city)}` : ''}`)
 
 /** goal: { city, building_ids?, target_pct (0-100), budget_usd?, risk_lambda (0-1) } */
 export const startRun = (goal) => request('POST', '/run', goal)

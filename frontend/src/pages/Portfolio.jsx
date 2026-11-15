@@ -1,28 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import portfolio3d from '../assets/portfolio-3d.svg'
 import Page from '../components/Page'
+import { NA, Sources, Stub, useStub } from '../components/Truth'
+import { FootprintMap, hasFootprints } from '../components/widgets'
 import { useGo } from '../lib/ui'
 import { useOverview } from '../lib/store'
-import { planRows, planSummary, portfolioBuildings, riskLabel, targetModel, usdK } from '../lib/viewModels'
-import {
-  BUDGET_K,
-  SLIDER_WIDTH,
-  TARGET_MAX,
-  TARGET_MIN,
-  clampTarget,
-  deriveModel,
-} from '../lib/model'
+import { planRows, planSummary, riskLabel, targetModel, usdK, widget } from '../lib/viewModels'
+import { SLIDER_WIDTH, TARGET_MAX, TARGET_MIN, clampTarget } from '../lib/model'
 
+// Strict: every value comes from the run's layout (the route gate guarantees one); missing values read "not available".
 export default function Portfolio() {
   const go = useGo()
   const run = useOverview()
-  const layoutModel = run.layout ? targetModel(run.layout) : null // real plan when a run has a workspace
+  const stub = useStub().engine
+  const layoutModel = run.layout ? targetModel(run.layout) : null
   const [target, setTarget] = useState(layoutModel?.target ?? run.prefs.target_pct)
-  const [buildingSelected, setBuildingSelected] = useState(true)
-  const model = layoutModel ? { ...layoutModel, target } : deriveModel(target)
-  const buildings = run.layout ? portfolioBuildings(run.layout) : null
+  const model = layoutModel ? { ...layoutModel, target } : null
+  const buildings = widget(run.layout, 'portfolio_3d')?.buildings ?? null
   const hero = run.portfolio?.buildings?.find((b) => b.hero) || run.portfolio?.buildings?.[0]
-  const featured = hero ? { id: hero.building_id, name: hero.name } : buildings?.[0] ?? null
+  const featured = hero ? { id: hero.building_id, name: hero.name }
+    : buildings?.[0] ? { id: buildings[0].building_id, name: buildings[0].name } : null
+  const city = run.portfolio?.city || null
+  const nExcluded = buildings ? buildings.filter((b) => b.excluded).length : 0
 
   const setTargetClamped = useCallback((next) => setTarget(clampTarget(next)), [])
 
@@ -37,30 +35,31 @@ export default function Portfolio() {
     if (layoutModel && layoutModel.target !== target && !run.busy) setTarget(layoutModel.target)
   }, [layoutModel?.target]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openBuilding = useCallback(async () => {
-    if (run.layout && featured) await run.act('open_building', { building_id: featured.id }).catch(() => {})
+  const openBuilding = useCallback(async (id = featured?.id) => {
+    if (run.layout && id) await run.act('open_building', { building_id: id }).catch(() => {})
     go('/building')
   }, [run, featured, go])
 
   return (
     <Page active="portfolio">
       <h1 className="absolute left-[56px] top-[127px] whitespace-nowrap font-semibold text-ink text-[32px]">
-        Houston portfolio
+        {city ? `${city} portfolio` : 'Portfolio'}
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        {buildings ? `${buildings.length} buildings · All surveys complete` : '8 buildings · All surveys complete'}
+        {buildings ? `${buildings.length} building${buildings.length === 1 ? '' : 's'}${nExcluded ? ` · ${nExcluded} excluded` : ''}` : `Buildings ${NA}`}
       </p>
       <LinkArrow className="left-[1055px] top-[154px]" onClick={() => go('/start-survey')}>
         Run survey
       </LinkArrow>
-      <LinkArrow className="left-[1220px] top-[154px]" onClick={openBuilding}>
+      <LinkArrow className="left-[1220px] top-[154px]" onClick={() => openBuilding()}>
         Building details
       </LinkArrow>
 
       <PortfolioModel
-        selected={buildingSelected}
-        onToggleSelected={() => setBuildingSelected((v) => !v)}
-        onViewBuilding={openBuilding}
+        buildings={buildings}
+        focusId={featured?.id}
+        onPick={(b) => openBuilding(b.building_id)}
+        onViewBuilding={() => openBuilding()}
         name={featured?.name}
         onExpand={() => go('/expanded-portfolio-model')}
       />
@@ -68,12 +67,15 @@ export default function Portfolio() {
       <CarbonGoal
         target={target}
         model={model}
+        stub={stub}
         onChangeTarget={setTargetClamped}
         onStep={(delta) => setTargetClamped(target + delta)}
         onEdit={() => go('/plan-preferences')}
         onReview={() => go('/plan')}
         onCheckGap={() => go('/risk-and-target')}
-        budgetText={`Budget ${model.budgetUsd === undefined ? `$${BUDGET_K}k` : model.budgetUsd == null ? 'not set' : usdK(model.budgetUsd)} · ${model.riskLambda === undefined ? 'Balanced' : riskLabel(model.riskLambda)} risk`}
+        budgetText={model
+          ? `Budget ${model.budgetUsd == null ? 'not set' : usdK(model.budgetUsd)} · ${model.riskLambda == null ? `risk ${NA}` : `${riskLabel(model.riskLambda)} risk`}`
+          : `Budget and risk ${NA}`}
         busy={run.busy > 0}
       />
 
@@ -81,19 +83,17 @@ export default function Portfolio() {
         Recommended upgrades
       </h2>
       <p className="absolute left-[56px] top-[738px] whitespace-nowrap text-muted text-[13px]">
-        {run.layout ? planSummary(run.layout)?.count : '18 upgrades across 8 buildings'}
+        {planSummary(run.layout)?.count ?? `Upgrades ${NA}`}
       </p>
       <LinkArrow className="left-[1208px] top-[715px]" onClick={() => go('/plan')}>
         See costs &amp; evidence
       </LinkArrow>
 
-      <UpgradeSummary onOpen={() => go('/plan')} rows={run.layout ? planRows(run.layout) : null} />
+      <UpgradeSummary onOpen={() => go('/plan')} rows={planRows(run.layout) || []} stub={stub} />
 
-      <p className="absolute left-[56px] top-[947px] whitespace-nowrap text-muted text-[11px]">
-        {run.layout ? (model.sample ? 'Live backend · sample pricing (stub engine)' : 'Live backend · quant engine pricing') : 'Interactive demo · Illustrative calculations, not a live optimizer'}
-      </p>
+      <Sources />
       <p className="absolute left-[1090px] top-[947px] whitespace-nowrap text-muted text-[11px]">
-        {run.layout ? `Chance of hitting the target: ${model.confidence ?? '—'}%` : `Baseline sample: ${model.confidence}% target confidence`}
+        Chance of hitting the target: {model?.confidence == null ? NA : `${model.confidence}%`}{stub && model?.confidence != null && <Stub />}
       </p>
     </Page>
   )
@@ -111,36 +111,25 @@ function LinkArrow({ className = '', children, onClick }) {
   )
 }
 
-function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand, name = 'Midtown office' }) {
+function PortfolioModel({ buildings, focusId, onPick, onViewBuilding, onExpand, name }) {
   return (
     <section className="absolute left-[56px] top-[231px] w-[848px] h-[420px] overflow-hidden rounded-[8px] bg-model">
       <p className="absolute left-[23px] top-[21px] whitespace-nowrap font-medium text-ink text-[15px]">
         Your buildings
       </p>
       <p className="absolute left-[23px] top-[46px] whitespace-nowrap text-muted text-[13px]">
-        Explore {name} or expand the portfolio.
+        {name ? `Click a footprint to open a building, or explore ${name}.` : 'Click a footprint to open a building.'}
       </p>
 
-      <img
-        src={portfolio3d}
-        alt="Schematic 3D portfolio with solar roof overlays"
-        className="absolute left-[9px] top-[62px] w-[827.2px] h-[310.2px]"
-      />
+      <div className="absolute left-[23px] top-[76px] w-[600px] h-[290px]">
+        {hasFootprints(buildings)
+          ? <FootprintMap buildings={buildings} focusId={focusId} onPick={onPick} height={290} />
+          : <p className="text-muted text-[13px]">Building footprints not available.</p>}
+      </div>
 
-      <button
-        type="button"
-        aria-label={`Select ${name}`}
-        onClick={onToggleSelected}
-        className={`absolute left-[427px] top-[190px] w-[171px] h-[123px] rounded-[6px] transition-shadow ${
-          selected ? 'ring-2 ring-brand/60' : 'hover:ring-2 hover:ring-brand/30'
-        }`}
-      />
-
-      {selected && (
-        <div className="absolute left-[495px] top-[120px] w-[204px] h-[49px] rounded-[5px] bg-white overflow-hidden shadow-sm">
-          <span className="absolute left-[12px] top-[8px] whitespace-nowrap font-medium text-ink text-[13px]">
-            {name}
-          </span>
+      {name && (
+        <div className="absolute left-[640px] top-[90px] w-[190px] h-[49px] rounded-[5px] bg-white overflow-hidden shadow-sm">
+          <span className="absolute left-[12px] top-[8px] whitespace-nowrap font-medium text-ink text-[13px]">{name}</span>
           <button
             type="button"
             onClick={onViewBuilding}
@@ -152,7 +141,7 @@ function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand, 
       )}
 
       <p className="absolute left-[23px] top-[384px] whitespace-nowrap text-muted text-[11px]">
-        Solar shown on eligible roofs
+        Footprints from the building records, drawn in 2D · dark = selected, grey = excluded
       </p>
       <button
         type="button"
@@ -165,7 +154,8 @@ function PortfolioModel({ selected, onToggleSelected, onViewBuilding, onExpand, 
   )
 }
 
-function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, onCheckGap, budgetText, busy }) {
+function CarbonGoal({ target, model: m, stub, onChangeTarget, onStep, onEdit, onReview, onCheckGap, budgetText, busy }) {
+  const model = m || { covered: null, tonnes: null, statusLabel: `Plan ${NA}`, annualLabel: '', investmentLabel: NA, netValueLabel: NA }
   return (
     <section className="absolute left-[944px] top-[231px] w-[440px] h-[420px] overflow-hidden">
       <div className="absolute left-0 top-0 w-px h-[420px] bg-line" />
@@ -202,7 +192,7 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
 
       <TargetSlider target={target} onChange={onChangeTarget} />
 
-      <p className="absolute left-[32px] top-[125px] whitespace-nowrap text-muted text-[11px]">0%</p>
+      <p className="absolute left-[32px] top-[125px] whitespace-nowrap text-muted text-[11px]">{TARGET_MIN}%</p>
       <p className="absolute left-[384px] top-[125px] whitespace-nowrap text-muted text-[11px]">{TARGET_MAX}%</p>
 
       <p className="absolute left-[32px] top-[165px] whitespace-nowrap text-muted text-[13px]">
@@ -220,27 +210,27 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
 
       <p
         className={`absolute left-[32px] top-[224px] whitespace-nowrap font-semibold text-[20px] ${
-          model.covered ? 'text-ink' : 'text-[#b4532f]'
+          model.covered === false ? 'text-[#b4532f]' : 'text-ink'
         }`}
       >
         {model.statusLabel}
       </p>
       <p className="absolute left-[32px] top-[257px] whitespace-nowrap text-muted text-[13px] tabular-nums">
-        {model.annualLabel}{busy ? ' · updating…' : ''}
+        {model.annualLabel}{stub && model.tonnes != null && <Stub />}{busy ? ' · updating…' : ''}
       </p>
 
       <p className="absolute left-[32px] top-[297px] whitespace-nowrap text-muted text-[12px]">
         Investment
       </p>
       <p className="absolute left-[32px] top-[318px] whitespace-nowrap font-medium text-ink text-[22px] tabular-nums">
-        {model.investmentLabel}
+        {model.investmentLabel}{stub && model.investmentLabel !== NA && <Stub />}
       </p>
 
       <p className="absolute left-[226px] top-[297px] whitespace-nowrap text-muted text-[12px]">
         Lifetime net value
       </p>
       <p className="absolute left-[226px] top-[318px] whitespace-nowrap font-medium text-ink text-[22px] tabular-nums">
-        {model.netValueLabel}
+        {model.netValueLabel}{stub && model.netValueLabel !== NA && <Stub />}
       </p>
 
       <button
@@ -311,14 +301,9 @@ function TargetSlider({ target, onChange }) {
   )
 }
 
-const UPGRADES = [
-  { name: 'LED retrofit', detail: '8 buildings · 8 bills', cost: '$120k' },
-  { name: 'Rooftop solar', detail: '6 buildings · 6 bills', cost: '$760k' },
-  { name: 'Heat pump conversion', detail: '4 buildings · 4 bills', cost: '$400k' },
-]
-
-function UpgradeSummary({ onOpen, rows }) {
-  const list = rows ? rows.map((r) => ({ name: r.name, detail: r.coverage, cost: r.cost })) : UPGRADES
+function UpgradeSummary({ onOpen, rows, stub }) {
+  const list = rows.map((r) => ({ name: r.name, detail: r.coverage, cost: r.cost }))
+  if (!list.length) return <p className="absolute left-[56px] top-[790px] text-muted text-[13px]">No upgrades in the plan.</p>
   return (
     <section className="absolute left-[56px] top-[783px] w-[1328px] h-[133px] overflow-hidden">
       {list.map((u, i) => {
@@ -338,8 +323,8 @@ function UpgradeSummary({ onOpen, rows }) {
               <span className="absolute left-[608px] top-[14px] whitespace-nowrap text-muted text-[13px]">
                 {u.detail}
               </span>
-              <span className="absolute left-[1170px] top-[13px] whitespace-nowrap font-medium text-ink text-[14px] tabular-nums">
-                {u.cost}
+              <span className="absolute left-[1130px] top-[13px] whitespace-nowrap font-medium text-ink text-[14px] tabular-nums">
+                {u.cost}{stub && u.cost !== NA && <Stub />}
               </span>
               <span className="absolute left-[1312px] top-[10px] whitespace-nowrap text-muted text-[21px] leading-none group-hover:text-brand group-hover:translate-x-1 transition-transform">
                 ›

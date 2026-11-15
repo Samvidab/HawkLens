@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
+import { useRun } from '../lib/store'
 
 // Shared top navigation bar. `active` is one of: 'portfolio' | 'plan' | 'documents'.
 const TABS = [
@@ -11,6 +12,7 @@ const TABS = [
 
 export default function Navigation({ active = 'portfolio' }) {
   const navigate = useNavigate()
+  const { portfolio } = useRun()
   const current = TABS.find((t) => t.key === active) ?? TABS[0]
 
   return (
@@ -46,9 +48,11 @@ export default function Navigation({ active = 'portfolio' }) {
         style={{ left: `${current.left}px`, width: `${current.width}px` }}
       />
 
-      <span className="absolute left-[1160px] top-[33px] whitespace-nowrap text-muted text-[13px]">
-        Houston Asset Partners
-      </span>
+      {portfolio?.city && ( // the real portfolio's city; no invented owner name
+        <span className="absolute left-[1160px] top-[33px] whitespace-nowrap text-muted text-[13px]">
+          {portfolio.city} portfolio
+        </span>
+      )}
       <div className="absolute left-0 top-[80px] w-[1440px] h-px bg-line" />
     </nav>
   )

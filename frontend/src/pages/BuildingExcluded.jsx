@@ -25,7 +25,7 @@ export default function BuildingExcluded() {
 
         <div className="absolute left-[440px] top-[300px] w-[560px] h-[380px] rounded-[10px] bg-white overflow-hidden">
           <p className="absolute left-[28px] top-[28px] font-semibold text-ink text-[20px] leading-[1.45]">
-            {b?.name || 'Midtown office'} excluded
+            {b?.name ? `${b.name} excluded` : 'Building excluded'}
           </p>
           <p className="absolute left-[28px] top-[81px] text-muted text-[14px] leading-[1.45]">
             All upgrades for this building are off.
@@ -44,7 +44,8 @@ export default function BuildingExcluded() {
           <button
             type="button"
             onClick={again}
-            className="absolute left-[28px] top-[281px] w-[504px] h-[46px] rounded-[6px] bg-model text-brand text-[13px] font-medium leading-[1.45] hover:brightness-95 transition"
+            disabled={!b?.id}
+            className="absolute left-[28px] top-[281px] w-[504px] h-[46px] rounded-[6px] bg-model text-brand text-[13px] font-medium leading-[1.45] hover:brightness-95 transition disabled:opacity-50"
           >
             Include building again
           </button>

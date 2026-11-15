@@ -1,8 +1,10 @@
 // Maps the backend's layout widgets onto the shapes the existing Figma pages already render.
 // Pure functions: `layout` is the object returned by POST /compose or GET /state (`state.layout`). Widgets are
 // looked up BY TYPE (the composer may reorder, drop or add widgets), and every selector returns null when its
-// widget is absent so a page can fall back to its prototype data.
+// widget is absent. Strict: nothing is invented; a missing value is shown as NA ("not available"), never a sample.
 // Money from the API is raw USD (may be null); tonnes are per year; *_pct is 0-100, probabilities are 0-1.
+
+export const NA = 'not available'
 
 export const UPGRADE_LABEL = {
   rooftop_solar: 'Rooftop solar',
@@ -14,14 +16,14 @@ export const UPGRADE_LABEL = {
 }
 export const upgradeLabel = (t) => UPGRADE_LABEL[t] || String(t || '').replace(/_/g, ' ')
 
-// ---- formatting (the pages show "$1280k", "+$486k", "1032 tonnes / year") ------------------------------------------
+// ---- formatting ("$9,506k", "+$120k", "1,234 tonnes / year"; missing -> NA) ------------------------------------
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
-export const usdK = (usd) => (num(usd) === null ? '—' : `$${Math.round(usd / 1000).toLocaleString('en-US')}k`)
-export const signedUsdK = (usd) => (num(usd) === null ? '—' : `${usd >= 0 ? '+' : '−'}${usdK(Math.abs(usd))}`)
-export const usd = (v) => (num(v) === null ? '—' : `$${Math.round(v).toLocaleString('en-US')}`)
-export const signedUsd = (v) => (num(v) === null ? '—' : `${v >= 0 ? '+' : '−'}${usd(Math.abs(v))}`)
-export const tonnesFmt = (v) => (num(v) === null ? '—' : Math.round(v).toLocaleString('en-US'))
-export const pct = (p, digits = 0) => (num(p) === null ? '—' : `${(p * 100).toFixed(digits)}%`)
+export const usdK = (usd) => (num(usd) === null ? NA : `$${Math.round(usd / 1000).toLocaleString('en-US')}k`)
+export const signedUsdK = (usd) => (num(usd) === null ? NA : `${usd >= 0 ? '+' : '−'}${usdK(Math.abs(usd))}`)
+export const usd = (v) => (num(v) === null ? NA : `$${Math.round(v).toLocaleString('en-US')}`)
+export const signedUsd = (v) => (num(v) === null ? NA : `${v >= 0 ? '+' : '−'}${usd(Math.abs(v))}`)
+export const tonnesFmt = (v) => (num(v) === null ? NA : Math.round(v).toLocaleString('en-US'))
+export const pct = (p, digits = 0) => (num(p) === null ? NA : `${(p * 100).toFixed(digits)}%`)
 
 // risk_lambda (engine): maximise E[NPV] + lambda x CVaR5, so 0 = expected NPV only (Growth) and higher = more weight on the
 // worst-5 % outcome (Cautious). Three positions, Balanced in the middle. The effect saturates early on real portfolios
@@ -42,19 +44,20 @@ export function targetModel(layout) {
   const planned = num(tc.tonnes_planned)
   const needed = num(tc.tonnes_needed)
   const totals = widget(layout, 'plan_table')?.totals ?? {}
-  const covered = planned !== null && needed !== null ? planned >= needed : layout.situation !== 'target_gap'
-  const tonnes = planned === null ? 0 : Math.round(planned)
+  const known = planned !== null && needed !== null
+  const covered = known ? planned >= needed : null // null = not known: never claim "covered" without both numbers
+  const tonnes = planned === null ? null : Math.round(planned)
   return {
     target: tc.target_pct,
     tonnes,
     investmentLabel: usdK(totals.upfront_usd),
     netValueLabel: signedUsdK(totals.exp_npv),
     covered,
-    statusLabel: covered ? 'Your goal is covered' : 'Short of your goal',
-    annualLabel: `${tonnes.toLocaleString('en-US')} tonnes / year`,
+    statusLabel: covered === null ? 'Coverage not available' : covered ? 'Your goal is covered' : 'Short of your goal',
+    annualLabel: tonnes === null ? `Planned tonnes ${NA}` : `${tonnes.toLocaleString('en-US')} tonnes / year`,
     confidence: num(tc.p_hit_target) === null ? null : Math.round(tc.p_hit_target * 100),
-    shortfall: planned !== null && needed !== null ? Math.max(0, Math.round(needed - planned)) : 0,
-    surplus: planned !== null && needed !== null ? Math.max(0, Math.round(planned - needed)) : 0,
+    shortfall: known ? Math.max(0, Math.round(needed - planned)) : null,
+    surplus: known ? Math.max(0, Math.round(planned - needed)) : null,
     tonnesNeeded: needed === null ? null : Math.round(needed),
     budgetUsd: tc.budget_usd ?? null,
     riskLambda: tc.risk_lambda,
@@ -74,12 +77,12 @@ export function planMetrics(layout) {
   if (!m) return null
   const totals = widget(layout, 'plan_table')?.totals ?? {}
   return [
-    { label: 'Annual CO₂ reduction', value: `${m.tonnes.toLocaleString('en-US')} tonnes / year`,
-      sub: m.covered ? 'Your goal is covered' : `${m.shortfall.toLocaleString('en-US')} t/yr short of your goal`, left: 0 },
+    { label: 'Annual CO₂ reduction', value: m.tonnes === null ? NA : `${m.tonnes.toLocaleString('en-US')} tonnes / year`,
+      sub: m.covered === null ? 'Coverage not available' : m.covered ? 'Your goal is covered' : `${m.shortfall.toLocaleString('en-US')} t/yr short of your goal`, left: 0 },
     { label: 'Lifetime net value', value: signedUsdK(totals.exp_npv), sub: 'After retrofit costs', left: 338 },
     { label: 'Upfront investment', value: usdK(totals.upfront_usd),
       sub: `Budget ${m.budgetUsd == null ? 'not set' : usdK(m.budgetUsd)} · ${riskLabel(m.riskLambda)} risk`, left: 676 },
-    { label: 'Chance of hitting the target', value: m.confidence === null ? '—' : `${m.confidence}%`,
+    { label: 'Chance of hitting the target', value: m.confidence === null ? NA : `${m.confidence}%`,
       sub: m.sample ? 'Sample pricing · not the quant engine' : 'Simulated outcomes · quant engine', left: 1014 },
   ]
 }
@@ -92,9 +95,10 @@ export function planRows(layout) {
   for (const r of t.rows) {
     const g = groups.get(r.type) || { type: r.type, buildings: new Set(), upfront: 0, npv: 0, tonnes: 0, unverified: 0 }
     g.buildings.add(r.building_name)
-    g.upfront += r.upfront_usd || 0
-    g.npv += r.exp_npv || 0
-    g.tonnes += r.tonnes_per_year || 0
+    // a group with any missing value has an unknown total (null), not a partial sum
+    g.upfront = g.upfront === null || num(r.upfront_usd) === null ? null : g.upfront + r.upfront_usd
+    g.npv = g.npv === null || num(r.exp_npv) === null ? null : g.npv + r.exp_npv
+    g.tonnes = g.tonnes === null || num(r.tonnes_per_year) === null ? null : g.tonnes + r.tonnes_per_year
     g.unverified += r.verified === 'unverified' ? 1 : 0
     groups.set(r.type, g)
   }
@@ -102,7 +106,8 @@ export function planRows(layout) {
     name: upgradeLabel(g.type),
     coverage: `${g.buildings.size} building${g.buildings.size === 1 ? '' : 's'}`,
     cost: usdK(g.upfront),
-    co2: `${tonnesFmt(g.tonnes)} tCO₂`,
+    co2: g.tonnes === null ? NA : `${tonnesFmt(g.tonnes)} tCO₂`,
+    unverified: g.unverified,
     npv: signedUsdK(g.npv),
   }))
 }
@@ -171,8 +176,9 @@ export function riskModel(layout) {
     }),
     breakEven: xmin <= 0 && xmax >= 0 ? px(0) : null,
     axis: [0, 0.25, 0.5, 0.75, 1].map((f) => ({ label: signedAxis(xmin + f * span), left: HIST.left + f * HIST.width - 14 })),
-    expNpv: signedUsdK(h.exp_npv), pLoss: h.p_loss == null ? '—' : `${(h.p_loss * 100).toFixed(1)}%`,
+    expNpv: signedUsdK(h.exp_npv), pLoss: h.p_loss == null ? NA : `${(h.p_loss * 100).toFixed(1)}%`,
     worst5: signedUsdK(h.cvar5), scope: h.scope,
+    scenarios: bins.reduce((s, b) => s + (b.count || 0), 0), // the histogram counts every simulated scenario once
   }
 }
 const signedAxis = (v) => (Math.abs(v) < 500 ? '$0k' : `${v < 0 ? '−' : ''}$${Math.abs(Math.round(v / 1000)).toLocaleString('en-US')}k`)
@@ -186,13 +192,15 @@ export function buildingModel(layout) {
   return {
     id: p.building_id, name: p.name, address: p.address,
     profile: [
-      ['Floor area', p.rba_sqft ? `${Math.round(p.rba_sqft).toLocaleString('en-US')} sq ft` : '—'],
-      ['Year built', p.year_built ? String(p.year_built) : '—'],
-      ['Floors', p.stories ? String(p.stories) : '—'],
-      ['Annual emissions', b.tonnes_per_year == null ? '—' : `${tonnesFmt(b.tonnes_per_year)} tCO₂`],
-      ['Annual energy spend', b.annual_spend_usd == null ? '—' : usd(b.annual_spend_usd)],
+      ['Floor area', p.rba_sqft ? `${Math.round(p.rba_sqft).toLocaleString('en-US')} sq ft` : NA],
+      ['Year built', p.year_built ? String(p.year_built) : NA],
+      ['Floors', p.stories ? String(p.stories) : NA],
+      ['Annual emissions', b.tonnes_per_year == null ? NA : `${tonnesFmt(b.tonnes_per_year)} tCO₂`, 'baseline'],
+      ['Annual energy spend', b.annual_spend_usd == null ? NA : usd(b.annual_spend_usd), 'baseline'],
     ],
-    hasMatterport: !!p.matterport_model_id, type: p.property_type, city: p.city,
+    baselineBasis: b.basis ?? null, // "benchmark estimate": label the baseline rows as estimates
+    footprintEstimated: p.footprint_source === 'estimated',
+    hasMatterport: !!p.matterport_model_id, type: p.property_type ?? null, city: p.city ?? null,
   }
 }
 
@@ -200,10 +208,11 @@ export function upgradeRows(layout) {
   const u = widget(layout, 'upgrade_list')
   if (!u) return null
   return u.upgrades.map((r) => ({
-    key: r.upgrade.upgrade_id, id: r.upgrade.upgrade_id, type: r.upgrade.type, name: `${upgradeLabel(r.upgrade.type)} · ${Math.round(r.upgrade.size_value).toLocaleString('en-US')} ${r.upgrade.size_unit}`,
+    key: r.upgrade.upgrade_id, id: r.upgrade.upgrade_id, type: r.upgrade.type, evidenceIds: r.upgrade.evidence_ids || [],
+    name: `${upgradeLabel(r.upgrade.type)} · ${num(r.upgrade.size_value) === null ? `size ${NA}` : `${Math.round(r.upgrade.size_value).toLocaleString('en-US')} ${r.upgrade.size_unit}`}`,
     on: !!r.in_plan, verified: r.upgrade.verified, ownerIncluded: !!r.owner_included, includable: r.upgrade.verified === 'unverified' && !r.in_plan,
     reason: r.upgrade.reason, confidence: r.upgrade.confidence, highlighted: !!r.highlighted,
-    co2: r.tonnes_per_year == null ? '—' : `${tonnesFmt(r.tonnes_per_year)} tonnes`, cost: usd(r.upfront_usd), npv: signedUsd(r.exp_npv),
+    co2: r.tonnes_per_year == null ? NA : `${tonnesFmt(r.tonnes_per_year)} tonnes`, cost: usd(r.upfront_usd), npv: signedUsd(r.exp_npv),
     tonnes: r.tonnes_per_year, upfrontUsd: r.upfront_usd,
   }))
 }
@@ -211,8 +220,10 @@ export function upgradeRows(layout) {
 /** What this building contributes to the current plan (sum over its in-plan upgrades). */
 export function buildingTotals(layout) {
   const rows = (upgradeRows(layout) || []).filter((r) => r.on)
-  const t = rows.reduce((a, r) => ({ tonnes: a.tonnes + (r.tonnes || 0), upfront: a.upfront + (r.upfrontUsd || 0) }), { tonnes: 0, upfront: 0 })
-  return { n: rows.length, line: `${tonnesFmt(t.tonnes)} tCO₂ / year · ${usdK(t.upfront)} investment` }
+  const add = (a, v) => (a === null || num(v) === null ? null : a + v)
+  const t = rows.reduce((a, r) => ({ tonnes: add(a.tonnes, r.tonnes), upfront: add(a.upfront, r.upfrontUsd) }), { tonnes: 0, upfront: 0 })
+  if (!rows.length) return { n: 0, line: 'No upgrades of this building are in the plan' }
+  return { n: rows.length, line: `${t.tonnes === null ? `tonnes ${NA}` : `${tonnesFmt(t.tonnes)} tCO₂ / year`} · ${usdK(t.upfront)} investment` }
 }
 
 // ---- Evidence ---------------------------------------------------------------------------------------------------------
@@ -222,8 +233,11 @@ export function evidenceModel(layout, mediaUrl) {
   const items = g.items.map((i) => ({
     id: i.image_id, url: mediaUrl(i.image_id), source: i.source, status: i.status, marks: i.marks,
     summaries: i.claim_summaries, notes: i.verifier_notes,
-    title: i.source === 'matterport_pano' ? 'Interior panorama' : i.orientation ? `${i.orientation} facade` : 'Roof · aerial',
-    provider: i.source === 'matterport_pano' ? 'Matterport' : 'Vexcel',
+    // titles and providers only from recorded fields: an image without a recorded source says so
+    title: i.source === 'matterport_pano' ? 'Interior panorama' : i.orientation ? `${i.orientation} facade`
+      : /overhead|aerial|roof/i.test(i.source || '') ? 'Roof · aerial' : 'Survey image',
+    provider: /matterport/i.test(i.source || '') ? 'Matterport' : /vexcel/i.test(i.source || '') ? 'Vexcel'
+      : /costar/i.test(i.source || '') ? 'CoStar' : 'Source not recorded',
   }))
   return { items }
 }

@@ -18,7 +18,7 @@ describe('formatting', () => {
     expect(vm.usd(152000)).toBe('$152,000')
     expect(vm.signedUsd(-26000)).toBe('−$26,000')
     expect(vm.tonnesFmt(1032.4)).toBe('1,032')
-    expect([vm.usdK(null), vm.signedUsdK(undefined), vm.usd(NaN), vm.tonnesFmt(null), vm.pct(null)]).toEqual(['—', '—', '—', '—', '—'])
+    expect([vm.usdK(null), vm.signedUsdK(undefined), vm.usd(NaN), vm.tonnesFmt(null), vm.pct(null)]).toEqual(Array(5).fill('not available'))
   })
   it('risk labels map both ways; Balanced is the middle position (lambda 0.2)', () => {
     expect(vm.RISK_LAMBDA).toEqual({ Cautious: 0.4, Balanced: 0.2, Growth: 0 })
@@ -33,7 +33,7 @@ describe('widgets are found by type, never by position', () => {
     expect(vm.targetModel(shuffled(overview)).target).toBe(25)
     expect(vm.planRows(without(overview, 'financing_card'))).toHaveLength(vm.planRows(overview).length)
   })
-  it('every selector returns null when its widget is absent (pages then show their prototype data)', () => {
+  it('every selector returns null when its widget is absent (pages then show "not available")', () => {
     const none = { situation: 'portfolio_overview', widgets: [] }
     for (const f of [vm.targetModel, vm.portfolioBuildings, vm.planMetrics, vm.planRows, vm.planSummary, vm.abatementGeometry, vm.riskModel,
       vm.buildingModel, vm.upgradeRows, vm.financingModel, vm.memoMarkdown]) {
@@ -44,7 +44,7 @@ describe('widgets are found by type, never by position', () => {
 })
 
 describe('portfolio / plan', () => {
-  it('targetModel is a drop-in for deriveModel()', () => {
+  it('targetModel gives the Portfolio page its numbers', () => {
     const m = vm.targetModel(overview)
     expect(m).toMatchObject({ target: 25, covered: true, statusLabel: 'Your goal is covered' })
     expect(m.annualLabel).toMatch(/^[\d,]+ tonnes \/ year$/)

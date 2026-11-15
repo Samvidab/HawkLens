@@ -62,32 +62,39 @@ function TargetControl({ p }) {
 const rings = (wkt) => (String(wkt || '').match(/\(([^()]+)\)/g) || []).map((r) =>
   r.replace(/[()]/g, '').split(',').map((pt) => pt.trim().split(/\s+/).map(Number)).filter((xy) => xy.length === 2 && xy.every(Number.isFinite)))
 
+export const hasFootprints = (buildings) => (buildings || []).some((b) => rings(b.footprint_wkt).length > 0)
+
+/** Real building footprints (WKT from the records) drawn in 2D. buildings: [{building_id, name, footprint_wkt, excluded}].
+ *  Returns null when no footprint is recorded, so the caller shows "not available". */
+export function FootprintMap({ buildings, focusId, onPick, height = 260, className = '' }) {
+  const shapes = buildings.map((b) => ({ b, rings: rings(b.footprint_wkt) })).filter((s) => s.rings.length)
+  const pts = shapes.flatMap((s) => s.rings.flat())
+  if (!pts.length) return null
+  const lat0 = pts.reduce((a, q) => a + q[1], 0) / pts.length
+  const kx = Math.cos((lat0 * Math.PI) / 180)
+  const xs = pts.map((q) => q[0] * kx), ys = pts.map((q) => q[1])
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+  const W = 600, H = 260, pad = 14 // the drawing keeps its aspect ratio inside `height`
+  const s = Math.min((W - 2 * pad) / (x1 - x0 || 1e-6), (H - 2 * pad) / (y1 - y0 || 1e-6))
+  const P = (q) => `${pad + (q[0] * kx - x0) * s},${H - pad - (q[1] - y0) * s}`
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className={`w-full bg-[#f3f5f0] rounded ${className}`} style={{ height }} role="img" aria-label="Building footprints" data-testid="footprints">
+      {shapes.map(({ b, rings: rs }) => rs.map((r, i) => (
+        <polygon key={`${b.building_id}-${i}`} points={r.map(P).join(' ')} onClick={onPick ? () => onPick(b) : undefined}
+          className={onPick ? 'cursor-pointer' : ''} fill={b.excluded ? '#d5d9d1' : b.building_id === focusId ? '#335d45' : '#7f9c7c'} stroke="#335d45" strokeWidth="1">
+          <title>{b.name}</title>
+        </polygon>
+      )))}
+    </svg>
+  )
+}
+
 function Portfolio3D({ p }) {
   const run = useRun()
-  const shapes = p.buildings.map((b) => ({ b, rings: rings(b.footprint_wkt) })).filter((s) => s.rings.length)
-  const pts = shapes.flatMap((s) => s.rings.flat())
-  let svg = null
-  if (pts.length) {
-    const lat0 = pts.reduce((a, q) => a + q[1], 0) / pts.length
-    const kx = Math.cos((lat0 * Math.PI) / 180)
-    const xs = pts.map((q) => q[0] * kx), ys = pts.map((q) => q[1])
-    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
-    const W = 600, H = 260, pad = 14, s = Math.min((W - 2 * pad) / (x1 - x0 || 1e-6), (H - 2 * pad) / (y1 - y0 || 1e-6))
-    const P = (q) => `${pad + (q[0] * kx - x0) * s},${H - pad - (q[1] - y0) * s}`
-    svg = (
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[260px] bg-[#f3f5f0] rounded" role="img" aria-label="Building footprints">
-        {shapes.map(({ b, rings: rs }) => rs.map((r, i) => (
-          <polygon key={`${b.building_id}-${i}`} points={r.map(P).join(' ')} onClick={() => run.act('open_building', { building_id: b.building_id }).catch(() => {})}
-            className="cursor-pointer" fill={b.excluded ? '#d5d9d1' : b.building_id === p.focus_building_id ? '#335d45' : '#7f9c7c'} stroke="#335d45" strokeWidth="1">
-            <title>{b.name}</title>
-          </polygon>
-        )))}
-      </svg>
-    )
-  }
+  const svg = <FootprintMap buildings={p.buildings} focusId={p.focus_building_id} onPick={(b) => run.act('open_building', { building_id: b.building_id }).catch(() => {})} />
   return (
     <div className="space-y-2">
-      {svg || <Empty>Footprints not available.</Empty>}
+      {hasFootprints(p.buildings) ? svg : <Empty>Footprints not available.</Empty>}
       <p className="text-[11px] text-muted">Footprints in 2D from the building records (a 3D view is not available). Click a building to open it.</p>
       <ul className="grid grid-cols-2 gap-x-4 text-[12px]">
         {p.buildings.map((b) => (

@@ -18,6 +18,16 @@ function inline(text, key) {
   return out
 }
 
+/** Save `text` as a file in the browser (the memo is downloaded exactly as the backend wrote it). */
+export function downloadText(filename, text, type = 'text/markdown') {
+  const url = URL.createObjectURL(new Blob([text], { type }))
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename })
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 const cells = (row) => row.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
 
 export function Markdown({ text }) {

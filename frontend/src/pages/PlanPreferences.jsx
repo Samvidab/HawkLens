@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useOverview } from '../lib/store'
 import { RISK_LAMBDA, riskLabel, targetModel, usdK, widget } from '../lib/viewModels'
 
-const BUDGETS = ['$1000k', '$1500k', '$2000k']
 const RISKS = ['Cautious', 'Balanced', 'Growth']
 
 export default function PlanPreferences() {
@@ -14,8 +13,8 @@ export default function PlanPreferences() {
   const total = tm ? (widget(run.layout, 'plan_table')?.totals?.upfront_usd ?? 0) : 0
   const options = tm && total > 0
     ? [{ label: 'No cap', usd: null }, { label: usdK(Math.round((total * 0.8) / 1e5) * 1e5), usd: Math.round((total * 0.8) / 1e5) * 1e5 }, { label: usdK(Math.round((total * 1.2) / 1e5) * 1e5), usd: Math.round((total * 1.2) / 1e5) * 1e5 }]
-    : BUDGETS.map((b) => ({ label: b, usd: parseInt(b.replace(/\D/g, ''), 10) * 1000 }))
-  const [budget, setBudget] = useState(tm ? (tm.budgetUsd == null ? 'No cap' : usdK(tm.budgetUsd)) : '$1500k')
+    : [{ label: 'No cap', usd: null }] // no priced plan yet: only 'no cap' (any other figure would be invented)
+  const [budget, setBudget] = useState(tm && tm.budgetUsd != null ? usdK(tm.budgetUsd) : 'No cap')
   const [risk, setRisk] = useState(tm ? riskLabel(tm.riskLambda) : 'Balanced')
   useEffect(() => { // the plan loads asynchronously after a reload: show ITS budget and risk
     if (!tm) return
@@ -110,10 +109,10 @@ export default function PlanPreferences() {
 
           <p className="absolute left-[32px] top-[355px] text-muted text-[13px] leading-[23px]">
             {tm
-              ? 'Changes re-plan your portfolio with the quant engine and reset any prior approval.'
-              : 'Changes update the demo totals and reset any prior approval.'}
+              ? 'Changes re-plan your portfolio and reset any prior approval.'
+              : 'The plan is not available yet.'}
             <br />
-            {tm ? 'The plan is re-priced each time you choose.' : 'Risk pricing and optimization require a live backend.'}
+            {tm ? 'The plan is re-priced each time you choose.' : ''}
           </p>
 
           <button
