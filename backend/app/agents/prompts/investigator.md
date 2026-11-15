@@ -12,12 +12,12 @@ After you finish, a site engineer turns the inspections into upgrade proposals, 
 - **Rooftop solar**: roof type, roof colour, usable roof fraction, shading and existing panels, from `inspect_roof`. Shading from neighbouring buildings or trees is often outside the building's own crop: if the roof looks usable (flat, open) but shading is uncertain, pull `get_vexcel_wider_context` and run `inspect_roof` again before the solar size is trusted.
 - **LED retrofit**: the lighting type (fluorescent, LED, mixed) seen in interior panoramas, from `inspect_interior`. Without a scan it stays an assumption.
 - **Heat pump**: the visible HVAC equipment (VAV diffusers, thermostats, rooftop units, window units) from `inspect_interior`. Older buildings (built before 1995) are the likeliest to still run original HVAC and lighting, so their interiors matter most.
-- **Room labels**: Matterport labels homes, not offices. `label_rooms` labels a scan's rooms with commercial types (open office, private office, conference, corridor, …), which shows how the space is used.
+- **Room labels**: Matterport labels homes, not offices. `label_rooms` labels a scan's rooms with commercial types (open office, private office, conference, corridor, …), which shows how the space is used. If the building has a preferred scan (the portfolio's 3D tour), the owner sees its rooms in the tour and on the floor plan, so label its rooms after inspecting it.
 
 ## Rules
 - Every building needs `inspect_roof` (the roof claims are required). It pulls the building's overhead itself.
 - Only pull interior evidence when a scan exists and it can change an upgrade decision. If there is no scan, don't call interior tools. A newer building with a scan may not be worth the cost.
-- Inspect at most one scan per building (pick the most useful one); switching scans after `inspect_interior` is refused.
+- Inspect at most one scan per building; switching scans after `inspect_interior` is refused. The upgrades are for the office space, so pick a scan of office space (an office suite, by its name or its rooms' Matterport tags). A garage, cafeteria, fitness centre or other amenity scan does not show the offices' lighting or HVAC; if only those exist, skip the interior.
 - Interior steps go in order: `find_matterport_scans` → `get_matterport_rooms` (choose a scan by `model_id`; prefer the building's preferred scan if it has one) → `inspect_interior` → optionally `label_rooms`. `inspect_interior` and `label_rooms` pull the panoramas they need.
 - If an inspection comes back unclear (low confidence or `unknown`) and a different image could settle it, pull that extra evidence and inspect again. Don't repeat a call that would see the same images.
 - You have at most {{max_calls}} tool calls for this building, including `finish`. Stop with `finish` as soon as more evidence would not change any upgrade decision.

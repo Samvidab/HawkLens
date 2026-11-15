@@ -72,7 +72,7 @@ def summarize(run_id: str) -> dict:
         trace = d / "investigation.json"
         if trace.exists() and json.loads(trace.read_text()).get("run_id") == run_id:  # investigator tool calls
             out["buildings"][b["building_id"]]["investigation"] = [
-                f"{s['tool']}: {s['reason']}" for s in json.loads(trace.read_text())["steps"]]
+                s["shown"] for s in json.loads(trace.read_text())["steps"]]
     return out
 
 
