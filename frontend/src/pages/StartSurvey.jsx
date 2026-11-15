@@ -14,7 +14,7 @@ const BUILDINGS = [
 
 const SETTINGS = [
   { label: 'City', value: 'Houston' },
-  { label: 'Portfolio', value: '8 buildings' },
+  { label: 'Portfolio', value: '7 buildings' },
 ]
 
 export default function StartSurvey() {
@@ -33,7 +33,7 @@ export default function StartSurvey() {
         Inspect your buildings
       </h1>
       <p className="absolute left-[56px] top-[202px] text-muted text-[14px] leading-[1.45]">
-        Houston portfolio · 8 sample buildings · Records, aerial imagery and one interior scan
+        Houston portfolio · 7 sample buildings · Records, aerial imagery and one interior scan
       </p>
 
       {/* Buildings in this survey */}

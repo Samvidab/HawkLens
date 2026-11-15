@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Page from '../components/Page'
 import ShowcaseModal from '../components/ShowcaseModal'
-import { assetUrl, fetchProperties } from '../lib/api'
+import { assetUrl } from '../lib/api'
+import { fetchPortfolioProperties } from '../lib/portfolioApi'
 import { useGo, useGoal } from '../lib/ui'
 import {
   BUDGET_K,
@@ -25,7 +26,7 @@ export default function Portfolio() {
 
   useEffect(() => {
     let alive = true
-    fetchProperties({ limit: 24 })
+    fetchPortfolioProperties() // the demo portfolio's buildings only (GET /portfolio)
       .then((d) => alive && setProperties(d.results || []))
       .catch((e) => alive && setLoadError(e.message))
     return () => {
@@ -74,7 +75,7 @@ export default function Portfolio() {
         Recommended upgrades
       </h2>
       <p className="absolute left-[56px] top-[738px] whitespace-nowrap text-muted text-[13px]">
-        18 upgrades across 8 buildings
+        18 upgrades across 7 buildings
       </p>
       <LinkArrow className="left-[1208px] top-[715px]" onClick={() => go('/plan')}>
         See costs &amp; evidence
@@ -318,7 +319,7 @@ function TargetSlider({ target, onChange }) {
 }
 
 const UPGRADES = [
-  { name: 'LED retrofit', detail: '8 buildings · 8 bills', cost: '$120k' },
+  { name: 'LED retrofit', detail: '7 buildings · 7 bills', cost: '$120k' },
   { name: 'Rooftop solar', detail: '6 buildings · 6 bills', cost: '$760k' },
   { name: 'Heat pump conversion', detail: '4 buildings · 4 bills', cost: '$400k' },
 ]

@@ -4,7 +4,7 @@ import Page from '../components/Page'
 import { useGo } from '../lib/ui'
 
 const ALLOCATIONS = [
-  { name: 'LED retrofit', bills: '8 buildings · 8 bills', amount: '$120k' },
+  { name: 'LED retrofit', bills: '7 buildings · 7 bills', amount: '$120k' },
   { name: 'Rooftop solar', bills: '6 buildings · 6 bills', amount: '$760k' },
   { name: 'Heat pump conversion', bills: '4 buildings · 4 bills', amount: '$400k' },
 ]
@@ -46,7 +46,7 @@ export default function FinancingApproval() {
           Where your investment goes
         </p>
         <p className="absolute left-0 top-[34px] text-muted text-[13px]">
-          18 upgrades across 8 buildings
+          18 upgrades across 7 buildings
         </p>
         <p className="absolute left-0 top-[91px] text-muted text-[12px]">Upgrade bundle</p>
         <p className="absolute left-[394px] top-[91px] text-muted text-[12px]">Contractor bills</p>

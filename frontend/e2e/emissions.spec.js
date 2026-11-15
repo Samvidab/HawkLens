@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { topAreas } from '../src/lib/co2Tags.js'
 
 // Verified CO2 highlighting on the Portfolio tours, in light and dark mode (adapted from codex-3d-work's emissions.spec.js
 // to main's homepage and ShowcaseModal). For every building card: a tour whose model id is a surveyed scan with verified
@@ -52,16 +53,24 @@ async function checkOutlines(page, item) {
 }
 
 for (const theme of ['light', 'dark']) {
-  test(`every Portfolio tour, ${theme} mode: markers and list only from verified data`, async ({ page }) => {
+  test(`every Portfolio tour, ${theme} mode: only the portfolio's buildings; top areas only from verified data`, async ({ page }) => {
     test.skip(!ready, `site ${SITE} or API ${API} not running`)
     fs.mkdirSync(SHOTS, { recursive: true })
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
     const verified = await verifiedByModel()
-    const properties = (await getJson('/properties?limit=24')).results // the grid shows these, in this order
+    // the grid and the search show exactly the demo portfolio's buildings that have a Matterport tour (GET /portfolio)
+    const properties = (await getJson('/portfolio')).buildings.filter((b) => b.matterport_model_id)
+      .map((b) => ({ id: b.matterport_model_id, name: b.name }))
     await page.goto('/')
     const cards = page.locator('section div.grid > button')
     await expect(cards).toHaveCount(properties.length, { timeout: 30_000 })
+    expect(await cards.locator('p.truncate.text-\\[13px\\]').allTextContents()).toEqual(properties.map((p) => p.name))
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
+    const found = page.locator('.command-item:has(.command-arrow:text-is("3D ↗")) strong')
+    await expect(found).toHaveCount(properties.length, { timeout: 20_000 })
+    expect((await found.allTextContents()).sort()).toEqual(properties.map((p) => p.name).sort())
+    await page.keyboard.press('Escape')
     if (theme === 'dark') {
       await page.locator('.mission-toggle').click()
       await expect(page.locator('body')).toHaveClass(/mission-mode/)
@@ -82,9 +91,24 @@ for (const theme of ['light', 'dark']) {
         await expect(box).toHaveAttribute('data-status', /ready|failed|no-key/, { timeout: 90_000 })
         expect(await box.getAttribute('data-status')).toBe('ready')
         row.markers = Number(await box.getAttribute('data-tags'))
-        expect(row.markers).toBeLessThanOrEqual(data.items.length) // never a marker without a verified item
-        await expect(page.locator('[data-co2-item]')).toHaveCount(data.items.length)
-        for (let k = 0; k < data.items.length; k++) {
+        // Top verified CO2 areas: as many as exist, at most 3, never padded; markers only for the shown areas' items
+        const areas = topAreas(data.items)
+        const shown = areas.flatMap((a) => a.indices)
+        row.areas = areas.length
+        await expect(page.getByTestId('co2-panel')).toContainText('Top verified CO₂ areas')
+        await expect(page.locator('[data-co2-area]')).toHaveCount(areas.length)
+        await expect(page.locator('[data-co2-item]')).toHaveCount(shown.length)
+        expect(row.markers).toBeLessThanOrEqual(shown.length) // never a marker without a verified item in a shown area
+        for (const [a, area] of areas.entries()) { // an area click goes to its first located source
+          const btn = page.getByTestId(`co2-area-${a}`)
+          if (await btn.isDisabled()) continue
+          await btn.click()
+          await expect(box).toHaveAttribute('data-focus-state', /open|failed/, { timeout: 40_000 })
+          expect(area.indices).toContain(Number(await box.getAttribute('data-focus-index')))
+          await expect(box).toHaveAttribute('data-current-sweep', await box.getAttribute('data-focus-sweep'), { timeout: 15_000 })
+          row.areas_clicked = (row.areas_clicked || 0) + 1
+        }
+        for (const k of shown) {
           const btn = page.getByTestId(`co2-item-${k}`)
           if (await btn.isDisabled()) continue
           await btn.click()
@@ -98,13 +122,13 @@ for (const theme of ['light', 'dark']) {
           await expect.poll(async () => Number(((await box.getAttribute('data-camera-rotation')) || 'NaN').split(',')[0]), { timeout: 15_000 })
             .toBeCloseTo(wanted, 0)
           row.clicked++
-          if (k === 0) await page.waitForTimeout(2500), await page.screenshot({ path: `${SHOTS}/tour-${theme}-${p.id}.png` })
+          if (k === shown[0]) await page.waitForTimeout(2500), await page.screenshot({ path: `${SHOTS}/tour-${theme}-${p.id}.png` })
           // the recorded evidence with the recorded object outline
           await page.getByRole('button', { name: 'Inspection Close-Up', exact: true }).click()
           await expect(page.getByRole('dialog', { name: /Inspection Close-Up/ })).toBeVisible()
           await checkOutlines(page, data.items[k])
           row.outlines_checked++
-          if (k === 0) await page.screenshot({ path: `${SHOTS}/evidence-${theme}-${p.id}.png` })
+          if (k === shown[0]) await page.screenshot({ path: `${SHOTS}/evidence-${theme}-${p.id}.png` })
           await page.getByRole('button', { name: 'Close evidence' }).click()
           await expect(page.getByRole('dialog', { name: /Inspection Close-Up/ })).toHaveCount(0)
         }

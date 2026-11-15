@@ -80,3 +80,22 @@ export function modelMap(responses) {
   }
   return map
 }
+
+export const TOP_AREAS = 3
+/** The verified CO2 areas of a building, most first, at most `n` (never padded). An area is a panorama where verified items
+ *  were photographed (their pano_id); it ranks by how many verified items were seen there, ties in survey order. Items
+ *  without a recorded panorama form no area. Returns [{ pano_id, indices }] (indices into `items`). Pure; no CO2 amount is
+ *  recorded per item, so the rank is a count of verified sources, not of tonnes. */
+export function topAreas(items, n = TOP_AREAS) {
+  const areas = new Map()
+  ;(items || []).forEach((it, i) => {
+    if (!it?.pano_id) return
+    const a = areas.get(it.pano_id) || { pano_id: it.pano_id, first: i, indices: [] }
+    a.indices.push(i)
+    areas.set(it.pano_id, a)
+  })
+  return [...areas.values()]
+    .sort((a, b) => b.indices.length - a.indices.length || a.first - b.first)
+    .slice(0, n)
+    .map(({ pano_id, indices }) => ({ pano_id, indices }))
+}

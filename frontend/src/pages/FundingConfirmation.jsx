@@ -25,7 +25,7 @@ export default function FundingConfirmation() {
 
         <p className="absolute left-[46px] top-[294px] text-muted text-[14px]">Contractor allocation</p>
         <p className="absolute left-[454px] top-[294px] text-ink text-[13px]">
-          18 upgrades across 8 buildings
+          18 upgrades across 7 buildings
         </p>
 
         <div className="absolute left-[46px] top-[338px] w-[748px] h-px bg-[#dde3d8]" />

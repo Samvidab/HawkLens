@@ -6,7 +6,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { modelIdOf, modelMap, sweepFor, tagDescription, tagLabel, tagPlan } from '../lib/co2Tags'
+import { modelIdOf, modelMap, sweepFor, tagDescription, tagLabel, tagPlan, topAreas } from '../lib/co2Tags'
+import { portfolioCards } from '../lib/portfolioApi'
 import Co2Highlight, { Co2Tour } from './Co2Tour'
 import ShowcaseModal from './ShowcaseModal'
 
@@ -178,5 +179,49 @@ describe('Co2Highlight', () => {
     render(<Co2Highlight modelId="M">{PLAIN}</Co2Highlight>)
     await waitFor(() => expect(screen.getByTitle('plain tour')).toBeTruthy())
     expect(screen.queryByTestId('co2-panel')).toBeNull()
+  })
+})
+
+describe('Top verified CO2 areas', () => {
+  const p = (pano, kind = 'lighting') => item(kind, `thing at ${pano}`, pano)
+  it('areas rank by verified sources photographed there (ties in survey order), at most 3, never padded', () => {
+    const items = [p('a'), p('b'), p('b', 'hvac'), p('c'), p('d'), p('c', 'hvac'), item('lighting', 'no panorama', null)]
+    expect(topAreas(items)).toEqual([{ pano_id: 'b', indices: [1, 2] }, { pano_id: 'c', indices: [3, 5] }, { pano_id: 'a', indices: [0] }])
+    expect(topAreas([p('a'), p('b')])).toHaveLength(2) // two areas exist: two shown, nothing added
+    expect(topAreas([item('lighting', 'x', null)])).toEqual([]) // no recorded panorama: no area
+  })
+
+  it('the panel is titled "Top verified CO2 areas" and lists only the shown areas and their sources', async () => {
+    const data = { ...DATA, items: [p('pA'), p('pB'), p('pB', 'hvac'), p('pZ'), item('lighting', 'fourth area', 'pY')] }
+    render(<Co2Tour data={data} modelId="M" plain={PLAIN} />)
+    await waitFor(() => expect(status()).toBe('ready'))
+    expect(screen.getByTestId('co2-panel').textContent).toContain('Top verified CO₂ areas')
+    expect(document.querySelectorAll('[data-co2-area]')).toHaveLength(3) // pB (2), pA, pZ; pY is the 4th area
+    expect(screen.getByTestId('co2-area-0').textContent).toContain('Area 1 · 2 verified sources')
+    expect(screen.queryByText('fourth area seen (verified)')).toBeNull()
+    expect(m.tagAdd.mock.calls[0]).toHaveLength(3) // markers for the shown areas only (pZ is not a sweep of the tour)
+  })
+
+  it('clicking an area flies to its sweep and opens the marker of its first source', async () => {
+    const data = { ...DATA, items: [p('pA'), p('pB'), p('pB', 'hvac')] }
+    render(<Co2Tour data={data} modelId="M" plain={PLAIN} />)
+    await waitFor(() => expect(status()).toBe('ready'))
+    fireEvent.click(screen.getByTestId('co2-area-0')) // pB: 2 sources
+    await waitFor(() => expect(tour().getAttribute('data-focus-state')).toBe('open'), { timeout: 3000 })
+    expect(m.moveTo).toHaveBeenCalledWith('s2', expect.objectContaining({ transition: 'transition.fly' }))
+    expect(tour().getAttribute('data-focus-index')).toBe('1')
+  })
+})
+
+describe('portfolio-only cards', () => {
+  it('one card per portfolio building with a Matterport model; images from the stored record of that model only', () => {
+    const buildings = [
+      { building_id: 'b1', name: 'One', address: '1 Main', matterport_model_id: 'M1', showcase_url: 'https://my.matterport.com/show/?m=M1' },
+      { building_id: 'b2', name: 'Two', address: null, matterport_model_id: null },
+    ]
+    const stored = [{ id: 'M1', thumbnail_url: '/properties/M1/thumbnail', show_url: 'x' }, { id: 'OTHER', name: 'Some other tour' }]
+    expect(portfolioCards(buildings, stored)).toEqual([{ id: 'M1', building_id: 'b1', name: 'One', address: '1 Main', city: null,
+      thumbnail_url: '/properties/M1/thumbnail', show_url: 'https://my.matterport.com/show/?m=M1' }])
+    expect(portfolioCards(buildings, [])[0].thumbnail_url).toBeNull() // no stored image: none, not a placeholder photo
   })
 })

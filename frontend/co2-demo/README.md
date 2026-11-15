@@ -16,11 +16,15 @@ Every other building, the flag off, or a backend without the data: **the iframe,
 invented. If the SDK cannot start (no `VITE_MATTERPORT_SDK_KEY`, or an error) the iframe is shown and the list stays,
 read-only. Works in light and mission (dark) mode (`Co2Tour.css`).
 
-Not ranked: items carry no CO₂ quantity (no tonnes or shares), so a "top 3 by CO₂" would be invented; all verified items are
-listed (2–5 per building).
+"Top verified CO₂ areas": an area is a panorama where verified items were photographed; areas rank by how many verified
+sources were seen there (ties in survey order), at most 3, never padded (`topAreas` in `src/lib/co2Tags.js`). Items carry
+no CO₂ quantity, so the rank is a count of verified sources, not tonnes. Markers are placed only for the shown areas.
+
+Cards and ⌘K search list only the demo portfolio's buildings (GET /portfolio, `src/lib/portfolioApi.js`); every other
+stored Matterport tour is hidden. The building count follows Lane A's portfolio.json.
 
 Files: `src/components/ShowcaseModal.jsx` (wraps the iframe), `src/components/Co2Tour.jsx` + `.css` + test,
-`src/components/InspectionEvidence.jsx` + test, `src/lib/co2Api.js`, `src/lib/co2Tags.js`, `e2e/emissions.spec.js`,
+`src/components/InspectionEvidence.jsx` + test, `src/lib/co2Api.js`, `src/lib/co2Tags.js`, `src/lib/portfolioApi.js`, `e2e/emissions.spec.js`,
 `playwright.config.js`, `vitest.config.js`, `package.json` (`@matterport/sdk` 1.6.2; test tooling), this folder.
 
 ## Backend

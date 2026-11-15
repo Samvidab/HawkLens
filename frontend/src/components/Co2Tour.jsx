@@ -5,15 +5,17 @@
 //   - the model id is not one of the scans our agents surveyed, or it has no verified items, or the feature is off / the
 //     backend has no /co2_equipment -> renders `children` unchanged: no markers, no list, nothing invented;
 //   - matched -> the tour through the Showcase SDK with one observation marker ("Photo taken here") per verified item, on
-//     the sweep where its evidence was recorded, and beside it the list of those items. Selecting an item (in the list or
-//     its marker in the tour) flies to that sweep and turns to the evidence face (ceiling or level). "Inspection Close-Up"
-//     / "View evidence" opens the original recorded image with the recorded object outlines (InspectionEvidence).
+//     the sweep where its evidence was recorded, and beside it "Top verified CO2 areas": up to 3 areas (panoramas where
+//     verified sources were photographed, most sources first; never padded) with their sources. Markers are placed for the
+//     shown areas' items only. Selecting an area, a source or its marker flies to that sweep and turns to the evidence face
+//     (ceiling or level). "Inspection Close-Up" / "View evidence" opens the original recorded image with the recorded
+//     object outlines (InspectionEvidence).
 //     If the SDK cannot start (no key, error) the plain iframe is shown and the list stays, read-only.
 // Everything comes from GET /co2_equipment; nothing is computed here. Fixture 3D positions are not recorded, so no marker
 // claims to sit on a fixture.
 import { useEffect, useRef, useState } from 'react'
 import { emissions3dOn, loadCo2Models, ourApiBase } from '../lib/co2Api'
-import { KIND, OBSERVATION, sdkKey, tagPlan } from '../lib/co2Tags'
+import { KIND, OBSERVATION, sdkKey, tagPlan, topAreas } from '../lib/co2Tags'
 import InspectionEvidence from './InspectionEvidence'
 import './Co2Tour.css'
 
@@ -33,39 +35,54 @@ function loadSweeps(sdk) {
   })
 }
 
-export function Co2List({ items, placed, focus, onPick, onEvidence, note, canMove }) {
+/** The panel beside the tour: up to 3 verified CO2 areas (topAreas), each with the verified sources photographed there. */
+export function Co2Areas({ items, areas, placed, focus, onPick, onEvidence, note, canMove }) {
   const base = ourApiBase()
   return (
     <div data-testid="co2-panel" className="h-full overflow-y-auto p-3 text-[11px] leading-[16px] bg-white">
-      <p className="font-semibold text-ink text-[13px] mb-1">Verified CO₂ sources in this scan</p>
-      {canMove && <p className="text-muted mb-2">Click an item to go to where it was seen.</p>}
-      <ul className="space-y-1">
-        {items.map((it, i) => {
-          const movable = canMove && placed.has(i)
-          const active = focus?.index === i
+      <p className="font-semibold text-ink text-[13px] mb-1">Top verified CO₂ areas</p>
+      <p className="text-muted mb-2">Ranked by the verified sources photographed there.{canMove ? ' Click to go there.' : ''}</p>
+      {!areas.length && <p className="text-muted" data-testid="co2-no-areas">No verified CO₂ areas located in this scan.</p>}
+      <ol className="space-y-2">
+        {areas.map((area, k) => {
+          const go = area.indices.find((i) => placed.has(i))
+          const movable = canMove && go !== undefined
+          const active = area.indices.includes(focus?.index)
           return (
-            <li key={`${it.claim?.claim_id}-${i}`} data-co2-item={it.kind} data-index={i}>
-              <button type="button" disabled={!movable} onClick={() => onPick(i)} data-testid={`co2-item-${i}`}
-                className={`co2-item w-full text-left flex gap-2 rounded px-1 py-1 ${movable ? 'co2-item-movable cursor-pointer' : 'cursor-default'} ${active ? 'co2-item-active' : ''}`}>
-                <span className="mt-[3px] inline-block w-[10px] h-[10px] rounded-full shrink-0" style={{ background: KIND[it.kind]?.css }} />
-                <span>
-                  <span className="text-ink">{it.equipment} seen (verified)</span>
-                  <span className="block text-muted">
-                    {KIND[it.kind]?.name} · {placed.has(i) ? OBSERVATION : 'not located in the tour'}
-                    {active && focus.state === 'moving' ? ' · moving…' : ''}
-                  </span>
-                </span>
+            <li key={area.pano_id} data-co2-area={k} className="border-b border-line pb-2">
+              <button type="button" disabled={!movable} onClick={() => onPick(go)} data-testid={`co2-area-${k}`}
+                className={`co2-item w-full text-left rounded px-1 py-1 ${movable ? 'co2-item-movable cursor-pointer' : 'cursor-default'} ${active ? 'co2-item-active' : ''}`}>
+                <span className="text-ink font-medium">Area {k + 1} · {area.indices.length} verified source{area.indices.length === 1 ? '' : 's'}</span>
+                <span className="block text-muted">{go !== undefined ? OBSERVATION : 'not located in the tour'}{active && focus.state === 'moving' ? ' · moving…' : ''}</span>
               </button>
-              {it.image_url && (
-                <span className="ml-[22px] flex gap-3">
-                  <button type="button" className="text-brand underline" onClick={() => onEvidence(i)} data-testid={`co2-evidence-${i}`}>View evidence</button>
-                  <a className="text-brand underline" href={`${base}${it.image_url}`} target="_blank" rel="noreferrer">panorama</a>
-                </span>
-              )}
+              <ul className="mt-1 space-y-1">
+                {area.indices.map((i) => {
+                  const it = items[i]
+                  const itemMovable = canMove && placed.has(i)
+                  return (
+                    <li key={`${it.claim?.claim_id}-${i}`} data-co2-item={it.kind} data-index={i} className="pl-1">
+                      <button type="button" disabled={!itemMovable} onClick={() => onPick(i)} data-testid={`co2-item-${i}`}
+                        className={`co2-item w-full text-left flex gap-2 rounded px-1 py-[2px] ${itemMovable ? 'co2-item-movable cursor-pointer' : 'cursor-default'} ${focus?.index === i ? 'co2-item-active' : ''}`}>
+                        <span className="mt-[3px] inline-block w-[10px] h-[10px] rounded-full shrink-0" style={{ background: KIND[it.kind]?.css }} />
+                        <span>
+                          <span className="text-ink">{it.equipment} seen (verified)</span>
+                          <span className="block text-muted">{KIND[it.kind]?.name}</span>
+                        </span>
+                      </button>
+                      {it.image_url && (
+                        <span className="ml-[22px] flex gap-3">
+                          <button type="button" className="text-brand underline" onClick={() => onEvidence(i)} data-testid={`co2-evidence-${i}`}>View evidence</button>
+                          <a className="text-brand underline" href={`${base}${it.image_url}`} target="_blank" rel="noreferrer">panorama</a>
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
             </li>
           )
         })}
-      </ul>
+      </ol>
       {note && <p className="mt-2 text-muted" data-testid="co2-note">{note}</p>}
     </div>
   )
@@ -87,6 +104,9 @@ export function Co2Tour({ data, modelId, plain }) {
   const movingRef = useRef(false)
   const key = sdkKey()
   const base = ourApiBase()
+  const areas = topAreas(data.items) // up to 3, never padded
+  const shown = areas.flatMap((a) => a.indices) // the items of the shown areas (indices into data.items)
+  const shownKey = shown.join(',')
 
   useEffect(() => {
     if (!key) { setStatus('no-key'); return undefined }
@@ -118,12 +138,13 @@ export function Co2Tour({ data, modelId, plain }) {
         if (modelId === data.model_id && data.items?.length) {
           const sweeps = await loadSweeps(sdk)
           if (cancelled) return
-          const { descriptors, placed: p, targets } = tagPlan(data.items, sweeps, base)
+          // markers only for the items of the shown areas; tagPlan's indices are mapped back to data.items
+          const { descriptors, placed: p, targets } = tagPlan(shown.map((i) => data.items[i]), sweeps, base)
           if (descriptors.length) ids = (await sdk.Tag.add(...descriptors)) || []
           // opening a marker must not fly the camera to the floor marker: selection moves to the observation sweep itself
           await Promise.all(ids.map((id) => sdk.Tag.allowAction?.(id, { opening: true, navigating: false, docking: true, sharing: false })?.catch?.(() => {})))
-          done = p
-          if (ids.length === targets.length) targets.forEach((t, k) => targetsRef.current.set(t.index, { sweepId: t.sweepId, rotation: t.rotation, tagId: ids[k] }))
+          done = new Set([...p].map((k) => shown[k]))
+          if (ids.length === targets.length) targets.forEach((t, k) => targetsRef.current.set(shown[t.index], { sweepId: t.sweepId, rotation: t.rotation, tagId: ids[k] }))
         }
         if (cancelled) return
         try { // what the tour itself reports, so the page (and tests) see the move and the open marker
@@ -151,7 +172,7 @@ export function Co2Tour({ data, modelId, plain }) {
       subs.forEach((s) => { try { s.cancel() } catch { /* ignore */ } })
       mount.remove()
     }
-  }, [data, modelId, key, base])
+  }, [data, modelId, key, base, shownKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Fly to the sweep where item `i`'s evidence was recorded, turn to its evidence face, and open its marker. */
   const pick = async (i) => {
@@ -182,7 +203,7 @@ export function Co2Tour({ data, modelId, plain }) {
     loading: 'Loading the 3D tour…',
     'no-key': 'Markers unavailable: the Matterport SDK key is not configured (the plain tour is shown instead).',
     failed: 'Markers unavailable: the tour could not be started through the SDK (the plain tour is shown instead).',
-    ready: `${tagIds} marker${tagIds === 1 ? '' : 's'} in the tour: ${OBSERVATION}. Fixture positions are not recorded.`,
+    ready: `${tagIds} marker${tagIds === 1 ? '' : 's'} in the tour for the ${areas.length} area${areas.length === 1 ? '' : 's'}: ${OBSERVATION}. Fixture positions are not recorded.`,
   }[status]
   const showSdk = status === 'loading' || status === 'ready'
   const focusTarget = focus ? targetsRef.current.get(focus.index) : null
@@ -206,7 +227,7 @@ export function Co2Tour({ data, modelId, plain }) {
         </div>
       </div>
       <div className="shrink-0 border-l border-line" style={{ width: LIST_W }}>
-        <Co2List items={data.items} placed={placed} focus={focus} onPick={pick} onEvidence={setEvidenceIndex} note={note} canMove={status === 'ready'} />
+        <Co2Areas items={data.items} areas={areas} placed={placed} focus={focus} onPick={pick} onEvidence={setEvidenceIndex} note={note} canMove={status === 'ready'} />
       </div>
       {data.items?.[evidenceIndex] && (
         <InspectionEvidence key={`${modelId}-${evidenceIndex}`} item={data.items[evidenceIndex]} onClose={() => setEvidenceIndex(null)} />
