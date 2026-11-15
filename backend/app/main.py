@@ -52,6 +52,8 @@ def health() -> dict:
         "engine_mode": s.engine_mode,
         "nessie_mode": s.nessie_mode,
         "demo_city": s.demo_city,
+        # true only for the Playwright backend (scripts/e2e_backend.sh: temp copy of the data, cache read-only)
+        "sandbox": env_value("E2E_SANDBOX") in ("1", "true"),
     }
 
 
@@ -82,6 +84,16 @@ def assumptions(city: str | None = None) -> dict:
     key = next((k for k in cities if k.lower() == str(name).lower()), None)
     return {"city": key, "global": a.get("global", {}), "city_values": cities.get(key) if key else None,
             "notes": a.get("_notes", [])}
+
+
+@app.get("/co2_equipment/{building_id}")
+async def co2_equipment(building_id: str) -> dict:
+    """Verified CO2-emitting equipment seen inside the building (lighting fixtures, air diffusers) with the claim, the
+    verifier's result and the panorama it was seen in, for tags in the 3D tour (app/widgets/co2_equipment.py)."""
+    from app.widgets import co2_equipment as co2
+    if not (get_settings().data_dir / "buildings" / building_id / "profile.json").exists():
+        raise HTTPException(404, f"unknown building {building_id}")
+    return await co2.build(building_id)
 
 
 @app.post("/run")

@@ -1,11 +1,18 @@
 """Investigator: one Gemini agent per building that decides which data to pull, in what order,
 and when to stop (AGENTIC_SURVEY, default on).
 
-Loop: Gemini sees the owner's goal, the CoStar record, the tool list and everything pulled so
-far, and returns one validated tool call {tool, args, reason}. Code runs that tool through the
-existing adapters and inspectors (so every external call is cached and replayable), and appends
-the result to the next prompt. At most MAX_CALLS calls per building (`finish` included);
-temperature 0 (llm.py). Each step emits an "Investigator" activity event with its reason.
+Loop: Gemini sees the owner's goal, the CoStar record, the tool list, every tool result so far and
+a numbered list of facts those results established. It returns one validated tool call
+{tool, purpose, because, args}. Code runs that tool through the existing adapters and inspectors
+(every external call cached and replayable) and appends the result to the next prompt. At most
+MAX_CALLS calls per building (`finish` included); temperature 0 (llm.py).
+
+Nothing shown is invented. Gemini writes no text that is shown: `purpose` is one of a fixed set
+of intents and `because` cites fact ids. Each activity event is composed by code AFTER the tool
+ran, from what it actually returned: counts are counted, facts are quoted from tool results (an
+uncited or unknown fact id is dropped), images are the ones the tool returned. A tool that fails
+or returns nothing is recorded as "unknown", in the feed, the trace and the facts, never guessed.
+The trace (investigation.json) records, per step, what was shown and which facts it quoted.
 
 Outputs are the fixed pipeline's: profile, aerial.AerialResult, interior.InteriorResult | None
 and claims, so the site engineer, verifier loop, pricing, composer and frontend don't change.
@@ -19,15 +26,14 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.adapters import costar, geometry, vexcel
 from app.adapters import matterport as mp
-from app.adapters.types import ImageRef, PanoramaRef
 from app.adapters.cache import write_json_atomic
+from app.adapters.types import ImageRef, PanoramaRef
 from app.agents import aerial, interior, llm, records
 from app.events import emit
-from app.guardrails import check_numbers
 from app.schemas.claims import Claim
 from app.schemas.goal import Goal
 from app.schemas.profile import BuildingProfile
@@ -39,12 +45,28 @@ MAX_CALLS = 8
 MAX_ROOMS = 4
 MAX_SCANS_LISTED = 4
 MAX_PANOS = 8  # a second, wider look when the first 5 (interior.MAX_PANOS) were unclear
-MAX_FEED = 90  # events.MAX_MESSAGE: "<action>: <reason>" must fit
+MAX_FEED = 90  # events.MAX_MESSAGE
 WIDE_FACTOR = 3.0  # wider context: 3x the building's own crop (neighbours, trees)
+UNKNOWN = "unknown"
 
 ToolName = Literal["get_costar_record", "get_vexcel_overhead", "get_vexcel_wider_context",
                    "find_matterport_scans", "get_matterport_rooms", "get_panoramas", "inspect_roof",
                    "inspect_interior", "label_rooms", "finish"]
+Purpose = Literal["solar_evidence", "shading_check", "find_interior_evidence", "lighting_for_led",
+                  "hvac_for_heat_pump", "room_use", "settle_unclear_result", "record_details",
+                  "no_more_value"]
+PURPOSE_TEXT = {  # fixed intents; the facts after them come from tool results
+    "solar_evidence": "for solar", "shading_check": "to check shading", "find_interior_evidence":
+    "for interior evidence", "lighting_for_led": "for LED evidence", "hvac_for_heat_pump": "for HVAC evidence",
+    "room_use": "for room use", "settle_unclear_result": "to settle an unclear result",
+    "record_details": "for record details", "no_more_value": "more evidence won't change an upgrade",
+}
+TOOL_TEXT = {
+    "get_costar_record": "CoStar record", "get_vexcel_overhead": "Vexcel overhead",
+    "get_vexcel_wider_context": "wider Vexcel context", "find_matterport_scans": "Matterport scans",
+    "get_matterport_rooms": "scan rooms", "get_panoramas": "panoramas", "inspect_roof": "roof inspection",
+    "inspect_interior": "interior inspection", "label_rooms": "room labels", "finish": "finished",
+}
 
 
 def enabled() -> bool:
@@ -52,20 +74,41 @@ def enabled() -> bool:
 
 
 class Step(BaseModel):
-    """One tool call chosen by Gemini."""
-    reason: str = Field(description="One short sentence for the activity feed, no numbers")
+    """One tool call chosen by Gemini. No free text: nothing the model writes is shown."""
     tool: ToolName
+    purpose: Purpose
+    because: list[str] = []  # fact ids from "Facts so far"
     model_id: str | None = None
     room_ids: list[str] = []
     count: int | None = None
 
 
+class ToolError(ValueError):
+    """A tool call the agent can fix (wrong order, unknown id): returned to it as the result."""
+
+
+class Outcome(BaseModel):
+    """What a tool actually returned: `result` goes to the next prompt, `done` to the feed."""
+    result: str
+    done: str
+    evidence: str | None = None  # an image the tool returned
+
+
+def _unknown(tool: str, why: str) -> Outcome:
+    return Outcome(result=f"{UNKNOWN} ({why})", done=f"{TOOL_TEXT[tool]} {UNKNOWN}")
+
+
+def _c(x: float) -> str:
+    return f"{x:.2f}"
+
+
 class Investigation:
-    """State of one building's investigation; each tool is a method returning a text result."""
+    """State of one building's investigation; each tool is a method returning an Outcome."""
 
     def __init__(self, profile: BuildingProfile, run_id: str | None, goal: Goal | None, hero: bool = False):
         self.profile, self.run_id, self.goal, self.hero = profile, run_id, goal, hero
-        self.history: list[dict] = []  # {tool, args, reason, result}
+        self.history: list[dict] = []  # {tool, args, purpose, because, result, shown, quoted}
+        self.facts: dict[str, dict] = {}  # id -> {text, source}; set only from tool returns
         self.record: dict | None = None
         self.overhead: ImageRef | None = None
         self.wide: ImageRef | None = None
@@ -81,26 +124,51 @@ class Investigation:
         self.interior_obs: interior.InteriorObservation | None = None
         self.room_obs: interior.RoomLabelsObservation | None = None
         self.labelled: list[str] = []
+        self._profile_facts()
+
+    # ----------------------------------------------------------------- facts
+
+    def fact(self, fid: str, text: str, source: str) -> None:
+        self.facts[fid] = {"text": text, "source": source}
+
+    def _profile_facts(self) -> None:
+        """From the records agent's CoStar profile and the kit's scan index (tool returns of the survey)."""
+        p, src = self.profile, "CoStar record"
+        self.fact("built", f"built {p.year_built}" if p.year_built else f"year built {UNKNOWN}", src)
+        self.fact("stories", f"{p.stories} stories" if p.stories else f"stories {UNKNOWN}", src)
+        n = len(self.scan_ids())
+        self.fact("scans_linked", f"{n} scan{'s' if n != 1 else ''} linked" if n else "no scans linked",
+                  "CoStar models index")
 
     # ----------------------------------------------------------------- events
 
     def emit(self, kind: str, msg: str, agent: str = AGENT, evidence: str | None = None) -> None:
         if self.run_id:
-            emit(self.run_id, agent, kind, msg[:160], self.profile.building_id, evidence,
+            emit(self.run_id, agent, kind, msg, self.profile.building_id, evidence,
                  building_name=self.profile.name)
+
+    def compose(self, step: Step, outcome: Outcome) -> tuple[str, list[str]]:
+        """Feed line from the tool's actual outcome + the cited facts that exist (whole facts that fit)."""
+        msg = f"{outcome.done}: {PURPOSE_TEXT[step.purpose]}"
+        quoted: list[str] = []
+        for fid in dict.fromkeys(step.because):  # de-duplicated, in order
+            f = self.facts.get(fid)
+            if f is None:
+                continue  # cited a fact no tool returned: not shown
+            add = f"{'; ' if quoted else ', given '}{f['text']}"
+            if len(msg) + len(add) > MAX_FEED:
+                break
+            msg += add
+            quoted.append(fid)
+        return msg[:MAX_FEED], quoted
 
     # ----------------------------------------------------------------- prompt
 
     def building_card(self) -> str:
         p = self.profile
         lines = [f"- Name: {p.name}", f"- Type: {p.property_type}" + (f", class {p.building_class}" if p.building_class else "")]
-        if p.year_built:
-            lines.append(f"- Year built: {p.year_built}")
-        if p.stories:
-            lines.append(f"- Stories above grade: {p.stories}")
         if p.rba_sqft:
             lines.append(f"- Rentable area: {p.rba_sqft:,.0f} sq ft")
-        lines.append(f"- Matterport scans linked in CoStar: {len(self.scan_ids())}")
         if self.profile.matterport_model_id:
             lines.append(f"- Preferred scan (the portfolio's 3D tour): `{self.profile.matterport_model_id}`")
         return "\n".join(lines)
@@ -113,12 +181,15 @@ class Investigation:
                 f"- Budget: {'none given' if g.budget_usd is None else f'${g.budget_usd:,.0f}'}")
 
     def prompt(self) -> str:
-        hist = "\n".join(f"{n}. `{h['tool']}`{_args_text(h['args'])}: {h['reason']}\n   → {h['result']}"
+        hist = "\n".join(f"{n}. `{h['tool']}`{_args_text(h['args'])} ({h['purpose']})\n   → {h['result']}"
                          for n, h in enumerate(self.history, start=1)) or "Nothing yet."
+        facts = "\n".join(f"- `{k}`: {v['text']} ({v['source']})" for k, v in self.facts.items())
         return (PROMPT_PATH.read_text()
                 .replace("{{goal}}", self.goal_text())
                 .replace("{{building}}", self.building_card())
+                .replace("{{facts}}", facts)
                 .replace("{{history}}", hist)
+                .replace("{{purposes}}", ", ".join(f"`{k}`" for k in PURPOSE_TEXT))
                 .replace("{{max_calls}}", str(MAX_CALLS))
                 .replace("{{max_panos}}", str(MAX_PANOS))
                 .replace("{{default_panos}}", str(interior.MAX_PANOS))
@@ -163,79 +234,95 @@ class Investigation:
 
     # ----------------------------------------------------------------- tools
 
-    async def get_costar_record(self, step: Step) -> str:
+    async def get_costar_record(self, step: Step) -> Outcome:
         rec = await costar.get_property(self.profile.costar_id)
+        if not rec:
+            return _unknown("get_costar_record", "record empty")
         office = rec.get("propertyOffice") or {}
         fields = {
-            "year built": rec.get("yearBuilt") or self.profile.year_built,
+            "year built": rec.get("yearBuilt") or rec.get("yearBuiltDate"),
             "year renovated": rec.get("yearRenovated") or rec.get("renovatedYear"),
             "stories": rec.get("numStoriesAboveGrade"),
             "typical floor sq ft": rec.get("grossTypicalFloorSquareFeet"),
             "rentable sq ft": rec.get("rentableBuildingAreaSquareFeet"),
-            "lot size": rec.get("lotSize"),
-            "parking ratio": rec.get("parkingRatio"),
             "slab-to-slab height ft": (office.get("structural") or {}).get("slabToSlabHeightFeet"),
-            "occupancy %": self.profile.occupancy_pct,
-            "footprint": "estimated from typical floor (no footprint in the record)"
-            if self.profile.footprint_source == "estimated" else "from CoStar",
-            "Matterport scans linked": len(self.scan_ids()),
         }
-        self.record = {k: v for k, v in fields.items() if v not in (None, "")}
-        return "; ".join(f"{k}: {v}" for k, v in self.record.items())
+        self.record = {k: (UNKNOWN if v in (None, "") else v) for k, v in fields.items()}
+        renov = self.record["year renovated"]
+        self.fact("renovated", f"renovated {renov}" if renov != UNKNOWN else f"renovation {UNKNOWN}", "CoStar record")
+        return Outcome(result="; ".join(f"{k}: {v}" for k, v in self.record.items()), done="read CoStar record")
 
-    async def get_vexcel_overhead(self, step: Step) -> str:
+    async def get_vexcel_overhead(self, step: Step) -> Outcome:
         imgs = await vexcel.overhead(geometry.point_wkt(self.profile.lat, self.profile.lon),
                                      vexcel.overhead_buffer_m(self.profile.rba_sqft, self.profile.stories),
                                      city=self.profile.city)
+        if not imgs:
+            return _unknown("get_vexcel_overhead", "no image returned")
         self.overhead = imgs[0]
-        self.emit("fetch", f"overhead image ({self.overhead.gsd_m * 100:.0f} cm/px)", "Aerial", self.overhead.image_id)
-        return f"overhead image `{self.overhead.image_id}`, {self.overhead.gsd_m * 100:.0f} cm per pixel, roof at the centre"
+        cm = f"{self.overhead.gsd_m * 100:.0f} cm/px" if self.overhead.gsd_m else f"resolution {UNKNOWN}"
+        self.emit("fetch", f"overhead image ({cm})", "Aerial", self.overhead.image_id)
+        return Outcome(result=f"overhead image `{self.overhead.image_id}`, {cm}, roof at the centre",
+                       done="pulled Vexcel overhead", evidence=self.overhead.image_id)
 
-    async def get_vexcel_wider_context(self, step: Step) -> str:
+    async def get_vexcel_wider_context(self, step: Step) -> Outcome:
         buf = vexcel.overhead_buffer_m(self.profile.rba_sqft, self.profile.stories) * WIDE_FACTOR
         imgs = await vexcel.overhead(geometry.point_wkt(self.profile.lat, self.profile.lon), buf,
                                      city=self.profile.city)
+        if not imgs:
+            self.fact("wider_context", f"wider context {UNKNOWN}", "Vexcel")
+            return _unknown("get_vexcel_wider_context", "no image returned")
         self.wide = imgs[0]
-        self.emit("fetch", f"wider overhead context ({2 * buf:,.0f} m across) for shading", "Aerial", self.wide.image_id)
-        return (f"wider overhead `{self.wide.image_id}`, {2 * buf:,.0f} m across, {self.wide.gsd_m * 100:.0f} cm per "
-                "pixel; inspect_roof will now also see neighbours and trees")
+        across = f"{2 * buf:,.0f} m"
+        self.fact("wider_context", f"wider view {across} across", "Vexcel")
+        self.emit("fetch", f"wider overhead context ({across} across) for shading", "Aerial", self.wide.image_id)
+        return Outcome(result=f"wider overhead `{self.wide.image_id}`, {across} across; inspect_roof will now "
+                              "also see neighbours and trees",
+                       done=f"pulled wider Vexcel context ({across})", evidence=self.wide.image_id)
 
-    async def find_matterport_scans(self, step: Step) -> str:
+    async def find_matterport_scans(self, step: Step) -> Outcome:
         ids = self.scan_ids()
         if not ids:
-            return "no Matterport scans are linked to this building in CoStar"
-        out = []
+            self.fact("scans_found", "no scans", "CoStar models index")
+            return Outcome(result="no Matterport scans are linked to this building in CoStar",
+                           done="no Matterport scans linked")
+        out, rows = [], []
         for mid in ids[:MAX_SCANS_LISTED]:
             try:
                 b = await mp.basics(mid)
-            except Exception as e:  # noqa: BLE001 - a private or broken model: skip it
-                log.info("scan %s unavailable: %s", mid, e)
+            except Exception as e:  # noqa: BLE001 - recorded as unknown, never skipped silently
+                rows.append(f"`{mid}`: {UNKNOWN} (Matterport {type(e).__name__})")
                 continue
-            out.append({"model_id": mid, "name": b.get("name") or "", "rooms": len(b.get("rooms") or []),
-                        "panoramas": len(b.get("panoLocations") or []), "visibility": b.get("visibility")})
-        out = [s for s in out if s["panoramas"]]
+            s = {"model_id": mid, "name": b.get("name") or UNKNOWN, "rooms": len(b.get("rooms") or []),
+                 "panoramas": len(b.get("panoLocations") or [])}
+            out.append(s)
+            rows.append(f"`{mid}` \"{s['name']}\": {s['rooms']} rooms, {s['panoramas']} panoramas")
         hero = self.profile.matterport_model_id
-        self.scans = sorted(out, key=lambda s: (s["model_id"] != hero, -s["panoramas"]))
-        if not self.scans:
-            return f"{len(ids)} scans linked, none with panoramas available"
+        self.scans = sorted((s for s in out if s["panoramas"]), key=lambda s: (s["model_id"] != hero, -s["panoramas"]))
         more = f" ({len(ids) - MAX_SCANS_LISTED} more not listed)" if len(ids) > MAX_SCANS_LISTED else ""
-        return f"{len(ids)} scans linked{more}: " + "; ".join(
-            f"`{s['model_id']}` \"{s['name']}\": {s['rooms']} rooms, {s['panoramas']} panoramas" for s in self.scans)
+        n = len(self.scans)
+        self.fact("scans_found", f"{n} scan{'s' if n != 1 else ''} with panoramas" if out else f"scans {UNKNOWN}",
+                  "Matterport")
+        if not out:
+            return _unknown("find_matterport_scans", "; ".join(rows))
+        return Outcome(result=f"{len(ids)} scans linked{more}: " + "; ".join(rows),
+                       done=f"found {n} scan{'s' if n != 1 else ''} with panoramas")
 
-    async def get_matterport_rooms(self, step: Step) -> str:
+    async def get_matterport_rooms(self, step: Step) -> Outcome:
         mid = await self._ensure_model(step.model_id)
         rows = []
         for r in self.room_info:
             area = (r.get("dimensions") or {}).get("areaFloor")
             tags = ", ".join((r.get("tags") or []) + (r.get("keywords") or [])) or "none"
             rows.append(f"`{interior.short_id(r['room_id'])}` "
-                        f"{'%.0f sq ft' % (area * 10.7639) if area else 'size unknown'}, "
+                        f"{'%.0f sq ft' % (area * 10.7639) if area else f'size {UNKNOWN}'}, "
                         f"{len(r['pano_ids'])} panoramas, Matterport tags: {tags}")
-        self.emit("fetch", f"Matterport scan: {len(self.room_info)} rooms, {len(self.all_panos)} panoramas",
-                  interior.AGENT)
-        return f"scan `{mid}`: {len(self.room_info)} rooms, {len(self.all_panos)} panoramas. Rooms: " + "; ".join(rows)
+        n, k = len(self.room_info), len(self.all_panos)
+        self.fact("scan_rooms", f"scan has {n} room{'s' if n != 1 else ''}", "Matterport")
+        self.emit("fetch", f"Matterport scan: {n} rooms, {k} panoramas", interior.AGENT)
+        return Outcome(result=f"scan `{mid}`: {n} rooms, {k} panoramas. Rooms: " + ("; ".join(rows) or "none"),
+                       done=f"listed {n} room{'s' if n != 1 else ''}, {k} panoramas")
 
-    async def get_panoramas(self, step: Step) -> str:
+    async def get_panoramas(self, step: Step) -> Outcome:
         mid = await self._ensure_model(step.model_id)
         if step.room_ids:
             return await self._room_panoramas(mid, step.room_ids)
@@ -246,10 +333,14 @@ class Investigation:
             raise ToolError("every panorama of this scan is already pulled")
         self.base_panos, self.base_images = await interior.fetch_images(mid, k)
         self.interior_obs = None
-        return (f"{len(self.base_panos)} panoramas spread across the scan, {len(self.base_images)} views "
-                "(ceiling + two horizon faces each), ready for inspect_interior")
+        n = len(self.base_panos)
+        if not n:
+            return _unknown("get_panoramas", "no panoramas returned")
+        return Outcome(result=f"{n} panoramas spread across the scan, {len(self.base_images)} views "
+                              "(ceiling + two horizon faces each), ready for inspect_interior",
+                       done=f"pulled {n} panorama{'s' if n != 1 else ''}", evidence=self.base_images[0].image_id)
 
-    async def _room_panoramas(self, mid: str, ids: list[str]) -> str:
+    async def _room_panoramas(self, mid: str, ids: list[str]) -> Outcome:
         rids = [r for r in self._room_ids(ids) if r not in self.room_images]
         if not rids and not self._room_ids(ids):
             raise ToolError("unknown room_ids: use the ids from get_matterport_rooms")
@@ -258,41 +349,69 @@ class Investigation:
         self.room_images.update(imgs_by_room)
         have = {i.image_id for i in self.room_imgs}
         self.room_imgs += [i for i in imgs if i.image_id not in have and not have.add(i.image_id)]
-        return f"{len(imgs)} views from {len(subset)} rooms ready for label_rooms" if subset else "already pulled"
+        got = sum(1 for r in subset if imgs_by_room.get(r["room_id"]))
+        if subset and not imgs:
+            return _unknown("get_panoramas", "no room panoramas returned")
+        return Outcome(result=f"{len(imgs)} views from {got} rooms ready for label_rooms" if subset else "already pulled",
+                       done=f"pulled panoramas of {got} room{'s' if got != 1 else ''}",
+                       evidence=imgs[0].image_id if imgs else None)
 
-    async def inspect_roof(self, step: Step) -> str:
+    async def inspect_roof(self, step: Step) -> Outcome:
         if self.overhead is None:
-            await self.get_vexcel_overhead(step)
+            got = await self.get_vexcel_overhead(step)
+            if self.overhead is None:
+                return got
         images = [self.overhead] + ([self.wide] if self.wide else [])
         self.aerial = await aerial.inspect(self.profile, self.run_id, images=images)
         o = self.aerial.obs
-        return (f"roof {o.roof_type.value} ({o.roof_type.confidence:.2f}), {o.roof_color.value} "
-                f"({o.roof_color.confidence:.2f}); usable fraction "
-                f"{'unknown' if o.usable_roof_fraction.value is None else f'{o.usable_roof_fraction.value:.2f}'} "
-                f"({o.usable_roof_fraction.confidence:.2f}); shading {o.shading.value} ({o.shading.confidence:.2f}); "
-                f"existing solar {o.existing_solar.value} ({o.existing_solar.confidence:.2f})"
-                + ("" if self.wide else "; wider context not pulled"))
+        frac = UNKNOWN if o.usable_roof_fraction.value is None else _c(o.usable_roof_fraction.value)
+        src = "roof inspection" + (" with wider context" if self.wide else "")
+        self.fact("roof", f"roof {o.roof_type.value}, {o.roof_color.value}", src)
+        self.fact("usable_roof", f"usable roof {UNKNOWN}" if frac == UNKNOWN else
+                  f"usable roof {o.usable_roof_fraction.value:.0%}", src)
+        self.fact("shading", f"shading {o.shading.value}", src)
+        self.fact("existing_solar", f"existing solar {o.existing_solar.value}", src)
+        return Outcome(result=(f"roof {o.roof_type.value} ({_c(o.roof_type.confidence)}), {o.roof_color.value} "
+                               f"({_c(o.roof_color.confidence)}); usable fraction {frac} "
+                               f"({_c(o.usable_roof_fraction.confidence)}); shading {o.shading.value} "
+                               f"({_c(o.shading.confidence)}); existing solar {o.existing_solar.value} "
+                               f"({_c(o.existing_solar.confidence)})"
+                               + ("" if self.wide else "; wider context not pulled")),
+                       done="re-inspected roof with context" if self.wide else "inspected roof",
+                       evidence=self.overhead.image_id)
 
-    async def inspect_interior(self, step: Step) -> str:
+    async def inspect_interior(self, step: Step) -> Outcome:
         if self.interior_obs is not None and not step.count:
             raise ToolError("already inspected these panoramas; pass a larger count for new ones, or move on")
         if not self.base_images or (step.count and min(step.count, MAX_PANOS) != len(self.base_panos)):
-            await self.get_panoramas(Step(reason="", tool="get_panoramas", model_id=step.model_id, count=step.count))
+            got = await self.get_panoramas(Step(tool="get_panoramas", purpose=step.purpose,
+                                                model_id=step.model_id, count=step.count))
+            if not self.base_images:
+                return got
+        failed = None
         try:
             obs = await llm.vision_json(interior.prompt_for(self.profile, self.base_images, self.base_panos),
                                         self.base_images, interior.InteriorObservation)
-        except Exception as e:  # noqa: BLE001 - same fallback as the fixed inspector
+        except Exception as e:  # noqa: BLE001 - same fallback as the fixed inspector: unknowns
             log.warning("interior inspector failed for %s: %s", self.profile.building_id, e)
-            self.emit("error", f"vision model failed ({type(e).__name__}); interior marked unknown", interior.AGENT)
+            failed = type(e).__name__
+            self.emit("error", f"vision model failed ({failed}); interior marked unknown", interior.AGENT)
             obs = interior.unknown_observation()
         self.interior_obs = obs
-        hv = ", ".join(i.replace("_", " ") for i in obs.hvac.items) or "none seen"
-        self.emit("observe", f"lighting {obs.lighting.value}; HVAC {hv}"[:90], interior.AGENT,
-                  self.base_images[0].image_id)
-        return (f"lighting {obs.lighting.value} ({obs.lighting.confidence:.2f}); HVAC {hv} "
-                f"({obs.hvac.confidence:.2f}); windows {obs.window.value} ({obs.window.confidence:.2f})")
+        hv = (", ".join(i.replace("_", " ") for i in obs.hvac.items) if obs.hvac.items
+              else UNKNOWN if failed or obs.hvac.confidence == 0 else "none seen")
+        n = len(self.base_panos)
+        self.fact("lighting", f"lighting {obs.lighting.value}", "interior inspection")
+        self.fact("hvac", f"HVAC {hv}", "interior inspection")
+        self.fact("windows", f"windows {obs.window.value}", "interior inspection")
+        self.emit("observe", f"lighting {obs.lighting.value}; HVAC {hv}", interior.AGENT, self.base_images[0].image_id)
+        return Outcome(result=(f"from {n} panoramas: lighting {obs.lighting.value} ({_c(obs.lighting.confidence)}); "
+                               f"HVAC {hv} ({_c(obs.hvac.confidence)}); windows {obs.window.value} "
+                               f"({_c(obs.window.confidence)})" + (f"; vision model failed ({failed})" if failed else "")),
+                       done=f"inspected interior ({n} panorama{'s' if n != 1 else ''})",
+                       evidence=self.base_images[0].image_id)
 
-    async def label_rooms(self, step: Step) -> str:
+    async def label_rooms(self, step: Step) -> Outcome:
         if self.interior_obs is None:
             raise ToolError("call inspect_interior before label_rooms")
         if not self.room_info:
@@ -301,44 +420,49 @@ class Investigation:
         if not rids:
             raise ToolError("unknown room_ids: use the ids from get_matterport_rooms")
         await self._room_panoramas(self.model_id, rids)
-        subset = [r for r in self.room_info if r["room_id"] in rids]
+        subset = [r for r in self.room_info if r["room_id"] in rids and self.room_images.get(r["room_id"])]
+        if not subset:
+            return _unknown("label_rooms", "no room panoramas returned")
         by_id = {i.image_id: i for i in self.base_images + self.room_imgs}
         new = await interior.label_rooms(self.profile, subset, self.room_images, by_id)
-        fresh = {o.room_id: o for o in new.rooms if o.room_id in rids}
+        fresh = {o.room_id: o for o in new.rooms if o.room_id in {r["room_id"] for r in subset}}
+        if not fresh:
+            return _unknown("label_rooms", "no labels returned")
         kept = [o for o in (self.room_obs.rooms if self.room_obs else []) if o.room_id not in fresh]
         self.room_obs = interior.RoomLabelsObservation(rooms=kept + list(fresh.values()))
         self.labelled = [r for r in self.labelled if r not in fresh] + list(fresh)
-        return "; ".join(f"`{interior.short_id(o.room_id)}` {o.type}"
-                         + (f" + {', '.join(o.also_contains)}" if o.also_contains else "")
-                         + f" ({o.confidence:.2f})" for o in fresh.values()) or "no labels returned"
+        n = len(fresh)
+        self.fact("room_labels", ", ".join(o.type.replace("_", " ") for o in fresh.values()), "room labelling")
+        return Outcome(result="; ".join(f"`{interior.short_id(o.room_id)}` {o.type}"
+                                        + (f" + {', '.join(o.also_contains)}" if o.also_contains else "")
+                                        + f" ({_c(o.confidence)})" for o in fresh.values()),
+                       done=f"labelled {n} room{'s' if n != 1 else ''}",
+                       evidence=self.room_images[next(iter(fresh))][0])
 
     # ----------------------------------------------------------------- loop
 
     async def decide(self) -> Step:
         return await llm.text_json(self.prompt(), Step)
 
-    def feed_reason(self, step: Step) -> str:
-        room = MAX_FEED - len(action_text(step, self)) - 2
-        words, reason = step.reason.split(), ""
-        for w in words:  # whole words that fit the feed line (events.MAX_MESSAGE)
-            if len(reason) + len(w) + 1 > room:
-                break
-            reason = f"{reason} {w}".strip()
-        reason = reason.rstrip(" .,;:")
-        if reason and not reason[:2].isupper():  # keep acronyms (HVAC, LED)
-            reason = reason[0].lower() + reason[1:]
-        sources = [self.profile.model_dump(mode="json"), self.goal.model_dump(mode="json") if self.goal else {},
-                   self.record or {}, [h["result"] for h in self.history]]
-        if not reason or check_numbers(reason, sources):
-            return DEFAULT_REASON[step.tool]
-        return reason
+    async def call(self, step: Step) -> Outcome:
+        """Run one tool; a failure or an empty return becomes 'unknown', never a guess."""
+        if step.tool == "finish":
+            return Outcome(result="done", done="finished")
+        try:
+            return await getattr(self, step.tool)(step)
+        except ToolError as e:  # wrong order / unknown id: the agent can fix it
+            return Outcome(result=f"{UNKNOWN} (refused: {e})", done=f"{TOOL_TEXT[step.tool]} refused")
+        except Exception as e:  # noqa: BLE001 - adapter/API failure: unknown, and tell the agent
+            log.warning("tool %s failed for %s: %s", step.tool, self.profile.building_id, e)
+            self.emit("error", f"{TOOL_TEXT[step.tool]} failed ({type(e).__name__})")
+            return _unknown(step.tool, f"failed: {type(e).__name__}")
 
-    def display(self, reason: str, step: Step) -> str:
-        """Feed text: keep a leading proper noun (the building's name) capitalised."""
-        first = step.reason.split()[0] if step.reason.split() else ""
-        if first and first in self.profile.name.split() and reason.lower().startswith(first.lower()):
-            return first + reason[len(first):]
-        return reason
+    def record_step(self, step: Step, outcome: Outcome) -> None:
+        shown, quoted = self.compose(step, outcome)
+        self.emit("decide", shown, evidence=outcome.evidence)
+        self.history.append({"tool": step.tool, "args": _args(step), "purpose": step.purpose,
+                             "because": step.because, "result": outcome.result, "shown": shown,
+                             "quoted": {f: self.facts[f] for f in quoted}, "evidence": outcome.evidence})
 
     async def run(self) -> None:
         while len(self.history) < MAX_CALLS:
@@ -348,27 +472,19 @@ class Investigation:
                 log.warning("investigator decision failed for %s: %s", self.profile.building_id, e)
                 self.emit("error", f"investigator could not decide ({type(e).__name__}); finishing")
                 break
-            reason = self.feed_reason(step)  # this exact text goes back into later prompts (cache keys)
-            self.emit("decide", f"{action_text(step, self)}: {self.display(reason, step)}")
+            self.record_step(step, await self.call(step))
             if step.tool == "finish":
-                self.history.append({"tool": "finish", "args": {}, "reason": reason, "result": "done"})
                 break
-            try:
-                result = await getattr(self, step.tool)(step)
-            except ToolError as e:
-                result = f"error: {e}"
-            except Exception as e:  # noqa: BLE001 - tell the agent; it can choose something else
-                log.warning("tool %s failed for %s: %s", step.tool, self.profile.building_id, e)
-                result = f"error: {type(e).__name__}"
-                self.emit("error", f"{step.tool.replace('_', ' ')} failed ({type(e).__name__})")
-            self.history.append({"tool": step.tool, "args": _args(step), "reason": reason, "result": result})
         else:
             self.emit("decide", "call limit reached; finishing")
 
         if self.aerial is None:  # required for every building
             self.emit("decide", "roof inspection is required for pricing; inspecting it before finishing")
-            self.history.append({"tool": "inspect_roof", "args": {}, "reason": "required", "result":
-                                 await self.inspect_roof(Step(reason="required", tool="inspect_roof"))})
+            step = Step(tool="inspect_roof", purpose="solar_evidence")
+            out = await self.inspect_roof(step)
+            if self.aerial is None:
+                raise RuntimeError(f"roof could not be inspected: {out.result}")  # → fixed pipeline fallback
+            self.record_step(step, out)
 
     # ----------------------------------------------------------------- outputs
 
@@ -376,7 +492,12 @@ class Investigation:
         if self.interior_obs is None or not self.model_id:
             return None
         mid, profile = self.model_id, self.profile
-        scan = interior.scan_areas(await mp.rooms(mid), profile)
+        try:
+            scan = interior.scan_areas(await mp.rooms(mid), profile)
+        except Exception as e:  # noqa: BLE001 - floor area unknown, not zero
+            log.warning("scan rooms failed for %s: %s", mid, e)
+            scan = {"rooms": [], "scanned_floor_area_sqft": None, "coverage_of_rba": None, "wall_edges": None,
+                    "floorplans": [], "rooms_error": type(e).__name__}
         findings, claims = interior.build_findings(profile, mid, self.interior_obs, self.base_images,
                                                    self.base_panos, scan)
         info = [r for r in self.room_info if r["room_id"] in self.labelled]
@@ -418,29 +539,16 @@ class Investigation:
         write_json_atomic(records.profile_path(self.profile.building_id), self.profile.model_dump(mode="json"))
         return self.profile
 
+    def images_returned(self) -> set[str]:
+        """Every image id a tool returned in this investigation."""
+        imgs = [self.overhead, self.wide] + self.base_images + self.room_imgs
+        return {i.image_id for i in imgs if i is not None}
+
     def save_trace(self) -> None:
         from app.agents import store
         write_json_atomic(store.building_dir(self.profile.building_id) / "investigation.json",
                           {"building_id": self.profile.building_id, "run_id": self.run_id, "max_calls": MAX_CALLS,
-                           "steps": self.history})
-
-
-class ToolError(ValueError):
-    """A tool call the agent can fix (wrong order, unknown id): returned to it as the result."""
-
-
-DEFAULT_REASON = {
-    "get_costar_record": "checking the CoStar record for details that change what to inspect",
-    "get_vexcel_overhead": "need the roof image before judging solar",
-    "get_vexcel_wider_context": "shading from neighbours is outside the roof crop",
-    "find_matterport_scans": "checking for a 3D scan that could show lighting and HVAC",
-    "get_matterport_rooms": "need the scan's rooms to choose what to look at",
-    "get_panoramas": "need interior views as evidence",
-    "inspect_roof": "reading the roof for solar",
-    "inspect_interior": "reading lighting and HVAC for LED and heat pump decisions",
-    "label_rooms": "labelling how the scanned space is used",
-    "finish": "more evidence would not change an upgrade decision",
-}
+                           "facts": self.facts, "steps": self.history})
 
 
 def _args(step: Step) -> dict:
@@ -449,29 +557,6 @@ def _args(step: Step) -> dict:
 
 def _args_text(args: dict) -> str:
     return f" {args}" if args else ""
-
-
-def action_text(step: Step, inv: Investigation) -> str:
-    t = step.tool
-    if t == "get_panoramas":
-        if step.room_ids:
-            n = len(inv._room_ids(step.room_ids)) or len(step.room_ids[:MAX_ROOMS])
-            return f"pulling panoramas of {n} room{'s' if n != 1 else ''}"
-        k = max(1, min(MAX_PANOS, step.count or interior.MAX_PANOS))
-        return f"pulling {k} panorama{'s' if k != 1 else ''} across the scan"
-    if t == "label_rooms":
-        n = len(inv._room_ids(step.room_ids)) if step.room_ids else len(inv.room_info[:MAX_ROOMS])
-        return f"labelling {n} room{'s' if n != 1 else ''}"
-    return {
-        "get_costar_record": "reading the CoStar record",
-        "get_vexcel_overhead": "pulling Vexcel overhead",
-        "get_vexcel_wider_context": "pulling wider Vexcel context",
-        "find_matterport_scans": "looking for Matterport scans",
-        "get_matterport_rooms": "listing the scan's rooms",
-        "inspect_roof": "re-inspecting roof with context" if inv.aerial and inv.wide else "inspecting roof",
-        "inspect_interior": "inspecting interior",
-        "finish": "finishing",
-    }[t]
 
 
 async def investigate(profile: BuildingProfile, run_id: str | None, goal: Goal | None,

@@ -74,3 +74,33 @@ npm run e2e         # Playwright against a RUNNING backend: goal form -> live su
 npx playwright install chromium   # once
 ```
 Screenshots land in `e2e/screens/` (gitignored). Unit-test fixtures are the synthetic `docs/agent/samples/*.json`.
+
+## Verified CO₂ sources in 3D (branch `emissions-3d`, behind `VITE_EMISSIONS_3D=1`)
+On every building page the building's Matterport tour is embedded with the **Showcase SDK** (`@matterport/sdk` 1.6.2, key
+`VITE_MATTERPORT_SDK_KEY` from `frontend/.env.local`, never committed) and tagged with the CO₂-emitting equipment the survey
+agents saw **and the verifier confirmed**: lighting fixtures (with their type) and air diffusers / vents / grilles. No
+percentages, tonnes, shares or plan links.
+- Data: `GET /co2_equipment/{building_id}` (`backend/app/widgets/co2_equipment.py`): verified pins of verified
+  `interior.lighting` / `interior.hvac` claims only (rejected, unverified or "unknown" -> nothing), each with the claim, the
+  verifier's result and the panorama it was seen in (the scan position equal to the pin's, exact match). `tour_url` from
+  `tour.json`; `tags_in_tour` only when that tour is the scan the pins came from.
+- Tag: label "<equipment> seen (verified): CO₂ source"; click shows the claim, the verifier's result and a link to the
+  panorama. It is anchored on the tour's own sweep for that panorama (matched by id), so no coordinate is converted or
+  guessed; an item whose panorama is not in the tour gets no tag. No items -> the tour plus "No verified CO₂ sources located
+  in this scan". No tour or SDK failure -> the panel only.
+- Beside the tour, the list of the building's verified items: clicking one moves the tour to the panorama where it was seen
+  (`Sweep.moveTo`, looking down at the floor under the panorama where its tag stands) and opens its tag, so the tags can be
+  seen without walking. Tags may open in place but never navigate the camera away (`Tag.allowAction`).
+- Tests: `src/components/Co2Tour.test.jsx` (mocked SDK), `backend/tests/test_co2_equipment.py`, and
+  `npx playwright test -c playwright.emissions.config.js` (dev server on :3000 with the flag; opens all 8 building pages;
+  report in `e2e/screens/co2-tags-report.json`).
+
+## Playwright never touches the demo data
+Both Playwright configs start their own backend with `backend/scripts/e2e_backend.sh`: it copies the demo data
+(`DEMO_DATA_DIR`, default `backend/data`) to a fresh temp dir, points `DATA_DIR` at the copy, sets `CACHE_MODE=read_only`,
+and removes the copy on exit. `GET /health` then reports `"sandbox": true`; `e2e/guard.js` (global setup) refuses to run
+against any API that is not the sandbox in read-only mode. Port 8100 (`E2E_API_URL` to change it).
+```bash
+DEMO_DATA_DIR=<data dir> CACHE_DIR=<warm cache> PYTHON=<python with backend deps> npx playwright test
+DEMO_DATA_DIR=<data dir> CACHE_DIR=<warm cache> PYTHON=<python with backend deps> npx playwright test -c playwright.emissions.config.js
+```

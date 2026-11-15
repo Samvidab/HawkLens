@@ -363,7 +363,8 @@ async def inspect(profile: BuildingProfile, run_id: str | None = None) -> Interi
         obs = unknown_observation()
 
     findings, claims = build_findings(profile, model_id, obs, images, panos, scan)
-    hv = ", ".join(i.replace("_", " ") for i in findings.hvac_visible) or "none seen"
+    hv = ", ".join(i.replace("_", " ") for i in findings.hvac_visible) or (
+        "unknown" if obs.hvac.confidence == 0 else "none seen")  # a failed read is unknown, not "none"
     ev("observe", f"lighting {findings.lighting_type}; HVAC {hv}"[:90], images[0].image_id if images else None)
     ev("observe", f"windows {findings.window_type}; {len(findings.pins)} findings pinned in 3D")
 

@@ -1,12 +1,15 @@
-"""Investigator agent: decision loop, cap, required roof, reasons, fallback (no network, no Gemini)."""
+"""Investigator agent: decision loop, cap, required roof, fallback, and the no-invention rule
+(no network, no Gemini)."""
 import json
 
 import pytest
 
-from app.agents import aerial, graph, investigator
+from app.adapters.types import PanoramaRef
+from app.agents import aerial, graph, interior, investigator
 from app.agents.investigator import Investigation, Step
 from app.config import get_settings
 from app.events import load_events, reset_run
+from app.guardrails import check_numbers
 from app.schemas.goal import Goal
 from tests.test_aerial import obs, overhead, profile
 
@@ -49,13 +52,21 @@ def scripted(monkeypatch, steps):
     return prompts
 
 
+def S(tool, purpose="solar_evidence", **kw) -> Step:
+    return Step(tool=tool, purpose=purpose, **kw)
+
+
+def feed(run_id):
+    return [e for e in load_events(run_id) if e.agent == "Investigator"]
+
+
 async def test_tool_sequence_events_and_trace(env, monkeypatch):
     tmp_path, calls, vision = env
     prompts = scripted(monkeypatch, [
-        Step(reason="need the roof for solar", tool="inspect_roof"),
-        Step(reason="roof open but trees nearby", tool="get_vexcel_wider_context"),
-        Step(reason="check shading with neighbours", tool="inspect_roof"),
-        Step(reason="no scan worth the cost here", tool="finish"),
+        S("inspect_roof", because=["built"]),
+        S("get_vexcel_wider_context", "shading_check", because=["shading"]),
+        S("inspect_roof", "shading_check", because=["wider_context"]),
+        S("finish", "no_more_value", because=["built"]),
     ])
     reset_run("i1")
     out = await investigator.investigate(profile(), "i1", Goal(city="Houston", target_pct=40))
@@ -63,21 +74,140 @@ async def test_tool_sequence_events_and_trace(env, monkeypatch):
         "inspect_roof", "get_vexcel_wider_context", "inspect_roof", "finish"]
     assert out["interior"] is None and out["aerial"] is not None
     assert len(calls) == 2 and calls[1] == pytest.approx(calls[0] * investigator.WIDE_FACTOR)
-    # the second roof inspection saw both images, the wide one labelled as context
     assert "wider overhead context" in vision.prompts[1] and "wider overhead context" not in vision.prompts[0]
-    msgs = [e.message for e in load_events("i1") if e.agent == "Investigator"]
-    assert msgs[0] == "inspecting roof: need the roof for solar"
-    assert msgs[2].startswith("re-inspecting roof with context")
-    assert msgs[-1] == "finishing: no scan worth the cost here"
+    msgs = [e.message for e in feed("i1")]
+    assert msgs[0] == "inspected roof: for solar, given built 1983"
+    assert msgs[1].startswith("pulled wider Vexcel context (") and msgs[1].endswith("given shading none")
+    assert msgs[2].startswith("re-inspected roof with context: to check shading, given wider view")
+    assert msgs[3] == "finished: more evidence won't change an upgrade, given built 1983"
     assert all(len(m) <= 90 for m in msgs)
-    # later prompts carry earlier results
     assert "shading none" in prompts[1] and "Calls left: 7" in prompts[1]
     trace = json.loads((tmp_path / "data" / "buildings" / "23551" / "investigation.json").read_text())
-    assert len(trace["steps"]) == 4
+    assert len(trace["steps"]) == 4 and trace["facts"]["shading"]["source"] == "roof inspection with wider context"
+
+
+async def test_nothing_shown_is_invented(env, monkeypatch, tmp_path):
+    """Every Investigator event (text, numbers, cited facts, image) comes from what a tool returned in
+    this run; failed or empty tools show 'unknown'; the model's own words and invented ids never show."""
+    async def no_basics(mid):
+        raise RuntimeError("private model")
+
+    async def failing_vision(prompt, images, schema):
+        raise RuntimeError("gemini down")
+
+    async def fake_fetch(mid, k):
+        p = PanoramaRef(model_id=mid, pano_id="p1", xyz=(0, 0, 0), skybox_urls=[])
+        img = overhead(tmp_path).model_copy(update={"image_id": "mpp_real", "source": "matterport_pano"})
+        return [p], [img]
+
+    async def room_panos(mid):
+        return [{"room_id": "room1xyz", "pano_ids": [], "dimensions": {}}]
+
+    async def panoramas(mid):
+        return [PanoramaRef(model_id=mid, pano_id=f"q{i}", xyz=(i, 0, 0), skybox_urls=[]) for i in range(3)]
+
+    async def rooms_fail(mid):
+        raise RuntimeError("rooms query failed")
+
+    async def no_room_imgs(mid, subset, all_panos):
+        return {}, []
+
+    async def no_mesh(mid):
+        raise RuntimeError("unavailable")
+
+    monkeypatch.setattr(investigator.mp, "basics", no_basics)
+    monkeypatch.setattr(investigator.mp, "room_panos", room_panos)
+    monkeypatch.setattr(investigator.mp, "panoramas", panoramas)
+    monkeypatch.setattr(investigator.mp, "rooms", rooms_fail)
+    monkeypatch.setattr(investigator.mp, "matterpak", no_mesh)
+    monkeypatch.setattr(investigator.interior, "fetch_images", fake_fetch)
+    monkeypatch.setattr(investigator.interior, "fetch_room_images", no_room_imgs)
+    monkeypatch.setattr(investigator.llm, "vision_json", failing_vision)
+
+    # The model tries to smuggle prose and cites facts no tool returned.
+    smuggled = Step.model_validate({"tool": "inspect_roof", "purpose": "solar_evidence",
+                                    "because": ["trees_everywhere", "built"],
+                                    "reason": "roof is 73% covered by oak trees"})
+    steps = [
+        smuggled,
+        S("find_matterport_scans", "find_interior_evidence", because=["scans_linked"]),  # every scan errors
+        S("get_matterport_rooms", "lighting_for_led", model_id="hero1"),
+        S("inspect_interior", "lighting_for_led", because=["lighting"]),  # vision fails
+        S("label_rooms", "room_use", because=["hvac", "made_up"]),  # no room panoramas come back
+        S("finish", "no_more_value"),
+    ]
+    scripted(monkeypatch, steps)
+    reset_run("i9")
+    inv = Investigation(profile().model_copy(update={"matterport_model_id": "hero1"}), "i9",
+                        Goal(city="Houston", target_pct=40))
+    await inv.run()
+    inter = await inv.interior_result()
+    events = feed("i9")
+    assert [h["tool"] for h in inv.history] == [s.tool for s in steps]
+    assert len(events) == len(inv.history)
+
+    tool_returns = [h["result"] for h in inv.history]
+    facts = {k: v["text"] for k, v in inv.facts.items()}
+    for e, h in zip(events, inv.history):
+        assert e.message == h["shown"]
+        # 1. every number shown is in what tools returned (results, facts) or the CoStar profile
+        assert check_numbers(e.message, [tool_returns, facts, inv.profile.model_dump(mode="json")]) == []
+        # 2. every fact quoted was established by a tool, verbatim, and is in the line
+        for fid, f in h["quoted"].items():
+            assert f == inv.facts[fid] and f["text"] in e.message
+        # 3. every image attached is one a tool returned
+        assert e.evidence_id is None or e.evidence_id in inv.images_returned()
+        # 4. nothing the model wrote is shown; invented fact ids are dropped
+        assert "oak" not in e.message and "73" not in e.message
+        assert not set(h["quoted"]) & {"trees_everywhere", "made_up"}
+
+    by_tool = {h["tool"]: h for h in inv.history}
+    # failures and empty returns are recorded as unknown, in the trace, the feed and the facts
+    assert by_tool["find_matterport_scans"]["result"].startswith("unknown")
+    assert by_tool["find_matterport_scans"]["shown"].startswith("Matterport scans unknown")
+    assert facts["scans_found"] == "scans unknown"
+    assert facts["lighting"] == "lighting unknown" and facts["hvac"] == "HVAC unknown"
+    assert "vision model failed" in by_tool["inspect_interior"]["result"]
+    assert by_tool["label_rooms"]["result"].startswith("unknown")
+    assert by_tool["label_rooms"]["shown"].startswith("room labels unknown")
+    assert by_tool["inspect_roof"]["shown"] == "inspected roof: for solar, given built 1983"
+    # a failed rooms query leaves floor area unknown, not zero
+    assert inter.scan["scanned_floor_area_sqft"] is None and inter.findings.floor_area_sqft is None
+    assert any(e.message == "lighting unknown; HVAC unknown" for e in load_events("i9") if e.agent == "Interior")
+
+
+async def test_failed_tool_is_unknown_and_run_goes_on(env, monkeypatch):
+    scripted(monkeypatch, [S("inspect_roof"), S("get_vexcel_wider_context", "shading_check"),
+                           S("finish", "no_more_value")])
+    real, n = investigator.vexcel.overhead, [0]
+
+    async def first_ok(*a, **k):
+        n[0] += 1
+        if n[0] > 1:
+            raise TimeoutError("vexcel down")
+        return await real(*a, **k)
+    monkeypatch.setattr(investigator.vexcel, "overhead", first_ok)
+    reset_run("i8")
+    out = await investigator.investigate(profile(), "i8", None)
+    wide = out["investigation"][1]
+    assert wide["result"] == "unknown (failed: TimeoutError)"
+    assert wide["shown"].startswith("wider Vexcel context unknown")
+    assert any(e.kind == "error" and "failed (TimeoutError)" in e.message for e in load_events("i8"))
+    assert out["investigation"][-1]["tool"] == "finish"
+
+
+async def test_aerial_feed_says_unknown_not_zero(env, monkeypatch, tmp_path):
+    async def vision(prompt, images, schema):
+        return obs(usable_roof_fraction=aerial.FractionObs(value=None, confidence=0.0))
+    monkeypatch.setattr(aerial.llm, "vision_json", vision)
+    reset_run("i7")
+    await aerial.inspect(profile(), "i7", images=[overhead(tmp_path)])
+    msgs = [e.message for e in load_events("i7")]
+    assert "usable roof unknown, shading none" in msgs and not any("0%" in m for m in msgs)
 
 
 async def test_cap_and_required_roof(env, monkeypatch):
-    scripted(monkeypatch, [Step(reason="checking", tool="get_costar_record")] * 20)
+    scripted(monkeypatch, [S("get_costar_record", "record_details")] * 20)
 
     async def fake_prop(cid):
         return {"numStoriesAboveGrade": 3, "rentableBuildingAreaSquareFeet": 105717.0}
@@ -87,34 +217,22 @@ async def test_cap_and_required_roof(env, monkeypatch):
     tools = [h["tool"] for h in out["investigation"]]
     assert tools.count("get_costar_record") == investigator.MAX_CALLS
     assert tools[-1] == "inspect_roof" and out["aerial"] is not None  # required, run by code
-    msgs = [e.message for e in load_events("i2") if e.agent == "Investigator"]
-    assert "call limit reached; finishing" in msgs
+    assert "year renovated: unknown" in out["investigation"][0]["result"]  # missing fields say so
+    assert "call limit reached; finishing" in [e.message for e in feed("i2")]
 
 
-async def test_tool_errors_go_back_to_the_agent(env, monkeypatch):
-    prompts = scripted(monkeypatch, [
-        Step(reason="label the rooms", tool="label_rooms"),
-        Step(reason="done", tool="finish"),
-    ])
+async def test_refused_tool_goes_back_to_the_agent(env, monkeypatch):
+    prompts = scripted(monkeypatch, [S("label_rooms", "room_use"), S("finish", "no_more_value")])
     out = await investigator.investigate(profile(), None, None)
-    assert out["investigation"][0]["result"].startswith("error: call inspect_interior")
-    assert "error: call inspect_interior" in prompts[1]
-
-
-def test_reason_with_invented_number_falls_back_to_template(env):
-    inv = Investigation(profile(), None, Goal(city="Houston", target_pct=40))
-    assert inv.feed_reason(Step(reason="roof covers 73% open area", tool="inspect_roof")) == \
-        investigator.DEFAULT_REASON["inspect_roof"]
-    # numbers from the record are allowed; long reasons are cut at a word
-    r = inv.feed_reason(Step(reason="Built 1983 so " + "original lighting likely " * 10, tool="inspect_interior"))
-    assert r.startswith("built 1983") and len("inspecting interior: " + r) <= 90
+    assert out["investigation"][0]["result"].startswith("unknown (refused: call inspect_interior")
+    assert "call inspect_interior" in prompts[1]
 
 
 def test_preferred_scan_first(env):
-    p = profile().model_copy(update={"matterport_model_id": "hero1"})
-    inv = Investigation(p, None, None)
+    inv = Investigation(profile().model_copy(update={"matterport_model_id": "hero1"}), None, None)
     assert inv.scan_ids() == ["hero1", "aaa", "bbb"]
     assert "Preferred scan" in inv.building_card()
+    assert inv.facts["scans_linked"]["text"] == "3 scans linked"
 
 
 async def test_inspect_node_falls_back_to_fixed_pipeline(env, monkeypatch):
@@ -129,14 +247,11 @@ async def test_inspect_node_falls_back_to_fixed_pipeline(env, monkeypatch):
     out = await graph.inspect_node({"run_id": "i3", "building_id": "23551", "profile": profile()})
     assert out == {"fixed": True}
     assert any("running the fixed survey" in e.message for e in load_events("i3"))
-
     monkeypatch.setenv("AGENTIC_SURVEY", "false")
     assert not investigator.enabled()
 
 
 async def test_one_scan_per_building_and_no_identical_reinspection(env, monkeypatch, tmp_path):
-    from app.adapters.types import PanoramaRef
-    from app.agents import interior
     inv = Investigation(profile().model_copy(update={"matterport_model_id": "hero1"}), None, None)
     pano_calls = []
 
@@ -159,20 +274,14 @@ async def test_one_scan_per_building_and_no_identical_reinspection(env, monkeypa
     monkeypatch.setattr(investigator.interior, "fetch_images", fake_fetch)
     monkeypatch.setattr(investigator.llm, "vision_json", fake_vision)
 
-    await inv.inspect_interior(Step(reason="", tool="inspect_interior", model_id="hero1"))
+    await inv.inspect_interior(S("inspect_interior", model_id="hero1"))
     assert pano_calls == [5]
     with pytest.raises(investigator.ToolError, match="already inspected"):
-        await inv.inspect_interior(Step(reason="", tool="inspect_interior"))
-    await inv.inspect_interior(Step(reason="", tool="inspect_interior", count=20))  # wider look, capped
+        await inv.inspect_interior(S("inspect_interior"))
+    await inv.inspect_interior(S("inspect_interior", count=20))  # wider look, capped
     assert pano_calls == [5, investigator.MAX_PANOS]
     with pytest.raises(investigator.ToolError, match="one scan per building"):
-        await inv.get_matterport_rooms(Step(reason="", tool="get_matterport_rooms", model_id="aaa"))
-
-
-def test_reason_keeps_acronyms(env):
-    inv = Investigation(profile(), None, None)
-    assert inv.feed_reason(Step(reason="HVAC unclear, need more panoramas", tool="inspect_interior")) == \
-        "HVAC unclear, need more panoramas"
+        await inv.get_matterport_rooms(S("get_matterport_rooms", model_id="aaa"))
 
 
 def test_finalize_clears_stale_interior_files(env):
