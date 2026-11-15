@@ -1,0 +1,32 @@
+{
+  "building_id": "239731",
+  "costar_id": "239731",
+  "name": "Brookhollow Two",
+  "address": "9800 Northwest Fwy, Houston, TX 77092",
+  "city": "Houston",
+  "lat": 29.804894,
+  "lon": -95.451614,
+  "footprint_wkt": "POLYGON ((-95.45140547061781 29.80471971483731, -95.45141416047532 29.80507586412466, -95.45182253010424 29.805068284787986, -95.45181383880266 29.804712135609325, -95.45140547061781 29.80471971483731))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "B",
+  "year_built": 1972,
+  "stories": 6,
+  "rba_sqft": 100763.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

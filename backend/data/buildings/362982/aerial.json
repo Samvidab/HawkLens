@@ -1,0 +1,20 @@
+{
+  "building_id": "362982",
+  "roof_type": "unknown",
+  "roof_color": "unknown",
+  "usable_roof_fraction": 0.0,
+  "shading": "partial",
+  "existing_solar": false,
+  "usable_roof_m2": 0.0,
+  "facades": {},
+  "claim_ids": [
+    "362982.aerial.roof.type",
+    "362982.aerial.roof.color",
+    "362982.aerial.roof.usable_fraction",
+    "362982.aerial.roof.shading",
+    "362982.aerial.roof.existing_solar"
+  ],
+  "evidence_ids": [
+    "vxo_2871ab38349b9946"
+  ]
+}

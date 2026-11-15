@@ -1,0 +1,32 @@
+{
+  "building_id": "362982",
+  "costar_id": "362982",
+  "name": "Legacy Pointe",
+  "address": "9700 Bissonnet St, Houston, TX 77036",
+  "city": "Houston",
+  "lat": 29.6774165,
+  "lon": -95.5453569,
+  "footprint_wkt": "POLYGON ((-95.54453252654058 29.676727617792356, -95.54456802314796 29.678136384318986, -95.54618128468225 29.678105376338713, -95.54614576562922 29.676696611575583, -95.54453252654058 29.676727617792356))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "B",
+  "year_built": 1975,
+  "stories": 2,
+  "rba_sqft": 525580.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

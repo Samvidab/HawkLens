@@ -1,0 +1,11 @@
+{
+  "vxo_ec0b6528c23e6fb8": {
+    "image_id": "vxo_ec0b6528c23e6fb8",
+    "source": "vexcel_overhead",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/ec0b6528c23e6fb8d6eb6008aefe5c23078022e70e129784b97fb118b458a8a9.jpg",
+    "gsd_m": 0.062,
+    "bounds_wkt": "POLYGON ((-95.4511557566204 29.80451100701592, -95.45117485072443 29.805293646946716, -95.45207224686635 29.80527699117456, -95.45205314578888 29.80449435176863, -95.4511557566204 29.80451100701592))",
+    "captured_at": null
+  }
+}

@@ -1,0 +1,32 @@
+{
+ "namespace": "matterport",
+ "params": {
+  "op": "model_dts1Hjut1rG",
+  "variables": {
+   "id": "dts1Hjut1rG"
+  }
+ },
+ "value": {
+  "model": {
+   "id": "dts1Hjut1rG",
+   "name": "11301 Fallbrook Drive",
+   "created": "2026-11-10T00:15:33Z",
+   "modified": "2026-11-12T02:43:28Z",
+   "address": {
+    "locality": "Houston",
+    "administrativeArea": "TX",
+    "postalCode": "77065",
+    "countryCode": "US",
+    "address": "11301 Fallbrook Drive, Houston, TX, 77065, US"
+   },
+   "image": {
+    "url": "https://cdn-2.matterport.com/apifs/models/dts1Hjut1rG/images/EwVzEDGT4PE/08.02.2018_14.11.15.jpg?t=2-25a87c49895b4d849761cca6a50d95e6805dd03d-1794703212-1"
+   },
+   "publication": {
+    "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=dts1Hjut1rG' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+    "url": "https://my.matterport.com/show/?m=dts1Hjut1rG",
+    "published": true
+   }
+  }
+ }
+}

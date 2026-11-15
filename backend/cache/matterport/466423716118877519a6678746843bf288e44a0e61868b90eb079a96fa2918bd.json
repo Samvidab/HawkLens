@@ -1,0 +1,32 @@
+{
+ "namespace": "matterport",
+ "params": {
+  "op": "model_7V2xiriEbWD",
+  "variables": {
+   "id": "7V2xiriEbWD"
+  }
+ },
+ "value": {
+  "model": {
+   "id": "7V2xiriEbWD",
+   "name": "Gym",
+   "created": "2026-11-10T00:40:02Z",
+   "modified": "2026-11-12T01:57:56Z",
+   "address": {
+    "locality": "Houston",
+    "administrativeArea": "TX",
+    "postalCode": "77028",
+    "countryCode": "US",
+    "address": "7600 East Houston Road, Houston, TX, 77028, US"
+   },
+   "image": {
+    "url": "https://cdn-2.matterport.com/apifs/models/7V2xiriEbWD/images/nrE8z3YQKWB/07.21.2017_14.35.23.jpg?t=2-c27d3028011ffb40f9567ac6f3fa55d7b0ec6d6c-1794703213-1"
+   },
+   "publication": {
+    "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=7V2xiriEbWD' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+    "url": "https://my.matterport.com/show/?m=7V2xiriEbWD",
+    "published": true
+   }
+  }
+ }
+}

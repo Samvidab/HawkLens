@@ -1,0 +1,354 @@
+{
+ "namespace": "matterport.panos",
+ "params": {
+  "variables": {
+   "id": "hu9LX64osUN"
+  }
+ },
+ "value": {
+  "model": {
+   "panoLocations": [
+    {
+     "id": "4iir7rwzs30suhpbn8z3axptc",
+     "label": "4",
+     "position": {
+      "x": -3.041614055633545,
+      "y": 3.190626859664917,
+      "z": 1.4893959760665894
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/7db2fac9dd72411aa83260cd7cb0b0f1_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/7db2fac9dd72411aa83260cd7cb0b0f1_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/7db2fac9dd72411aa83260cd7cb0b0f1_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/7db2fac9dd72411aa83260cd7cb0b0f1_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/7db2fac9dd72411aa83260cd7cb0b0f1_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/7db2fac9dd72411aa83260cd7cb0b0f1_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "mbyynggyby3249ziyw5fxwiia",
+     "label": "10",
+     "position": {
+      "x": 0.21376237273216248,
+      "y": 7.111761093139648,
+      "z": 1.493117094039917
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/c6681a18cba5402a8422532ee54457fa_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/c6681a18cba5402a8422532ee54457fa_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/c6681a18cba5402a8422532ee54457fa_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/c6681a18cba5402a8422532ee54457fa_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/c6681a18cba5402a8422532ee54457fa_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/c6681a18cba5402a8422532ee54457fa_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "tbncc5zkiykq1838c9ppbc5md",
+     "label": "0",
+     "position": {
+      "x": -0.02345419116318226,
+      "y": 0.009446876123547554,
+      "z": 1.5010242462158203
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6a6884d762124c30b56c41633e2f67d7_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6a6884d762124c30b56c41633e2f67d7_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6a6884d762124c30b56c41633e2f67d7_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6a6884d762124c30b56c41633e2f67d7_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6a6884d762124c30b56c41633e2f67d7_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6a6884d762124c30b56c41633e2f67d7_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "2ufcxazmgsfs19fx0w6sspg3b",
+     "label": "9",
+     "position": {
+      "x": -1.5003607273101807,
+      "y": 6.319089412689209,
+      "z": 1.4924474954605103
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/795e6554131146389c998f7f256997f7_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/795e6554131146389c998f7f256997f7_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/795e6554131146389c998f7f256997f7_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/795e6554131146389c998f7f256997f7_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/795e6554131146389c998f7f256997f7_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/795e6554131146389c998f7f256997f7_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "5bygsrdpt4aehf77cryt9a4md",
+     "label": "12",
+     "position": {
+      "x": -0.09065058827400208,
+      "y": 3.3154873847961426,
+      "z": 1.5002421140670776
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2035060dcf35403bb5681f851c2ef4a7_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2035060dcf35403bb5681f851c2ef4a7_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2035060dcf35403bb5681f851c2ef4a7_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2035060dcf35403bb5681f851c2ef4a7_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2035060dcf35403bb5681f851c2ef4a7_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2035060dcf35403bb5681f851c2ef4a7_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "kx28ma0wpexq1ipd9a26e6q2d",
+     "label": "14",
+     "position": {
+      "x": -4.666409969329834,
+      "y": 5.502731800079346,
+      "z": 1.4857367277145386
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cc8c9580af64269bc3784e601f1b117_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cc8c9580af64269bc3784e601f1b117_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cc8c9580af64269bc3784e601f1b117_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cc8c9580af64269bc3784e601f1b117_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cc8c9580af64269bc3784e601f1b117_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cc8c9580af64269bc3784e601f1b117_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "55nrmsq65s7tt11c4prckdwrb",
+     "label": "15",
+     "position": {
+      "x": -5.709550857543945,
+      "y": 5.578079700469971,
+      "z": 1.4834251403808594
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/875fbe35ea724f7b9748691399a15ef0_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/875fbe35ea724f7b9748691399a15ef0_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/875fbe35ea724f7b9748691399a15ef0_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/875fbe35ea724f7b9748691399a15ef0_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/875fbe35ea724f7b9748691399a15ef0_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/875fbe35ea724f7b9748691399a15ef0_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "9pg5fmp3d0dtfm2yprq5twabd",
+     "label": "16",
+     "position": {
+      "x": -7.286497116088867,
+      "y": 7.169287204742432,
+      "z": 1.4824702739715576
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/80ec3cb145d9499fb08250db5cca6145_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/80ec3cb145d9499fb08250db5cca6145_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/80ec3cb145d9499fb08250db5cca6145_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/80ec3cb145d9499fb08250db5cca6145_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/80ec3cb145d9499fb08250db5cca6145_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/80ec3cb145d9499fb08250db5cca6145_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "rq4gxp25tny7usyxp0dub650d",
+     "label": "5",
+     "position": {
+      "x": -3.0305755138397217,
+      "y": 4.233370304107666,
+      "z": 1.490628719329834
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/ed170de1933649aebb6f8188ecc9d1f1_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/ed170de1933649aebb6f8188ecc9d1f1_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/ed170de1933649aebb6f8188ecc9d1f1_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/ed170de1933649aebb6f8188ecc9d1f1_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/ed170de1933649aebb6f8188ecc9d1f1_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/ed170de1933649aebb6f8188ecc9d1f1_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "x7q7bypp9itcm8dg088423qqd",
+     "label": "8",
+     "position": {
+      "x": -2.3612735271453857,
+      "y": 5.460537433624268,
+      "z": 1.4936089515686035
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/1411f63281eb47b3b6b738d7bd630fca_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/1411f63281eb47b3b6b738d7bd630fca_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/1411f63281eb47b3b6b738d7bd630fca_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/1411f63281eb47b3b6b738d7bd630fca_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/1411f63281eb47b3b6b738d7bd630fca_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/1411f63281eb47b3b6b738d7bd630fca_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "1zb5pqmd2mspdyqt6bcazp8yd",
+     "label": "2",
+     "position": {
+      "x": -3.102447509765625,
+      "y": 0.34531041979789734,
+      "z": 1.4845274686813354
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/63d581a9acd846b7ba79950083c83683_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/63d581a9acd846b7ba79950083c83683_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/63d581a9acd846b7ba79950083c83683_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/63d581a9acd846b7ba79950083c83683_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/63d581a9acd846b7ba79950083c83683_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/63d581a9acd846b7ba79950083c83683_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "ngqnz3sktn14w29te3qs6cq2d",
+     "label": "1",
+     "position": {
+      "x": -2.228285551071167,
+      "y": 0.8499245643615723,
+      "z": 1.4884239435195923
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/d5d704bf355b44cbbc345c7b72487f12_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/d5d704bf355b44cbbc345c7b72487f12_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/d5d704bf355b44cbbc345c7b72487f12_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/d5d704bf355b44cbbc345c7b72487f12_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/d5d704bf355b44cbbc345c7b72487f12_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/d5d704bf355b44cbbc345c7b72487f12_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "s8d3w0d5hi0fnyqqg0045r60a",
+     "label": "3",
+     "position": {
+      "x": -4.378676891326904,
+      "y": 0.02402441017329693,
+      "z": 1.4871069192886353
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2d907d8ed2c84fcf8b71dbd5ac66b68b_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2d907d8ed2c84fcf8b71dbd5ac66b68b_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2d907d8ed2c84fcf8b71dbd5ac66b68b_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2d907d8ed2c84fcf8b71dbd5ac66b68b_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2d907d8ed2c84fcf8b71dbd5ac66b68b_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/2d907d8ed2c84fcf8b71dbd5ac66b68b_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "ugnpsf6p7h506ea75e554pwec",
+     "label": "13",
+     "position": {
+      "x": -3.743196487426758,
+      "y": 7.126016616821289,
+      "z": 1.4778796434402466
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/b6cfd670af624cd1a2499adec9be809c_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/b6cfd670af624cd1a2499adec9be809c_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/b6cfd670af624cd1a2499adec9be809c_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/b6cfd670af624cd1a2499adec9be809c_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/b6cfd670af624cd1a2499adec9be809c_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/b6cfd670af624cd1a2499adec9be809c_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "d9uu0xs34xd6u6f6kx9pyfgqd",
+     "label": "6",
+     "position": {
+      "x": -4.450394630432129,
+      "y": 4.112555027008057,
+      "z": 1.4870827198028564
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/e0e7acbe768c47e3b698b467e69e1791_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/e0e7acbe768c47e3b698b467e69e1791_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/e0e7acbe768c47e3b698b467e69e1791_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/e0e7acbe768c47e3b698b467e69e1791_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/e0e7acbe768c47e3b698b467e69e1791_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/e0e7acbe768c47e3b698b467e69e1791_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "290peadb20wq4i5e0f1cts2kc",
+     "label": "7",
+     "position": {
+      "x": -6.557007789611816,
+      "y": 2.7715213298797607,
+      "z": 1.49671471118927
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cad808c04654bf8a4e1f015cb626d1a_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cad808c04654bf8a4e1f015cb626d1a_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cad808c04654bf8a4e1f015cb626d1a_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cad808c04654bf8a4e1f015cb626d1a_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cad808c04654bf8a4e1f015cb626d1a_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/6cad808c04654bf8a4e1f015cb626d1a_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    },
+    {
+     "id": "711gzufq8b2teta7yu0ec9yfd",
+     "label": "11",
+     "position": {
+      "x": -1.2987873554229736,
+      "y": 4.566705226898193,
+      "z": 1.492701768875122
+     },
+     "skybox": {
+      "status": "available",
+      "children": [
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/8603e69635354efdb2d3e225a34e8204_skybox0.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/8603e69635354efdb2d3e225a34e8204_skybox1.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/8603e69635354efdb2d3e225a34e8204_skybox2.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/8603e69635354efdb2d3e225a34e8204_skybox3.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/8603e69635354efdb2d3e225a34e8204_skybox4.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k",
+       "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/pan/2k/~/8603e69635354efdb2d3e225a34e8204_skybox5.jpg?t=2-d9e731d12d255cb9fa255c9e0ca7f24164095b45-1794722712-1&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fpan%2F2k"
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

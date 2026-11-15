@@ -1,0 +1,32 @@
+{
+  "building_id": "23551",
+  "model_id": "hu9LX64osUN",
+  "lighting_type": "unknown",
+  "hvac_visible": [],
+  "window_type": "unknown",
+  "floor_area_sqft": null,
+  "envelope_area_sqft": null,
+  "claim_ids": [
+    "23551.interior.lighting",
+    "23551.interior.hvac",
+    "23551.interior.window"
+  ],
+  "evidence_ids": [
+    "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_0",
+    "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_1",
+    "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_3",
+    "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_0",
+    "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_1",
+    "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_3",
+    "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_0",
+    "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_1",
+    "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_3",
+    "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_0",
+    "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_1",
+    "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_3",
+    "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+    "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_1",
+    "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_3"
+  ],
+  "pins": []
+}

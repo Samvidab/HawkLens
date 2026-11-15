@@ -1,0 +1,32 @@
+{
+  "building_id": "6550930",
+  "costar_id": "6550930",
+  "name": "7900 Fannin",
+  "address": "7900 Fannin St, Houston, TX 77054",
+  "city": "Houston",
+  "lat": 29.6915081,
+  "lon": -95.4034524,
+  "footprint_wkt": "POLYGON ((-95.40311546873477 29.69122589951725, -95.40312919149987 29.691802282952892, -95.40378933314567 29.691790299508103, -95.40377560661975 29.691213916351224, -95.40311546873477 29.69122589951725))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "B",
+  "year_built": 2004,
+  "stories": 4,
+  "rba_sqft": 175923.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

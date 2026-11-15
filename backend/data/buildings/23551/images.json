@@ -1,0 +1,146 @@
+{
+  "vxo_f3cfb6a61d0f8305": {
+    "image_id": "vxo_f3cfb6a61d0f8305",
+    "source": "vexcel_overhead",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/f3cfb6a61d0f830538b0aeab43aa37b2bc43adf24dadd51593111cf7ea7ff265.jpg",
+    "gsd_m": 0.08985714285714286,
+    "bounds_wkt": "POLYGON ((-95.51417446119315 29.71587542182865, -95.51420274413172 29.71700966959553, -95.51550214609672 29.716984974368472, -95.5154738485784 29.715850727731468, -95.51417446119315 29.71587542182865))",
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_0": {
+    "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_0",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/f55190f1654bc200e4bb91636776890439d442ae0a82ec49db1c8a3bbd196bea.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_1": {
+    "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_1",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/426fc38410fe2aa25fd2c11017685e0fed20a1ecde67c7cac71ba8915fc10c41.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_3": {
+    "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_3",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/456c2de451b09903251e036518681eb81fa1812351a91b81c4203ef847f16f01.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0": {
+    "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/3c296948cacbbef38e8af1bea68702269636ed63c630b85ec74b5e04cb886603.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_1": {
+    "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_1",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/9eff065beef5d1e48bddcec58bd35533a51d6adccd7587ed26286460709fd5f6.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_3": {
+    "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_3",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/59288eb274ba10ed99f78824f81224709ddb8e8d01380a3b9928c4198af1b940.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_0": {
+    "image_id": "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_0",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/47be7082a3eecd36cba6b5c4049f3c651cf58371977bdef49f103655d3019f11.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_1": {
+    "image_id": "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_1",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/d07147e1d6d6caed2157149badac6641aee6cc6e00eaaa2b9947bee667513881.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_3": {
+    "image_id": "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_3",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/d43bc39469c74f3e2e1576cbe7e27205bef123d2c73491c0c93d9f27fb7c98e2.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_0": {
+    "image_id": "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_0",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/18de95d7e2bb5989dd808d582f1f09d11f6226da9aad1ee4af369c06c33973a9.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_1": {
+    "image_id": "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_1",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/a1c8e7805a35478b1829022c39d6b6c0ff7c6487d27bd1b447cf5d5bf60e9d78.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_3": {
+    "image_id": "mpp_hu9LX64osUN_s8d3w0d5hi0fnyqqg0045r60a_3",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/ece3424a0b3978d3ced680a793e15b009e0b2b875d78ee863a40873a7d51c033.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_0": {
+    "image_id": "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_0",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/b4315051ffe3be6e801ea58c1eb18744f5c805cc9c061ae4f94b8593b3e9206b.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_1": {
+    "image_id": "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_1",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/53a0cf79f383f4e497e930dfe622ecb767e1ee011de57589b6d94db8aaea597b.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  },
+  "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_3": {
+    "image_id": "mpp_hu9LX64osUN_mbyynggyby3249ziyw5fxwiia_3",
+    "source": "matterport_pano",
+    "orientation": null,
+    "local_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/a2779e346fef9dc0f0257989e9aaf7b1eb4a26c0595842dc683cdd6e65dc0117.jpg",
+    "gsd_m": null,
+    "bounds_wkt": null,
+    "captured_at": null
+  }
+}

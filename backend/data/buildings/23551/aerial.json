@@ -1,0 +1,20 @@
+{
+  "building_id": "23551",
+  "roof_type": "unknown",
+  "roof_color": "unknown",
+  "usable_roof_fraction": 0.0,
+  "shading": "partial",
+  "existing_solar": false,
+  "usable_roof_m2": 0.0,
+  "facades": {},
+  "claim_ids": [
+    "23551.aerial.roof.type",
+    "23551.aerial.roof.color",
+    "23551.aerial.roof.usable_fraction",
+    "23551.aerial.roof.shading",
+    "23551.aerial.roof.existing_solar"
+  ],
+  "evidence_ids": [
+    "vxo_f3cfb6a61d0f8305"
+  ]
+}

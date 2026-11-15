@@ -1,0 +1,74 @@
+{
+  "id": "oY3UunDxzch",
+  "name": "Office Space",
+  "created": "2026-11-10T00:14:53Z",
+  "modified": "2026-11-12T03:56:07Z",
+  "address": {
+    "locality": "Houston",
+    "administrative_area": "TX",
+    "postal_code": "77060",
+    "country_code": "US",
+    "formatted": "16525 Imperial Valley Dr, Office Space, Houston, TX, 77060, US"
+  },
+  "geo": {
+    "lat": 29.940223051139235,
+    "lon": -95.39741130386636
+  },
+  "thumbnail_url": "https://cdn-2.matterport.com/apifs/models/oY3UunDxzch/images/Bxk4CiiUcY9/07.25.2022_09.01.41.jpg?t=2-bd0f9ddaad9306939027c1d72512f6310eb5bf74-1794703213-1",
+  "thumbnail_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/mp/oY3UunDxzch/thumb.jpg",
+  "embed_html": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=oY3UunDxzch' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+  "show_url": "https://my.matterport.com/show/?m=oY3UunDxzch",
+  "published": true,
+  "pi_available": false,
+  "raw": {
+    "search": {
+      "id": "oY3UunDxzch",
+      "name": "Office Space",
+      "created": "2026-11-10T00:14:53Z",
+      "modified": "2026-11-12T03:56:07Z",
+      "demo": false,
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77060",
+        "countryCode": "US",
+        "address": "16525 Imperial Valley Dr, Office Space, Houston, TX, 77060, US"
+      },
+      "geolocation": {
+        "lat": "29.9402231",
+        "long": "-95.3974113"
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/oY3UunDxzch/images/Bxk4CiiUcY9/07.25.2022_09.01.41.jpg?t=2-e50ae3f2bc05b61085c30bfe069f2f1e758ad321-1794703212-1"
+      },
+      "publication": {
+        "published": true
+      }
+    },
+    "model": {
+      "id": "oY3UunDxzch",
+      "name": "Office Space",
+      "created": "2026-11-10T00:14:53Z",
+      "modified": "2026-11-12T03:56:07Z",
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77060",
+        "countryCode": "US",
+        "address": "16525 Imperial Valley Dr, Office Space, Houston, TX, 77060, US"
+      },
+      "geocoordinates": {
+        "latitude": 29.940223051139235,
+        "longitude": -95.39741130386636
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/oY3UunDxzch/images/Bxk4CiiUcY9/07.25.2022_09.01.41.jpg?t=2-bd0f9ddaad9306939027c1d72512f6310eb5bf74-1794703213-1"
+      },
+      "publication": {
+        "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=oY3UunDxzch' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+        "url": "https://my.matterport.com/show/?m=oY3UunDxzch",
+        "published": true
+      }
+    }
+  }
+}

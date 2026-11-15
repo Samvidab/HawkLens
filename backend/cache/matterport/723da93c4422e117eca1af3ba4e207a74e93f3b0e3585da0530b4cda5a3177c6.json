@@ -1,0 +1,32 @@
+{
+ "namespace": "matterport",
+ "params": {
+  "op": "model_8hyduoUdbe2",
+  "variables": {
+   "id": "8hyduoUdbe2"
+  }
+ },
+ "value": {
+  "model": {
+   "id": "8hyduoUdbe2",
+   "name": "Industrious Houston",
+   "created": "2026-11-10T00:15:29Z",
+   "modified": "2026-11-12T03:20:20Z",
+   "address": {
+    "locality": "Houston",
+    "administrativeArea": "TX",
+    "postalCode": "77043",
+    "countryCode": "US",
+    "address": "2101 CityWest Boulevard, Ground Floor & 2nd Floor, Houston, TX, 77043, US"
+   },
+   "image": {
+    "url": "https://cdn-2.matterport.com/apifs/models/8hyduoUdbe2/images/A8ZXoNsRjh7/06.21.2017_11.03.27.jpg?t=2-38a05e1c3973513b80db6451b63eb8cd52335dbc-1794703212-1"
+   },
+   "publication": {
+    "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=8hyduoUdbe2' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+    "url": "https://my.matterport.com/show/?m=8hyduoUdbe2",
+    "published": true
+   }
+  }
+ }
+}

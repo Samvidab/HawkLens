@@ -1,0 +1,33 @@
+{
+  "building_id": "23551",
+  "costar_id": "23551",
+  "name": "Harwin Plaza II Bldg",
+  "address": "7457 Harwin Dr, Houston, TX 77036",
+  "city": "Houston",
+  "lat": 29.7164302,
+  "lon": -95.5148383,
+  "footprint_wkt": "POLYGON ((-95.51453636737256 29.7161778724548, -95.51454923302045 29.716693758671155, -95.51514023413547 29.716682526758518, -95.51512736547151 29.716166640775903, -95.51453636737256 29.7161778724548))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "B",
+  "year_built": 1983,
+  "stories": 3,
+  "rba_sqft": 105717.0,
+  "occupancy_pct": null,
+  "matterport_model_id": "hu9LX64osUN",
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon",
+    "matterport_model_id": "portfolio.json: matterport_model_id"
+  }
+}

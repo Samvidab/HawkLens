@@ -1,0 +1,74 @@
+{
+  "id": "M7BdXkpzrrE",
+  "name": "3012 Houston Ave",
+  "created": "2026-11-09T23:20:37Z",
+  "modified": "2026-11-12T03:15:07Z",
+  "address": {
+    "locality": "Houston",
+    "administrative_area": "TX",
+    "postal_code": "77009",
+    "country_code": "US",
+    "formatted": "3012 Houston Ave, Houston, TX, 77009, US"
+  },
+  "geo": {
+    "lat": 29.785889401727218,
+    "lon": -95.37194150107774
+  },
+  "thumbnail_url": "https://cdn-2.matterport.com/apifs/models/M7BdXkpzrrE/images/cQSUhDsq9UD/07.29.2026_22.37.38.jpg?t=2-75b797a790776a5a15ee7812f03e3f65f7ac8b4d-1794703213-1",
+  "thumbnail_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/mp/M7BdXkpzrrE/thumb.jpg",
+  "embed_html": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=M7BdXkpzrrE' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+  "show_url": "https://my.matterport.com/show/?m=M7BdXkpzrrE",
+  "published": true,
+  "pi_available": false,
+  "raw": {
+    "search": {
+      "id": "M7BdXkpzrrE",
+      "name": "3012 Houston Ave",
+      "created": "2026-11-09T23:20:37Z",
+      "modified": "2026-11-12T03:15:07Z",
+      "demo": false,
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77009",
+        "countryCode": "US",
+        "address": "3012 Houston Ave, Houston, TX, 77009, US"
+      },
+      "geolocation": {
+        "lat": "29.7858894",
+        "long": "-95.3719415"
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/M7BdXkpzrrE/images/cQSUhDsq9UD/07.29.2026_22.37.38.jpg?t=2-72f0d580d3a8954d581a35c11ce7660cd8b1b1a4-1794703212-1"
+      },
+      "publication": {
+        "published": true
+      }
+    },
+    "model": {
+      "id": "M7BdXkpzrrE",
+      "name": "3012 Houston Ave",
+      "created": "2026-11-09T23:20:37Z",
+      "modified": "2026-11-12T03:15:07Z",
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77009",
+        "countryCode": "US",
+        "address": "3012 Houston Ave, Houston, TX, 77009, US"
+      },
+      "geocoordinates": {
+        "latitude": 29.785889401727218,
+        "longitude": -95.37194150107774
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/M7BdXkpzrrE/images/cQSUhDsq9UD/07.29.2026_22.37.38.jpg?t=2-75b797a790776a5a15ee7812f03e3f65f7ac8b4d-1794703213-1"
+      },
+      "publication": {
+        "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=M7BdXkpzrrE' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+        "url": "https://my.matterport.com/show/?m=M7BdXkpzrrE",
+        "published": true
+      }
+    }
+  }
+}

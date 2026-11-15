@@ -1,0 +1,298 @@
+{
+ "namespace": "matterport.rooms",
+ "params": {
+  "variables": {
+   "id": "hu9LX64osUN"
+  }
+ },
+ "value": {
+  "model": {
+   "floors": [
+    {
+     "id": "tsmq1wak12rhgn0mawksxcwcd",
+     "label": "Floor 1",
+     "vertices": [],
+     "edges": []
+    }
+   ],
+   "rooms": [
+    {
+     "id": "613htqkzf66zz7hf7n8kzszed",
+     "floor": {
+      "id": "tsmq1wak12rhgn0mawksxcwcd"
+     },
+     "classifications": [],
+     "boundary": {
+      "edges": []
+     },
+     "dimensions": {
+      "areaFloor": 10.426600456237793,
+      "width": 3.8231868743896484,
+      "depth": 2.760006904602051,
+      "height": 2.7348639965057373
+     }
+    },
+    {
+     "id": "cdz3fkt38kae7tapstpt0eaeb",
+     "floor": {
+      "id": "tsmq1wak12rhgn0mawksxcwcd"
+     },
+     "classifications": [],
+     "boundary": {
+      "edges": []
+     },
+     "dimensions": {
+      "areaFloor": 73.59439849853516,
+      "width": 4.63236141204834,
+      "depth": 9.78028392791748,
+      "height": 2.7428739070892334
+     }
+    },
+    {
+     "id": "xy2x8mpaaqknp7q2c3nnbw1ma",
+     "floor": {
+      "id": "tsmq1wak12rhgn0mawksxcwcd"
+     },
+     "classifications": [],
+     "boundary": {
+      "edges": []
+     },
+     "dimensions": {
+      "areaFloor": 11.322600364685059,
+      "width": 3.8285164833068848,
+      "depth": 2.916778326034546,
+      "height": 2.7401294708251953
+     }
+    }
+   ],
+   "assets": {
+    "floorplans": [
+     {
+      "format": "jpg",
+      "flags": [
+       "photogramy"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/render/colorplan_000.jpg?t=2-8db06828b98868f736ca3a55097516a4a1d3108f-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.jpg&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Frender%2Fcolorplan_000.jpg",
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+       "x": -9.276778221130371,
+       "y": -2.049567937850952
+      }
+     },
+     {
+      "format": "png",
+      "flags": [
+       "photogramy",
+       "alpha"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/render/colorplan_alpha_000.png?t=2-005b159e114bf1c2d054773309dd25b636f00561-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.png&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Frender%2Fcolorplan_alpha_000.png",
+      "width": 1035,
+      "height": 982,
+      "resolution": 100.0,
+      "origin": {
+       "x": -8.576778411865234,
+       "y": -1.3495680093765259
+      }
+     },
+     {
+      "format": "jpg",
+      "flags": [
+       "photogramy",
+       "colored_rooms"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/render/colorplan_room_000.jpg?t=2-e5e41761b9a20211ae475c84fa175d8cd137973f-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.jpg&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Frender%2Fcolorplan_room_000.jpg",
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+       "x": -9.276778221130371,
+       "y": -2.049567937850952
+      }
+     },
+     {
+      "format": "jpg",
+      "flags": [
+       "photogramy",
+       "measurements"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/render/measureplan_imperial_room_000.jpg?t=2-c6beb77b2c69559d804d0bc05ad6811f892d1bcf-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.jpg&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Frender%2Fmeasureplan_imperial_room_000.jpg",
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+       "x": -9.276778221130371,
+       "y": -2.049567937850952
+      }
+     },
+     {
+      "format": "jpg",
+      "flags": [
+       "photogramy",
+       "measurements"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/render/measureplan_metric_room_000.jpg?t=2-e799e5476c0e2750a96435b7972cf94c41de3024-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.jpg&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Frender%2Fmeasureplan_metric_room_000.jpg",
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+       "x": -9.276778221130371,
+       "y": -2.049567937850952
+      }
+     },
+     {
+      "format": "png",
+      "flags": [
+       "photogramy",
+       "alpha"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/render/vr_colorplan_000.png?t=2-58b7b8f72d4bb28ef6a392b9042477dcc0bfb1ef-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.png&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Frender%2Fvr_colorplan_000.png",
+      "width": 512,
+      "height": 486,
+      "resolution": 49.4663200378418,
+      "origin": {
+       "x": -8.576778411865234,
+       "y": -1.3495680093765259
+      }
+     },
+     {
+      "format": "dxf",
+      "flags": [
+       "schematic"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/semantic/floorplan_000.dxf?t=2-733d2dddf68ac3aa7f3535e93376325e4c30c97e-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.dxf&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fsemantic%2Ffloorplan_000.dxf"
+     },
+     {
+      "format": "png",
+      "flags": [
+       "schematic"
+      ],
+      "url": "https://cdn-2.matterport.com/models/cd2f9ca1612c4d6caa53adddc8b9e4d8/assets/semantic/floorplan_000.png?t=2-83170ae9195e4d8853e5416cb21a9b96e84c9e3b-1794722711-1&download=mp_floorplan_matterport_7457-Harwin-Suite-266_hu9LX64osUN.png&k=models%2Fcd2f9ca1612c4d6caa53adddc8b9e4d8%2Fassets%2Fsemantic%2Ffloorplan_000.png"
+     }
+    ]
+   },
+   "panoLocations": [
+    {
+     "label": "4",
+     "position": {
+      "x": -3.041614055633545,
+      "y": 3.190626859664917
+     }
+    },
+    {
+     "label": "10",
+     "position": {
+      "x": 0.21376237273216248,
+      "y": 7.111761093139648
+     }
+    },
+    {
+     "label": "0",
+     "position": {
+      "x": -0.02345419116318226,
+      "y": 0.009446876123547554
+     }
+    },
+    {
+     "label": "9",
+     "position": {
+      "x": -1.5003607273101807,
+      "y": 6.319089412689209
+     }
+    },
+    {
+     "label": "12",
+     "position": {
+      "x": -0.09065058827400208,
+      "y": 3.3154873847961426
+     }
+    },
+    {
+     "label": "14",
+     "position": {
+      "x": -4.666409969329834,
+      "y": 5.502731800079346
+     }
+    },
+    {
+     "label": "15",
+     "position": {
+      "x": -5.709550857543945,
+      "y": 5.578079700469971
+     }
+    },
+    {
+     "label": "16",
+     "position": {
+      "x": -7.286497116088867,
+      "y": 7.169287204742432
+     }
+    },
+    {
+     "label": "5",
+     "position": {
+      "x": -3.0305755138397217,
+      "y": 4.233370304107666
+     }
+    },
+    {
+     "label": "8",
+     "position": {
+      "x": -2.3612735271453857,
+      "y": 5.460537433624268
+     }
+    },
+    {
+     "label": "2",
+     "position": {
+      "x": -3.102447509765625,
+      "y": 0.34531041979789734
+     }
+    },
+    {
+     "label": "1",
+     "position": {
+      "x": -2.228285551071167,
+      "y": 0.8499245643615723
+     }
+    },
+    {
+     "label": "3",
+     "position": {
+      "x": -4.378676891326904,
+      "y": 0.02402441017329693
+     }
+    },
+    {
+     "label": "13",
+     "position": {
+      "x": -3.743196487426758,
+      "y": 7.126016616821289
+     }
+    },
+    {
+     "label": "6",
+     "position": {
+      "x": -4.450394630432129,
+      "y": 4.112555027008057
+     }
+    },
+    {
+     "label": "7",
+     "position": {
+      "x": -6.557007789611816,
+      "y": 2.7715213298797607
+     }
+    },
+    {
+     "label": "11",
+     "position": {
+      "x": -1.2987873554229736,
+      "y": 4.566705226898193
+     }
+    }
+   ]
+  }
+ }
+}
