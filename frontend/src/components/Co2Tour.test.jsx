@@ -91,6 +91,8 @@ describe('Co2Tour', () => {
     expect(m.moveTo).toHaveBeenCalledWith('pA', expect.objectContaining({ transition: 'transition.fly', rotation: { x: 0, y: 0 } }))
     expect(m.open).toHaveBeenCalledWith('t1', { force: true })
     expect(m.setRotation).toHaveBeenCalledWith({ x: 0, y: 0 })
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByTestId('evidence-image').getAttribute('src')).toBe('http://api/media/mpp_M_pA_0')
     expect(screen.getByTestId('co2-tour').getAttribute('data-focus-tag')).toBe('t1')
     expect(screen.getByTestId('co2-item-2').disabled).toBe(true) // its panorama is not in the tour: no tag, no move
   })
@@ -101,6 +103,7 @@ describe('Co2Tour', () => {
     m.tagState({ selected: new Set(['t1']) })
     await waitFor(() => expect(m.moveTo).toHaveBeenCalledWith('pA', expect.objectContaining({ rotation: { x: 0, y: 0 } })))
     expect(m.open).toHaveBeenCalledWith('t1', { force: true })
+    expect(screen.getByRole('dialog')).toBeTruthy()
   })
 
   it('image boxes and recorded xyz cannot establish a fixture anchor', () => {

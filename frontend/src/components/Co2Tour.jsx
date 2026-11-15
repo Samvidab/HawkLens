@@ -5,6 +5,7 @@
 // GET /co2_equipment; nothing is computed here.
 import { useEffect, useRef, useState } from 'react'
 import { API_BASE, getCo2Equipment } from '../lib/api'
+import InspectionEvidence from './InspectionEvidence'
 import { KIND, NO_SOURCES, modelIdOf, sdkKey, tagPlan } from '../lib/co2Tags'
 
 const SDK_TIMEOUT_MS = 30_000
@@ -23,7 +24,7 @@ function loadSweeps(sdk) {
   })
 }
 
-export function Co2List({ data, placed, focus, onPick, note, canMove }) {
+export function Co2List({ data, placed, focus, onPick, onEvidence, note, canMove }) {
   const items = data?.items || []
   return (
     <div data-testid="co2-panel" className="h-full overflow-y-auto p-3 text-[11px] leading-[16px] bg-white">
@@ -53,6 +54,7 @@ export function Co2List({ data, placed, focus, onPick, note, canMove }) {
                 {it.image_url && (
                   <a className="ml-[22px] text-brand underline" href={`${API_BASE}${it.image_url}`} target="_blank" rel="noreferrer">panorama</a>
                 )}
+                {it.image_url && <button type="button" className="ml-[22px] text-brand underline" onClick={() => onEvidence?.(i)} data-testid={`co2-evidence-${i}`}>View evidence</button>}
               </li>
             )
           })}
@@ -64,6 +66,7 @@ export function Co2List({ data, placed, focus, onPick, note, canMove }) {
 }
 
 export default function Co2Tour({ buildingId }) {
+  const [evidenceIndex, setEvidenceIndex] = useState(null)
   const [data, setData] = useState(undefined) // undefined loading, null failed
   const [status, setStatus] = useState('loading-data')
   const [placed, setPlaced] = useState(new Set())
@@ -80,7 +83,7 @@ export default function Co2Tour({ buildingId }) {
 
   useEffect(() => {
     let alive = true
-    setData(undefined); setStatus('loading-data'); setPlaced(new Set()); setFocus(null)
+    setEvidenceIndex(null); setData(undefined); setStatus('loading-data'); setPlaced(new Set()); setFocus(null)
     getCo2Equipment(buildingId).then((d) => alive && setData(d)).catch(() => alive && (setData(null), setStatus('no-data')))
     return () => { alive = false }
   }, [buildingId])
@@ -155,6 +158,7 @@ export default function Co2Tour({ buildingId }) {
     const t = targetsRef.current.get(i)
     if (!sdk || !t || movingRef.current) return
     movingRef.current = true
+    setEvidenceIndex(i)
     setFocus({ index: i, state: 'moving' })
     try {
       // Return to the observation panorama; never aim at its floor marker.
@@ -197,8 +201,9 @@ export default function Co2Tour({ buildingId }) {
       <div ref={box} className={`absolute left-0 top-0 bottom-0 ${showTour ? '' : 'hidden'}`} style={{ right: LIST_W }} data-testid="co2-tour-frame" />
       {!showTour && note && <p className="absolute left-[22px] top-[60px] text-muted text-[13px]" style={{ right: LIST_W + 20 }} data-testid="co2-note">{note}</p>}
       <div className="absolute right-0 top-0 bottom-0 border-l border-line" style={{ width: LIST_W }}>
-        <Co2List data={data} placed={placed} focus={focus} onPick={pick} note={showTour ? note : ''} canMove={status === 'ready'} />
+        <Co2List data={data} placed={placed} focus={focus} onPick={pick} onEvidence={setEvidenceIndex} note={showTour ? note : ''} canMove={status === 'ready'} />
       </div>
+      {data?.items?.[evidenceIndex] && <InspectionEvidence key={`${buildingId}-${evidenceIndex}`} item={data.items[evidenceIndex]} onClose={() => setEvidenceIndex(null)} />}
     </div>
   )
 }

@@ -1,0 +1,472 @@
+{
+  "source": "Read-only audit of existing Lane A image files and recorded marks; original /media images are served without resizing or recompression. Outlines reproduce stored coordinates; they are not independent verification of the vision model annotations.",
+  "highlighted_tags": 23,
+  "fallback_tags": 0,
+  "tags": [
+    {
+      "building_id": "234648",
+      "tag_index": 0,
+      "equipment": "fluorescent troffer fixture",
+      "image_id": "mpp_qcdyTgY98qu_6hafi74u5z6k8z5g704yhs0sa_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.0,
+          0.693,
+          0.224,
+          1.0
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "234648",
+      "tag_index": 1,
+      "equipment": "fluorescent parabolic troffer",
+      "image_id": "mpp_qcdyTgY98qu_b4prukqb1smtnkwdnz6empa5b_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.592,
+          0.0,
+          1.0,
+          0.198
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "23551",
+      "tag_index": 0,
+      "equipment": "fluorescent troffer fixture",
+      "image_id": "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.0,
+          0.443,
+          0.318,
+          0.911
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "23551",
+      "tag_index": 1,
+      "equipment": "fluorescent troffer fixture",
+      "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.165,
+          0.0,
+          0.672,
+          0.17
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "23551",
+      "tag_index": 2,
+      "equipment": "fluorescent troffer fixture",
+      "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.244,
+          0.0,
+          0.691,
+          0.385
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "23551",
+      "tag_index": 3,
+      "equipment": "ceiling air vent grille",
+      "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_3",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.589,
+          0.076,
+          0.793,
+          0.208
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "23551",
+      "tag_index": 4,
+      "equipment": "perforated ceiling air vent",
+      "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.628,
+          0.485,
+          0.835,
+          0.742
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239601",
+      "tag_index": 0,
+      "equipment": "fluorescent troffer",
+      "image_id": "mpp_FTkFHSZ4isL_t6dykpfszh58r4d3kgqfe8h9a_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.37,
+          0.7,
+          0.57,
+          0.85
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239601",
+      "tag_index": 1,
+      "equipment": "parabolic louver fluorescent troffer",
+      "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.61,
+          0.24,
+          0.85,
+          0.59
+        ],
+        [
+          0.0,
+          0.47,
+          0.22,
+          0.84
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239601",
+      "tag_index": 2,
+      "equipment": "ceiling supply diffuser",
+      "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.29,
+          0.27,
+          0.34,
+          0.32
+        ],
+        [
+          0.47,
+          0.74,
+          0.52,
+          0.79
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239618",
+      "tag_index": 0,
+      "equipment": "2x4 fluorescent troffer",
+      "image_id": "mpp_BfYuPVALqi5_crt5wz6u5hu8m775cyqcaband_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.11,
+          0.44,
+          0.27,
+          0.72
+        ],
+        [
+          0.66,
+          0.49,
+          0.8,
+          0.75
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239618",
+      "tag_index": 1,
+      "equipment": "2x4 fluorescent troffer with parabolic louvers",
+      "image_id": "mpp_BfYuPVALqi5_een4c2rgshhsmcp691q3b0y3b_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.59,
+          0.26,
+          0.85,
+          0.39
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239731",
+      "tag_index": 0,
+      "equipment": "2x4 fluorescent troffer",
+      "image_id": "mpp_BfjYay5KMPo_87yde4gc5x7h5swzdwib72cfa_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.26,
+          0.081,
+          0.7,
+          0.334
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239731",
+      "tag_index": 1,
+      "equipment": "ceiling return grille",
+      "image_id": "mpp_BfjYay5KMPo_swez0c9h7ub0hs6mx5xwe58qa_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.61,
+          0.505,
+          0.86,
+          0.767
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239890",
+      "tag_index": 0,
+      "equipment": "fluorescent troffer",
+      "image_id": "mpp_4z2y8ayqrWs_gi9zpdc2d7a1p7f7uyee0ny4b_3",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.537,
+          0.197,
+          0.789,
+          0.312
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239890",
+      "tag_index": 1,
+      "equipment": "fluorescent troffer",
+      "image_id": "mpp_4z2y8ayqrWs_mznacqssg7rgm263ir1uc2a1a_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.612,
+          0.378,
+          0.842,
+          0.85
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239890",
+      "tag_index": 2,
+      "equipment": "perforated ceiling grille",
+      "image_id": "mpp_4z2y8ayqrWs_7t6gybstm0hcynd6qgufx0ryc_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.375,
+          0.0,
+          0.595,
+          0.138
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "239890",
+      "tag_index": 3,
+      "equipment": "perforated ceiling grille",
+      "image_id": "mpp_4z2y8ayqrWs_f3w6rsf88wfmyktsyhne6mf1c_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.373,
+          0.0,
+          0.597,
+          0.138
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "362982",
+      "tag_index": 0,
+      "equipment": "fluorescent troffer",
+      "image_id": "mpp_FNC3RNdVtoP_2e2ns4efqhq5z11efebehq7qd_1",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.32,
+          0.14,
+          0.52,
+          0.28
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "362982",
+      "tag_index": 1,
+      "equipment": "fluorescent troffer",
+      "image_id": "mpp_FNC3RNdVtoP_sakxq450z2cq8px6bfai7irtd_1",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.69,
+          0.016,
+          0.91,
+          0.19
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "362982",
+      "tag_index": 2,
+      "equipment": "vav diffuser",
+      "image_id": "mpp_FNC3RNdVtoP_c2imx9e9feimyn9nahcpnwb4b_1",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.46,
+          0.21,
+          0.54,
+          0.26
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "362982",
+      "tag_index": 3,
+      "equipment": "vav diffuser",
+      "image_id": "mpp_FNC3RNdVtoP_sakxq450z2cq8px6bfai7irtd_0",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.35,
+          0.57,
+          0.46,
+          0.67
+        ]
+      ],
+      "fallback": false
+    },
+    {
+      "building_id": "362982",
+      "tag_index": 4,
+      "equipment": "vav diffuser",
+      "image_id": "mpp_FNC3RNdVtoP_u7u4zbb1zbzf3rwy28tpp51rb_3",
+      "recorded_pixels": [
+        2048,
+        2048
+      ],
+      "highlight_boxes": [
+        [
+          0.6,
+          0.0,
+          0.83,
+          0.17
+        ]
+      ],
+      "fallback": false
+    }
+  ],
+  "verification": {
+    "component_tests": 24,
+    "production_build": "passed",
+    "browser_suite": "passed",
+    "browser_buildings": 8,
+    "browser_evidence_views": 23,
+    "browser_panorama_tag_jumps": 23,
+    "alignment": "Stored SVG geometry differs by less than one CSS pixel from image-normalized coordinates at fit size, 1:1, and a 1000x800 viewport. Painted outline extends beyond that geometry by its stroke width.",
+    "images": "All associated originals are 2048x2048; no CSS blur or upscaling. Existing source blur/privacy masks remain unchanged."
+  }
+}
