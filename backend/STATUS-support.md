@@ -285,3 +285,9 @@ Say which of these you want and I will add them.
   -> approve; reload; risk control; strict audits with and without a backend).
 - Workspace page removed from frontend-wiring by `git revert 866f623` (commit `4133682`); no Workspace commits on lane-support.
 - Waiting on Lane A: the `investigation_trace` widget (to show the Investigator's steps on the building page).
+
+## Merge origin/frontend-wiring into lane-support (2026-11-14)
+- `78968b3`: clean merge (wired Figma pages, strict demo mode, Workspace page reverted). Backend 529 passed, 1 skipped;
+  frontend 206 unit tests; Playwright 5/5 against the warm-cache backend (read_only, live engine, stub Nessie).
+- origin/nessie_data's cb1722a, 1f763d7, 0867940 NOT merged (review only): the engine reads only app/engine/assumptions.json,
+  which they do not touch, so plan numbers would not change. Details in the chat report.
