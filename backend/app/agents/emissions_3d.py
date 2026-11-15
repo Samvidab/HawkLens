@@ -21,7 +21,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.adapters import matterport as mp
 from app.adapters.cache import write_json_atomic
@@ -62,6 +62,7 @@ EVIDENCE = {
 
 
 class EndUse(BaseModel):
+    model_config = ConfigDict(extra="allow")  # research provenance: column, value_text, quote, verified
     name: str  # as the source names it, e.g. "Space cooling"
     category: str  # one of EVIDENCE
     share: float = Field(ge=0, le=1)  # share of the building's energy CO2, from the source
@@ -75,6 +76,7 @@ class EndUse(BaseModel):
 
 
 class Split(BaseModel):
+    model_config = ConfigDict(extra="allow")  # research provenance: table, row, quotes, verification
     citation: str
     url: str | None = None
     scope: str  # e.g. "Houston offices" / "CBECS West South Central, office"
@@ -95,7 +97,12 @@ def load_split(path: Path | None = None) -> Split:
     p = path or source_path()
     if not p.exists():
         raise FileNotFoundError(f"end-use split source not provided yet ({p})")
-    return Split.model_validate_json(p.read_text())
+    split = Split.model_validate_json(p.read_text())
+    status = (getattr(split, "verification", None) or {}).get("status")
+    unverified = [e.name for e in split.end_uses if getattr(e, "verified", None) is False]
+    if status is not None and (status != "verified" or unverified):
+        raise ValueError(f"end-use split is not verified (status {status}; unverified {unverified})")
+    return split
 
 
 # --------------------------------------------------------------------------- tour (part 1)
@@ -168,7 +175,8 @@ def evidence_for(building_id: str, category: str) -> tuple[list[dict] | str, lis
 def build(building_id: str, baseline_tonnes: float | None, split: Split, tour: dict | None = None) -> dict:
     """The breakdown for one building. Pure: every number is baseline x share or share x 100."""
     top = sorted(split.end_uses, key=lambda e: (-e.share, e.name))[:TOP_N]
-    cite = {"citation": split.citation, "url": split.url, "scope": split.scope, "basis": split.basis}
+    cite = {"citation": split.citation, "url": split.url, "scope": split.scope, "basis": split.basis,
+            **{k: getattr(split, k) for k in ("table", "row", "measures") if getattr(split, k, None)}}
     rows = []
     for e in top:
         ev, pos = evidence_for(building_id, e.category)
@@ -176,11 +184,13 @@ def build(building_id: str, baseline_tonnes: float | None, split: Split, tour: d
         rows.append({
             "end_use": e.name, "category": e.category,
             "tonnes_per_year": {"value": tonnes, "estimate": True,
-                                "basis": f"engine baseline tonnes/yr x {e.share} ({split.citation})"
+                                "basis": f"engine baseline tonnes/yr x share {e.share:.4f} ({split.citation})"
                                 if tonnes != UNKNOWN else "engine baseline unknown"},
             "pct_of_building": {"value": round(e.share * 100, 1), "estimate": True,
                                 "basis": f"{split.scope} end-use share, {split.basis} ({split.citation})"},
-            "citation": cite, "evidence": ev, "positions": pos,
+            "citation": {**cite, "column": getattr(e, "column", e.name), "value_text": getattr(e, "value_text", None),
+                         "quote": getattr(e, "quote", None)},
+            "evidence": ev, "positions": pos,
         })
     return {"building_id": building_id, "label": LABEL,
             "baseline": {"tonnes_per_year": baseline_tonnes if baseline_tonnes is not None else UNKNOWN,

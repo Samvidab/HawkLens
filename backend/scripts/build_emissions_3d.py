@@ -1,6 +1,7 @@
 """Emissions in 3D for every portfolio building (EMISSIONS_3D).
 
     python scripts/build_emissions_3d.py --tours     # part 1: tour.json (Matterport visibility)
+    python scripts/build_emissions_3d.py --research  # find + verify the end-use split (Gemini + EIA PDF)
     python scripts/build_emissions_3d.py             # part 2: emissions_breakdown.json (needs the source)
 
 Writes only new files (tour.json, emissions_breakdown.json); never profile/plan/cache entries that
@@ -26,7 +27,16 @@ from app.integrations import engine_client  # noqa: E402
 async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tours", action="store_true", help="only part 1 (tour availability)")
+    ap.add_argument("--research", action="store_true", help="research and verify the end-use split, then stop")
     args = ap.parse_args()
+    if args.research:
+        from app.agents import end_use_research
+        from app.events import load_events
+        split = await end_use_research.research()
+        for e in load_events(end_use_research.RUN_ID):
+            print(f"{e.agent} · {e.kind}: {e.message}")
+        print(json.dumps({k: split[k] for k in ("citation", "url", "table", "row", "scope", "measures")}, indent=1))
+        return 0
     ids = [b["building_id"] for b in records.load_portfolio()["buildings"]]
     tours = {b: await emissions_3d.save_tour(b) for b in ids}
     if args.tours:
