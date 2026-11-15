@@ -197,10 +197,6 @@ class Baseline(Props):
 class BuildingHeader(Props):
     profile: BuildingProfile
     baseline: Baseline
-    # Emissions in 3D (Lane A, agents/emissions_3d.py): the building's emissions_breakdown.json when EMISSIONS_3D is on and
-    # it has been built, else None; and tour.json (Matterport visibility + showcase_url), else None. Passed through as is.
-    emissions_3d: dict | None = None
-    tour: dict | None = None
 
 
 class TargetGapCard(Props):

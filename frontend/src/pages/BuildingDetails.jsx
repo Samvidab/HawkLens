@@ -2,8 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
 import { Estimate, NA, Sources, Stub, useStub } from '../components/Truth'
 import { FootprintMap, hasFootprints } from '../components/widgets'
-import EmissionsTour from '../components/EmissionsTour'
-import { emissions3dOn } from '../lib/emissions'
+import Co2Tour from '../components/Co2Tour'
+import { emissions3dOn } from '../lib/co2Tags'
 import { useBuildingFocus } from '../lib/store'
 import { buildingModel as selectBuilding, buildingTotals, upgradeRows, widget } from '../lib/viewModels'
 import { useGo } from '../lib/ui'
@@ -92,8 +92,8 @@ export default function BuildingDetails() {
             Building model
           </p>
         )}
-        {emissions3dOn() // behind VITE_EMISSIONS_3D: the tour via the Showcase SDK with CO2-source tags and a legend
-          ? <EmissionsTour key={bm.id} layout={run.layout} />
+        {emissions3dOn() // behind VITE_EMISSIONS_3D: the tour via the Showcase SDK, tags on verified CO2-emitting equipment
+          ? <Co2Tour key={bm.id} buildingId={bm.id} />
           : <div className="absolute inset-0"><BuildingPicture layout={run.layout} height={250} /></div>}
         {solar && (
           <div className="absolute left-[555px] top-[98px] w-[260px] h-[58px] rounded-[6px] bg-white overflow-hidden shadow-sm">

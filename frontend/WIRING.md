@@ -75,15 +75,19 @@ npx playwright install chromium   # once
 ```
 Screenshots land in `e2e/screens/` (gitignored). Unit-test fixtures are the synthetic `docs/agent/samples/*.json`.
 
-## Emissions in 3D (branch `emissions-3d`, behind `VITE_EMISSIONS_3D=1`)
-On the building page, a building with a `showcase_url` gets its Matterport tour through the **Showcase SDK**
-(`@matterport/sdk` 1.6.2, key `VITE_MATTERPORT_SDK_KEY` from `frontend/.env.local`, never committed), with one tag per
-observed position of its top-3 CO₂ sources: red / orange / yellow by share, label
-"<source>: <x>% of building CO₂ (estimated, <citation>)", description = the evidence + "building-wide estimate, shown where
-observed" (shown on click). A legend always lists the 3. No tour, no key, or the SDK fails -> legend only.
-- Data: a layout widget `emissions_3d` with `{ building_id, sources: [{ source, share_pct, citation, evidence[], positions[{x,y,z}] }] }`
-  (proposed contract, `src/lib/emissions.js`; Lane A provides it). Nothing is computed in the frontend: a source without
-  positions gets no tag, a missing citation reads "citation not available", no widget -> "Emission sources not available".
-- Tests: `src/components/EmissionsTour.test.jsx` (mocked SDK) and `npx playwright test -c playwright.emissions.config.js`
-  (dev server on :3000 with the flag on; opens all 8 building pages; one test injects SYNTHETIC sources in the test browser
-  only to prove the real SDK places the tags). Report: `e2e/screens/emissions-report.json`.
+## Verified CO₂ sources in 3D (branch `emissions-3d`, behind `VITE_EMISSIONS_3D=1`)
+On every building page the building's Matterport tour is embedded with the **Showcase SDK** (`@matterport/sdk` 1.6.2, key
+`VITE_MATTERPORT_SDK_KEY` from `frontend/.env.local`, never committed) and tagged with the CO₂-emitting equipment the survey
+agents saw **and the verifier confirmed**: lighting fixtures (with their type) and air diffusers / vents / grilles. No
+percentages, tonnes, shares or plan links.
+- Data: `GET /co2_equipment/{building_id}` (`backend/app/widgets/co2_equipment.py`): verified pins of verified
+  `interior.lighting` / `interior.hvac` claims only (rejected, unverified or "unknown" -> nothing), each with the claim, the
+  verifier's result and the panorama it was seen in (the scan position equal to the pin's, exact match). `tour_url` from
+  `tour.json`; `tags_in_tour` only when that tour is the scan the pins came from.
+- Tag: label "<equipment> seen (verified): CO₂ source"; click shows the claim, the verifier's result and a link to the
+  panorama. It is anchored on the tour's own sweep for that panorama (matched by id), so no coordinate is converted or
+  guessed; an item whose panorama is not in the tour gets no tag. No items -> the tour plus "No verified CO₂ sources located
+  in this scan". No tour or SDK failure -> the panel only.
+- Tests: `src/components/Co2Tour.test.jsx` (mocked SDK), `backend/tests/test_co2_equipment.py`, and
+  `npx playwright test -c playwright.emissions.config.js` (dev server on :3000 with the flag; opens all 8 building pages;
+  report in `e2e/screens/co2-tags-report.json`).

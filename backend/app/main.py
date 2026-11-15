@@ -70,6 +70,16 @@ def portfolio():
     return json.loads(path.read_text())
 
 
+@app.get("/co2_equipment/{building_id}")
+async def co2_equipment(building_id: str) -> dict:
+    """Verified CO2-emitting equipment seen inside the building (lighting fixtures, air diffusers) with the claim, the
+    verifier's result and the panorama it was seen in, for tags in the 3D tour (app/widgets/co2_equipment.py)."""
+    from app.widgets import co2_equipment as co2
+    if not (get_settings().data_dir / "buildings" / building_id / "profile.json").exists():
+        raise HTTPException(404, f"unknown building {building_id}")
+    return await co2.build(building_id)
+
+
 @app.post("/run")
 async def start_run(goal: Goal) -> dict:
     """Survey (Lane A graph) -> pricing -> compose in the background; returns run_id at once.

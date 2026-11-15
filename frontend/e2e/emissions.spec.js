@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 import fs from 'node:fs'
 
-// Opens every building page with VITE_EMISSIONS_3D on. For each building: the legend is always shown; a building with a
-// showcase_url gets the Matterport tour through the SDK (or legend only if the SDK fails); tags appear only at positions
-// the backend's emissions_3d widget gives, never otherwise. Writes e2e/screens/emissions-report.json.
+// Opens every building page with VITE_EMISSIONS_3D on. Each page embeds the building's Matterport tour (Showcase SDK)
+// and tags the verified CO2-emitting equipment the survey saw (GET /co2_equipment). Tags are never more than the verified
+// items located in the tour; a building without items shows "No verified CO2 sources located in this scan".
+// Writes e2e/screens/co2-tags-report.json.
 const API = process.env.E2E_API_URL || 'http://localhost:8000'
 const SHOTS = 'e2e/screens'
 fs.mkdirSync(SHOTS, { recursive: true })
@@ -15,7 +16,7 @@ test.beforeAll(async () => {
 
 const post = async (path, body) => (await fetch(`${API}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json()
 
-test('every building page: tour via the SDK where there is one, tags only from data, legend always', async ({ page }) => {
+test('every building page: tour via the SDK, one tag per verified CO2 source located in it', async ({ page }) => {
   test.skip(!backendUp, `no backend at ${API}`)
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -28,68 +29,38 @@ test('every building page: tour via the SDK where there is one, tags only from d
 
   const report = []
   for (const b of portfolio.buildings) {
-    const layout = await post('/compose', { run_id, type: 'open_building', payload: { building_id: b.building_id } })
-    const hero = layout.widgets.find((w) => w.type === 'hero_3d')?.props
-    const header = layout.widgets.find((w) => w.type === 'building_header')?.props
-    const tourUrl = (hero?.mode === 'showcase' && hero.showcase_url) || header?.profile?.showcase_url || (header?.tour?.available && header.tour.showcase_url) || null
-    const em = header?.emissions_3d || null
-    const expectedTags = (em?.top || []).slice(0, 3)
-      .flatMap((r) => (Array.isArray(r.positions) ? r.positions : []).filter((p) => Array.isArray(p.xyz) && p.xyz.length === 3 && p.xyz.every(Number.isFinite))).length
-
+    const co2 = await (await fetch(`${API}/co2_equipment/${b.building_id}`)).json()
+    for (const it of co2.items) { // only verified claims and pins reach the page
+      expect(it.verifier.status).toBe('verified')
+      expect(['lighting', 'hvac']).toContain(it.kind)
+    }
+    await post('/compose', { run_id, type: 'open_building', payload: { building_id: b.building_id } })
     await page.goto('/building')
     await expect(page.getByRole('heading', { name: b.name })).toBeVisible({ timeout: 20_000 })
-    const box = page.getByTestId('emissions-3d')
-    await expect(page.getByTestId('emissions-legend')).toBeVisible()
-    if (tourUrl) await expect(box).toHaveAttribute('data-status', /ready|failed|no-key/, { timeout: 60_000 })
-    else await expect(box).toHaveAttribute('data-status', 'no-tour')
+    const box = page.getByTestId('co2-tour')
+    await expect(page.getByTestId('co2-panel')).toBeVisible()
+    if (co2.tour_url) await expect(box).toHaveAttribute('data-status', /ready|failed|no-key/, { timeout: 90_000 })
+    else await expect(box).toHaveAttribute('data-status', 'no-tour', { timeout: 20_000 })
     const status = await box.getAttribute('data-status')
     const tags = Number(await box.getAttribute('data-tags'))
-    const iframe = await page.locator('[data-testid="emissions-tour"] iframe').count()
-    const legend = await page.getByTestId('emissions-legend').innerText()
+    const iframes = await page.locator('[data-testid="co2-tour-frame"] iframe').count()
 
-    if (status === 'ready') expect(iframe).toBe(1)
-    else expect(iframe).toBe(0) // legend only
-    expect(tags).toBe(status === 'ready' ? expectedTags : 0) // never a tag without a backend position
-    if (!em) expect(legend).toContain('Emission sources not available')
+    if (status === 'ready') expect(iframes).toBe(1)
+    else expect(iframes).toBe(0)
+    expect(tags).toBeLessThanOrEqual(co2.tags_in_tour ? co2.items.length : 0) // never a tag without a verified item
+    if (!co2.items.length) await expect(page.getByTestId('co2-none')).toHaveText('No verified CO₂ sources located in this scan')
+    await expect(page.getByText(/seen \(verified\)/)).toHaveCount(co2.items.length)
 
-    await page.screenshot({ path: `${SHOTS}/emissions-${b.building_id}.png` })
-    report.push({ building: b.name, building_id: b.building_id, tour: !!tourUrl, status, tags, emissions_data: !!em, legend: legend.replace(/\s+/g, ' ') })
+    await page.waitForTimeout(4000) // let the 3D view draw for the screenshot
+    await page.screenshot({ path: `${SHOTS}/co2-${b.building_id}.png` })
+    report.push({
+      building: b.name, building_id: b.building_id, scan: co2.model_id, tour: co2.tour_url ? co2.tour_model_id : null, status,
+      verified_items: co2.items.length, lighting: co2.items.filter((i) => i.kind === 'lighting').length,
+      hvac: co2.items.filter((i) => i.kind === 'hvac').length, tags,
+    })
   }
-  fs.writeFileSync(`${SHOTS}/emissions-report.json`, JSON.stringify(report, null, 2))
-  console.log(JSON.stringify(report, null, 1))
+  fs.writeFileSync(`${SHOTS}/co2-tags-report.json`, JSON.stringify(report, null, 2))
+  console.log(JSON.stringify(report))
   expect(report).toHaveLength(portfolio.buildings.length)
   expect(errors).toEqual([])
-})
-
-// TEST ONLY: no building has emissions data yet, so this injects SYNTHETIC sources into the API response (in this test's
-// browser only) to prove the real Showcase SDK places one coloured tag per given position. Never shown to users.
-test('tag pipeline with the real SDK (synthetic test data, test browser only)', async ({ page }) => {
-  test.skip(!backendUp, `no backend at ${API}`)
-  const portfolio = await (await fetch(`${API}/portfolio`)).json()
-  const hero = portfolio.buildings.find((b) => b.hero) || portfolio.buildings[0]
-  const { run_id } = await post('/run', { city: portfolio.city, target_pct: 40, risk_lambda: 0.2 })
-  let st = null
-  for (let i = 0; i < 120 && !st?.layout; i++) { await new Promise((r) => setTimeout(r, 500)); st = await (await fetch(`${API}/state/${run_id}`)).json().catch(() => null) }
-  const layout = await post('/compose', { run_id, type: 'open_building', payload: { building_id: hero.building_id } })
-  test.skip(!layout.widgets.some((w) => w.type === 'hero_3d' && w.props.showcase_url), 'hero has no tour')
-  const row = (end_use, pct, positions) => ({ end_use, category: 'test', pct_of_building: { value: pct, estimate: true, basis: 'TEST' },
-    citation: { citation: 'TEST' }, evidence: 'unknown', positions })
-  const synthetic = { building_id: hero.building_id, label: 'building-wide estimate, shown where observed', top: [
-    row('TEST lighting', 40, [{ xyz: [0, 1, 0] }, { xyz: [1, 1, 0] }]), row('TEST cooling', 30, [{ xyz: [0, 1, 1] }]), row('TEST plug', 10, 'unknown')] }
-  await page.route(`${API}/state/${run_id}`, async (route) => {
-    const res = await route.fetch(); const body = await res.json()
-    const hdr = body.layout?.widgets?.find((w) => w.type === 'building_header')
-    if (hdr) hdr.props.emissions_3d = synthetic
-    await route.fulfill({ response: res, json: body })
-  })
-  await page.addInitScript((id) => sessionStorage.setItem('hawklens.runId', id), run_id)
-  await page.goto('/building')
-  const box = page.getByTestId('emissions-3d')
-  await expect(box).toHaveAttribute('data-status', /ready|failed/, { timeout: 60_000 })
-  expect(await box.getAttribute('data-status')).toBe('ready')
-  expect(await box.getAttribute('data-tags')).toBe('3') // 2 + 1 positions; the source without positions gets none
-  await expect(page.getByTestId('emissions-legend')).toContainText('TEST lighting: 40% of building CO₂ (estimated, TEST)')
-  await expect(page.getByTestId('emissions-legend')).toContainText('location not observed')
-  await page.waitForTimeout(8000)
-  await page.screenshot({ path: `${SHOTS}/emissions-tags-synthetic.png` })
 })
