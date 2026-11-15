@@ -1,6 +1,8 @@
 # Coverage: what we pulled for each building, and what we couldn't
 
-The final run `warm_full` (live, Vertex AI) and its offline replay `ro_investigator` (`CACHE_MODE=read_only`) give identical results. Paths are under `backend/`. Per building, the sources are:
+⚠ = changed for the 7-building demo portfolio (7900 Fannin dropped; previous version: commit `4fa6f2f`).
+
+The final run `warm_full` (live, Vertex AI) and its offline replay `ro_investigator` (`CACHE_MODE=read_only`) give identical results. ⚠ That run surveyed 8 buildings; the demo portfolio is the 7 below, priced as plan `5e46a8e9d761` (`data/plans/current.json`; read-only check `ro_seven`). 7900 Fannin's survey is kept at the end of this file. Nothing was re-surveyed. Paths are under `backend/`. Per building, the sources are:
 - **Investigator steps:** `data/buildings/<id>/investigation.json`
 - **Claims:** `verification.json`
 - **Interior:** `interior.json`
@@ -19,12 +21,11 @@ The final run `warm_full` (live, Vertex AI) and its offline replay `ro_investiga
 | Harwin Plaza II (1983, hero) | ✓ | ✓ overhead | ✓ scan `hu9LX64osUN` | 6 | 10 / 1 / 0 | 3 | 5 (5) |
 | Brookhollow Two (1972) | ✓ | ✓ overhead | ✓ scan `BfjYay5KMPo` | 6 | 12 / 0 / 0 | 4 | 2 (2) |
 | Legacy Pointe (1975) | ✓ (+ detail pull) | ✓ overhead | ✓ scan `FNC3RNdVtoP` | 7 | 8 / 1 / 0 | 1 | 5 (5) |
-| 7900 Fannin (2004) | ✓ | ✓ overhead | listed only, **not inspected** (investigator's choice) | 4 | 5 / 0 / 0 | 0 | 0 (none, "unknown") |
-| **Total** | 8 of 8 | 8 of 8 (wider context on 2) | 7 of 8 inspected | 53 | **72 / 5 / 1 (78)** | **17** | **23 on 7 buildings** (27) |
+| **Total** | ⚠ 7 of 7 | ⚠ 7 of 7 (wider context on 2) | ⚠ **7 of 7 inspected** (was 7 of 8) | ⚠ **49** (was 53) | ⚠ **67 / 5 / 1 (73)** (was 72 / 5 / 1 (78)) | **17** | **23 on all 7 buildings** (27) |
 
 3D tags are Lane B's on-screen count (Lane B's Playwright report `frontend/e2e/screens/co2-tags-report.json` (gitignored; `npx playwright test -c playwright.emissions.config.js`), from `GET /co2_equipment/{building_id}`): lighting fixtures and air diffusers only. The 4 verified HVAC pins that aren't air diffusers aren't tagged: Paragon Center I's thermostat, and CityNorth 6's exposed ductwork (2) and exposed VAV box and ductwork (1).
 
-"CoStar record ✓" means the records agent read the building's kit record every time. "+ detail pull" means the investigator also called `get_costar_record` for more fields. All 8 buildings' Matterport tours are public (`tour.json`, branch `emissions-3d`).
+"CoStar record ✓" means the records agent read the building's kit record every time. "+ detail pull" means the investigator also called `get_costar_record` for more fields. ⚠ All 7 buildings' Matterport tours are public (`tour.json`, branch `emissions-3d`).
 
 ## Per building: investigator sequence (feed lines as shown), unknowns and reasons
 
@@ -114,19 +115,9 @@ Unknowns:
 - **Window type: unknown, unverified.**
 - The building's other linked scans include a parking garage, which the investigator is told not to use for office lighting or HVAC.
 
-**7900 Fannin**
-1. inspected roof: for solar, given built 2004; 4 stories; 1 scan linked
-2. found 1 scan with panoramas: for interior evidence, given 1 scan linked
-3. listed 1 room, 37 panoramas: for interior evidence, given 1 scan with panoramas
-4. finished: more evidence won't change an upgrade, given built 2004; 1 scan linked
-
-Unknowns:
-- **No interior claims, so no lighting or HVAC evidence and no 3D positions.** The investigator chose not to inspect the scan.
-- **Its LED retrofit stays "assumed"** (`feasibility.json`), not observed.
-
 ## Gaps that apply to every building
 
-- **Facades and windows:** we had no oblique (side-on) Vexcel imagery, so no facade claims and no window upgrades. Window type from panoramas is "unknown" on 5 buildings.
+- **Facades and windows:** we had no oblique (side-on) Vexcel imagery, so no facade claims and no window upgrades. Window type from panoramas is "unknown" on 5 of the 7 buildings.
 - **Mesh:** Matterport reports every portfolio model's MatterPak as "unlocked" but its files as "unavailable", so we show the Showcase tour instead of a downloaded mesh.
 - **Footprint:** CoStar records carry no building footprint, so roof area is estimated from the typical floor plate (`footprint_source: "estimated"` in `profile.json`).
 - **CoStar photos:** the CDN returns 403, and we skipped them by decision rather than bypass it. Vexcel covers the aerials.
@@ -136,7 +127,7 @@ Unknowns:
 
 | Rule or criterion | Proof |
 |---|---|
-| AI at the centre: the agent decides which data to pull, in what order, and when to stop | `backend/app/agents/investigator.py`; `data/buildings/*/investigation.json` (8 different sequences) |
+| AI at the centre: the agent decides which data to pull, in what order, and when to stop | `backend/app/agents/investigator.py`; `data/buildings/*/investigation.json` (⚠ 7 different sequences in the portfolio; 8 in the survey) |
 | Pulls from 2–3 data layers (CoStar records, Vexcel aerials, Matterport 3D) | `backend/app/adapters/costar.py`, `vexcel.py`, `matterport.py`; the summary table above |
 | Deciding and acting: the verifier sends doubtful claims back, and only verified evidence is priced | `backend/app/agents/verifier.py`; `data/buildings/*/verification_log.json`; `feasibility.json` (`include_in_optimizer`) |
 | Composes the UI from a fixed widget set (no chatbot) | `backend/app/widgets/registry.py`; `data/runs/warm_full/state.json` (layout) |
@@ -147,4 +138,22 @@ Unknowns:
 | Keys stay out of code and git | `.gitignore` (`.env`, `backend/cache/`, `backend/data/*`) |
 | No writes to CoStar's Matterport account | `backend/app/adapters/matterport.py` (queries only; no GraphQL `mutation`) |
 | CDN 403 respected, not bypassed | `backend/app/adapters/README.md` ("⛔ 403; skipped by decision") |
-| Runs offline during judging | `backend/app/adapters/cache.py` (`CACHE_MODE=read_only`); `data/runs/ro_investigator/` (replay identical to the live run) |
+| Runs offline during judging | `backend/app/adapters/cache.py` (`CACHE_MODE=read_only`); `data/runs/ro_investigator/` (replay identical to the live run); ⚠ `data/runs/ro_seven/` (the 7-building re-price and memo, identical read-only) |
+
+## ⚠ Surveyed, not in the demo portfolio: 7900 Fannin
+
+The live survey covered it; the demo plan excludes it (`excluded_building_ids` in `data/plans/current.json`), and its rows are left out of every total above.
+
+| Building (built) | CoStar record | Vexcel aerial | Matterport interior | Investigator calls | Claims: verified / unverified / rejected | Rooms labelled | 3D tags |
+|---|---|---|---|---|---|---|---|
+| 7900 Fannin (2004) | ✓ | ✓ overhead | listed only, **not inspected** (investigator's choice) | 4 | 5 / 0 / 0 | 0 | 0 (none, "unknown") |
+
+**7900 Fannin**
+1. inspected roof: for solar, given built 2004; 4 stories; 1 scan linked
+2. found 1 scan with panoramas: for interior evidence, given 1 scan linked
+3. listed 1 room, 37 panoramas: for interior evidence, given 1 scan with panoramas
+4. finished: more evidence won't change an upgrade, given built 2004; 1 scan linked
+
+Unknowns:
+- **No interior claims, so no lighting or HVAC evidence and no 3D positions.** The investigator chose not to inspect the scan.
+- **Its LED retrofit stays "assumed"** (`feasibility.json`), not observed.
