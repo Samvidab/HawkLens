@@ -138,8 +138,71 @@ async def test_tour_from_visibility_and_unknown_on_failure(bdir, monkeypatch):
 
 
 def test_flag_off_by_default(bdir, monkeypatch):
-    (bdir / "emissions_breakdown.json").write_text("{}")
+    (bdir / "emissions_3d.json").write_text("{}")
     monkeypatch.delenv("EMISSIONS_3D", raising=False)
     assert e3.load("b1") is None
     monkeypatch.setenv("EMISSIONS_3D", "true")
     assert e3.load("b1") == {}
+
+
+# --------------------------------------------------------------------------- UI path: verified positions only
+
+def _ref(pid, xyz):
+    from app.adapters.types import PanoramaRef
+    return PanoramaRef(model_id="m1", pano_id=pid, xyz=xyz, skybox_urls=[])
+
+
+def _interior(bdir, monkeypatch, panos):
+    claims = [
+        {**claim("b1.interior.lighting", "fluorescent"), "evidence_ids": ["mpp_m1_p1_0", "mpp_m1_p2_1"],
+         "verifier_score": 0.95, "verifier_note": "Troffers visible.", "loops": 0},
+        {**claim("b1.interior.hvac", "vav_diffuser", "rejected"), "evidence_ids": ["mpp_m1_p3_0"]},
+        claim("b1.interior.room.r1", "open_office"),
+    ]
+    pins = [{"claim_id": "b1.interior.lighting", "label": "troffer", "xyz": [1.0, 2.0, 1.5], "status": "verified"},
+            {"claim_id": "b1.interior.lighting", "label": "troffer", "xyz": [9.0, 9.0, 1.5], "status": "verified"},
+            {"claim_id": "b1.interior.hvac", "label": "diffuser", "xyz": [3.0, 4.0, 1.5], "status": "rejected"},
+            {"claim_id": "b1.interior.room.r1", "label": "Open office", "xyz": [5.0, 6.0, 1.4], "status": "verified"}]
+    (bdir / "verification.json").write_text(json.dumps(claims))
+    (bdir / "interior.json").write_text(json.dumps({"model_id": "m1", "pins": pins, "rooms": []}))
+
+    async def fake_panos(mid):
+        return panos
+    monkeypatch.setattr(e3.mp, "panoramas", fake_panos)
+
+
+async def test_positions_are_verified_equipment_only_with_pano_and_verifier(bdir, monkeypatch):
+    _interior(bdir, monkeypatch, [_ref("p1", (1.0, 2.0, 1.5)), _ref("p2", (7.0, 7.0, 1.5)), _ref("p3", (3.0, 4.0, 1.5))])
+    out = await e3.positions("b1")
+    pos = out["positions"]
+    assert [p["claim_id"] for p in pos] == ["b1.interior.lighting", "b1.interior.lighting"]  # no rejected HVAC, no room
+    first = pos[0]
+    assert first == {"xyz": [1.0, 2.0, 1.5], "equipment": "lighting", "equipment_type": "fluorescent",
+                     "seen_as": "troffer", "claim_id": "b1.interior.lighting",
+                     "verifier": {"status": "verified", "score": 0.95, "note": "Troffers visible.", "loops": 0},
+                     "pano_id": "p1", "model_id": "m1"}
+    assert pos[1]["pano_id"] == "unknown"  # no evidence panorama sits at that position: not guessed
+
+
+async def test_ui_payload_has_no_shares_and_needs_no_source(bdir, monkeypatch):
+    monkeypatch.setenv("EMISSIONS_SPLIT_PATH", str(bdir / "no_such_source.json"))  # the split is absent
+    _interior(bdir, monkeypatch, [_ref("p1", (1.0, 2.0, 1.5))])
+    await e3.save_positions("b1")
+    monkeypatch.setenv("EMISSIONS_3D", "true")
+    out = e3.load("b1")
+    text = json.dumps(out)
+    for word in ("share", "pct", "tonnes", "baseline", "citation", "end_use"):
+        assert word not in text
+    assert out["positions"][0]["pano_id"] == "p1"
+
+
+async def test_no_verified_equipment_or_no_interior_is_unknown(bdir, monkeypatch):
+    out = await e3.positions("b1")  # no interior at all
+    assert out["positions"] == "unknown" and out["model_id"] == "unknown"
+
+    async def boom(mid):
+        raise RuntimeError("api down")
+    _interior(bdir, monkeypatch, [])
+    monkeypatch.setattr(e3.mp, "panoramas", boom)
+    out = await e3.positions("b1")
+    assert {p["pano_id"] for p in out["positions"]} == {"unknown"}  # can't confirm → unknown

@@ -2,7 +2,8 @@
 
     python scripts/build_emissions_3d.py --tours     # part 1: tour.json (Matterport visibility)
     python scripts/build_emissions_3d.py --research  # find + verify the end-use split (Gemini + EIA PDF)
-    python scripts/build_emissions_3d.py             # part 2: emissions_breakdown.json (needs the source)
+    python scripts/build_emissions_3d.py             # UI: emissions_3d.json = verified equipment positions
+    python scripts/build_emissions_3d.py --breakdown # research artifact (shares, not shown): emissions_breakdown.json
 
 Writes only new files (tour.json, emissions_breakdown.json); never profile/plan/cache entries that
 exist. Run with CACHE_MODE=read_only to stay on cached Matterport answers.
@@ -28,6 +29,7 @@ async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tours", action="store_true", help="only part 1 (tour availability)")
     ap.add_argument("--research", action="store_true", help="research and verify the end-use split, then stop")
+    ap.add_argument("--breakdown", action="store_true", help="research artifact: shares x baseline (not used by the UI)")
     args = ap.parse_args()
     if args.research:
         from app.agents import end_use_research
@@ -41,6 +43,12 @@ async def main() -> int:
     tours = {b: await emissions_3d.save_tour(b) for b in ids}
     if args.tours:
         print(json.dumps(tours, indent=1))
+        return 0
+    if not args.breakdown:
+        for b in ids:
+            out = await emissions_3d.save_positions(b)
+            pos = out["positions"]
+            print(b, "unknown" if pos == "unknown" else [(p["equipment"], p["equipment_type"], p["pano_id"]) for p in pos])
         return 0
     split = emissions_3d.load_split()
     for b in ids:
