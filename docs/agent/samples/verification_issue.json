@@ -1,0 +1,550 @@
+{
+  "layout_id": "lay_sample_verification_issue",
+  "run_id": "sample",
+  "situation": "verification_issue",
+  "focus_building_id": null,
+  "generated_at": "2026-11-14T15:02:11Z",
+  "widgets": [
+    {
+      "id": "w1",
+      "type": "evidence_gallery",
+      "title": "Evidence to review",
+      "why": "Claims the verifier could not confirm come first.",
+      "size": "wide",
+      "data_ref": "buildings/*/claims.json",
+      "props": {
+        "items": [
+          {
+            "image_id": "vxo_b3_1",
+            "url": "/media/vxo_b3_1",
+            "source": null,
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "vxo_b3_1",
+                "label": "existing_solar",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b3_1",
+                "label": "shading",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b3_1",
+                "label": "color",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b3_1",
+                "label": "type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b3_1",
+                "label": "glazing",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b3-c1",
+              "b3-c2",
+              "b3-c3",
+              "b3-c4",
+              "b3-c5"
+            ],
+            "claim_summaries": [
+              "roof.existing_solar: False",
+              "roof.shading: none",
+              "roof.color: light",
+              "roof.type: flat",
+              "facade.S.glazing: 0.45"
+            ],
+            "status": "rejected",
+            "verifier_notes": [
+              "mostly spandrel panels, not glass"
+            ]
+          },
+          {
+            "image_id": "vxo_b1_1",
+            "url": "/media/vxo_b1_1",
+            "source": null,
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "vxo_b1_1",
+                "label": "existing_solar",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "shading",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "color",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b1_1",
+                "label": "glazing",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b1-c1",
+              "b1-c2",
+              "b1-c3",
+              "b1-c4",
+              "b1-c5"
+            ],
+            "claim_summaries": [
+              "roof.existing_solar: False",
+              "roof.shading: none",
+              "roof.color: dark",
+              "roof.type: flat",
+              "facade.S.glazing: 0.55"
+            ],
+            "status": "verified",
+            "verifier_notes": []
+          },
+          {
+            "image_id": "pano_b1_1",
+            "url": "/media/pano_b1_1",
+            "source": "matterport_pano",
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "pano_b1_1",
+                "label": "lighting_type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "pano_b1_1",
+                "label": "hvac_visible",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b1-i1",
+              "b1-i2"
+            ],
+            "claim_summaries": [
+              "interior.lighting_type: fluorescent",
+              "interior.hvac_visible: rooftop_unit_old"
+            ],
+            "status": "verified",
+            "verifier_notes": []
+          },
+          {
+            "image_id": "vxo_b2_1",
+            "url": "/media/vxo_b2_1",
+            "source": null,
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "vxo_b2_1",
+                "label": "existing_solar",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b2_1",
+                "label": "shading",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b2_1",
+                "label": "color",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b2_1",
+                "label": "type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b2_1",
+                "label": "glazing",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b2-c1",
+              "b2-c2",
+              "b2-c3",
+              "b2-c4",
+              "b2-c5"
+            ],
+            "claim_summaries": [
+              "roof.existing_solar: False",
+              "roof.shading: partial",
+              "roof.color: dark",
+              "roof.type: flat",
+              "facade.S.glazing: 0.4"
+            ],
+            "status": "verified",
+            "verifier_notes": []
+          },
+          {
+            "image_id": "vxo_b4_1",
+            "url": "/media/vxo_b4_1",
+            "source": null,
+            "orientation": null,
+            "marks": [
+              {
+                "image_id": "vxo_b4_1",
+                "label": "existing_solar",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b4_1",
+                "label": "shading",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b4_1",
+                "label": "color",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b4_1",
+                "label": "type",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              },
+              {
+                "image_id": "vxo_b4_1",
+                "label": "glazing",
+                "bbox": [
+                  0.2,
+                  0.2,
+                  0.7,
+                  0.6
+                ],
+                "polygon": null
+              }
+            ],
+            "claim_ids": [
+              "b4-c1",
+              "b4-c2",
+              "b4-c3",
+              "b4-c4",
+              "b4-c5"
+            ],
+            "claim_summaries": [
+              "roof.existing_solar: False",
+              "roof.shading: heavy",
+              "roof.color: dark",
+              "roof.type: flat",
+              "facade.S.glazing: 0.2"
+            ],
+            "status": "verified",
+            "verifier_notes": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "w2",
+      "type": "upgrade_list",
+      "title": "Affected upgrades",
+      "why": "Unverified upgrades stay out of the plan unless you include them.",
+      "size": "half",
+      "data_ref": "buildings/*/feasibility.json",
+      "props": {
+        "upgrades": [
+          {
+            "upgrade": {
+              "upgrade_id": "b1:insulation",
+              "building_id": "b1",
+              "category": "envelope",
+              "type": "insulation",
+              "size_value": 410000.0,
+              "size_unit": "sqft",
+              "reason": "envelope area measured from the interior wall graph",
+              "confidence": 0.0,
+              "claim_ids": [],
+              "evidence_ids": [],
+              "verified": "unverified",
+              "include_in_optimizer": false
+            },
+            "in_plan": false,
+            "owner_included": false,
+            "highlighted": false,
+            "tonnes_per_year": 246.0,
+            "upfront_usd": 2460000.0,
+            "exp_npv": -933687.93
+          },
+          {
+            "upgrade": {
+              "upgrade_id": "b3:window_upgrade",
+              "building_id": "b3",
+              "category": "envelope",
+              "type": "window_upgrade",
+              "size_value": 11110.8,
+              "size_unit": "sqft",
+              "reason": "high glazing on sun-facing facades (S 45%, W 35%)",
+              "confidence": 0.7,
+              "claim_ids": [
+                "b3-c5"
+              ],
+              "evidence_ids": [
+                "vxo_b3_1"
+              ],
+              "verified": "unverified",
+              "include_in_optimizer": false
+            },
+            "in_plan": false,
+            "owner_included": false,
+            "highlighted": false,
+            "tonnes_per_year": 46.67,
+            "upfront_usd": 611094.0,
+            "exp_npv": -403924.99
+          }
+        ]
+      }
+    },
+    {
+      "id": "w3",
+      "type": "target_control",
+      "title": "Your target",
+      "why": "Excluded upgrades may change what is reachable.",
+      "size": "full",
+      "data_ref": "plans/current.json#/goal",
+      "props": {
+        "target_pct": 25.0,
+        "budget_usd": null,
+        "risk_lambda": 0.5,
+        "p_hit_target": 1.0,
+        "tonnes_needed": 1620.0,
+        "tonnes_planned": 1685.25,
+        "risk_supported": false
+      }
+    },
+    {
+      "id": "w4",
+      "type": "portfolio_3d",
+      "title": "Portfolio",
+      "why": "Where the planned upgrades sit across your buildings.",
+      "size": "wide",
+      "data_ref": "buildings/*/profile.json",
+      "props": {
+        "buildings": [
+          {
+            "building_id": "b1",
+            "name": "Sample Tower",
+            "lat": 29.7604,
+            "lon": -95.3698,
+            "footprint_wkt": "POLYGON ((-95.36952159774033 29.76016686720193, -95.36953280428271 29.760642911257904, -95.3700784035469 29.760633132132927, -95.37006719443004 29.760157088264574, -95.36952159774033 29.76016686720193))",
+            "height_m": 120.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": 1134.0,
+            "excluded": false,
+            "overlays": [
+              {
+                "type": "solar",
+                "polygon_wkt": "POLYGON ((-95.36952159774033 29.76016686720193, -95.36953280428271 29.760642911257904, -95.3700784035469 29.760633132132927, -95.37006719443004 29.760157088264574, -95.36952159774033 29.76016686720193))",
+                "facade": null
+              }
+            ]
+          },
+          {
+            "building_id": "b2",
+            "name": "Sample Plaza",
+            "lat": 29.7551,
+            "lon": -95.3655,
+            "footprint_wkt": "POLYGON ((-95.36524167666848 29.754883652119236, -95.36525205489936 29.755325404031066, -95.36575832443971 29.75531634730825, -95.36574794399247 29.75487459555768, -95.36524167666848 29.754883652119236))",
+            "height_m": 48.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": 452.25,
+            "excluded": false,
+            "overlays": [
+              {
+                "type": "solar",
+                "polygon_wkt": "POLYGON ((-95.36524167666848 29.754883652119236, -95.36525205489936 29.755325404031066, -95.36575832443971 29.75531634730825, -95.36574794399247 29.75487459555768, -95.36524167666848 29.754883652119236))",
+                "facade": null
+              }
+            ]
+          },
+          {
+            "building_id": "b3",
+            "name": "Sample Lofts",
+            "lat": 29.7498,
+            "lon": -95.3601,
+            "footprint_wkt": "POLYGON ((-95.35988740644362 29.749621923902748, -95.35989592714077 29.74998551167345, -95.3603125943069 29.74997807570962, -95.36030407210875 29.74961448804791, -95.35988740644362 29.749621923902748))",
+            "height_m": 32.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": 99.0,
+            "excluded": false,
+            "overlays": [
+              {
+                "type": "solar",
+                "polygon_wkt": "POLYGON ((-95.35988740644362 29.749621923902748, -95.35989592714077 29.74998551167345, -95.3603125943069 29.74997807570962, -95.36030407210875 29.74961448804791, -95.35988740644362 29.749621923902748))",
+                "facade": null
+              }
+            ]
+          },
+          {
+            "building_id": "b4",
+            "name": "Sample Annex",
+            "lat": 29.765,
+            "lon": -95.356,
+            "footprint_wkt": "POLYGON ((-95.35578436312413 29.764819392941394, -95.35579299497843 29.76518813848729, -95.35621563764842 29.765180606659783, -95.356207004249 29.764811861225798, -95.35578436312413 29.764819392941394))",
+            "height_m": 20.0,
+            "roof_texture_url": null,
+            "color_metric": "tonnes_per_year",
+            "color_value": null,
+            "excluded": false,
+            "overlays": []
+          }
+        ],
+        "focus_building_id": null
+      }
+    },
+    {
+      "id": "w5",
+      "type": "activity_feed",
+      "title": "Agent activity",
+      "why": "Every agent step, as it happens.",
+      "size": "side",
+      "data_ref": "runs/sample/events.jsonl",
+      "props": {
+        "run_id": "sample"
+      }
+    }
+  ]
+}

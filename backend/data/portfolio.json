@@ -1,0 +1,244 @@
+{
+  "city": "Houston",
+  "generated_at": "2026-11-14T06:22:06+00:00",
+  "selection": {
+    "property_type": "Office",
+    "rba_sqft": [
+      100000,
+      600000
+    ],
+    "stories": [
+      2,
+      20
+    ],
+    "min_spacing_m": 500,
+    "requires": [
+      "year_built",
+      "matterport_model",
+      "costar_aerial_photo"
+    ],
+    "vexcel_coverage": "overhead ortho fetched per building (obliques not yet available)"
+  },
+  "buildings": [
+    {
+      "building_id": "239601",
+      "costar_id": "239601",
+      "name": "Paragon Center I",
+      "address": "450 Gears Rd, Houston, TX 77067",
+      "city": "Houston",
+      "lat": 29.9465882,
+      "lon": -95.4212289,
+      "property_type": "Office",
+      "building_class": "A",
+      "rba_sqft": 180030.0,
+      "stories": 8,
+      "year_built": 1984,
+      "matterport_model_ids": [
+        "4wShWrJEkf7",
+        "FTkFHSZ4isL",
+        "kwF8vecZ2Dr"
+      ],
+      "matterport_model_id": "4wShWrJEkf7",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 11,
+        "vexcel": "overhead"
+      }
+    },
+    {
+      "building_id": "239618",
+      "costar_id": "239618",
+      "name": "Southwest Center",
+      "address": "6671 Southwest Fwy, houston, TX 77074",
+      "city": "Houston",
+      "lat": 29.7145739,
+      "lon": -95.4989982,
+      "property_type": "Office",
+      "building_class": "B",
+      "rba_sqft": 149907.0,
+      "stories": 8,
+      "year_built": 1984,
+      "matterport_model_ids": [
+        "BfYuPVALqi5",
+        "FVmmzAFuqT5",
+        "PFd5sKbeQXg",
+        "Q3JzZM5cp5V",
+        "x1tEW1Gdu8x"
+      ],
+      "matterport_model_id": "BfYuPVALqi5",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 8,
+        "vexcel": "overhead"
+      }
+    },
+    {
+      "building_id": "234648",
+      "costar_id": "234648",
+      "name": "CityNorth 6",
+      "address": "12450 Greenspoint Dr, Houston, TX 77060",
+      "city": "Houston",
+      "lat": 29.948556,
+      "lon": -95.409407,
+      "property_type": "Office",
+      "building_class": "A",
+      "rba_sqft": 356468.0,
+      "stories": 14,
+      "year_built": 1987,
+      "matterport_model_ids": [
+        "LbEsnPZjKe2",
+        "qJAR9bWo1ix",
+        "qcdyTgY98qu",
+        "u3g7N2UqKjU"
+      ],
+      "matterport_model_id": "LbEsnPZjKe2",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 7,
+        "vexcel": "overhead"
+      }
+    },
+    {
+      "building_id": "239890",
+      "costar_id": "239890",
+      "name": "Denmark House",
+      "address": "12777 Jones Rd, Houston, TX 77070",
+      "city": "Houston",
+      "lat": 29.9581009,
+      "lon": -95.5859031,
+      "property_type": "Office",
+      "building_class": "B",
+      "rba_sqft": 119388.0,
+      "stories": 4,
+      "year_built": 1982,
+      "matterport_model_ids": [
+        "4z2y8ayqrWs",
+        "6BLGvbbHy6R",
+        "6M3cEZ6EXbM",
+        "L27mebZzrMW",
+        "cMyqySGEaPd",
+        "eQ284JtaJy4",
+        "vx2K8Srqg5N"
+      ],
+      "matterport_model_id": "4z2y8ayqrWs",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 4,
+        "vexcel": "overhead"
+      }
+    },
+    {
+      "building_id": "23551",
+      "costar_id": "23551",
+      "name": "Harwin Plaza II Bldg",
+      "address": "7457 Harwin Dr, Houston, TX 77036",
+      "city": "Houston",
+      "lat": 29.7164302,
+      "lon": -95.5148383,
+      "property_type": "Office",
+      "building_class": "B",
+      "rba_sqft": 105717.0,
+      "stories": 3,
+      "year_built": 1983,
+      "matterport_model_ids": [
+        "4AGeBia6uPA",
+        "8DW9Tug1jxw",
+        "R5KgZDtKVdA",
+        "XSzS7Tbp1Jq",
+        "afdok4vuHZ2",
+        "b7HBcRyZUBt",
+        "hu9LX64osUN",
+        "qWnbmx87VTG",
+        "xH3GSAxmmht",
+        "zDYYFhPQqHC"
+      ],
+      "matterport_model_id": "hu9LX64osUN",
+      "hero": true,
+      "coverage": {
+        "costar_aerial_photos": 1,
+        "vexcel": "overhead"
+      },
+      "hero_model": {
+        "model_id": "hu9LX64osUN",
+        "name": "7457 Harwin Suite 266",
+        "panos": 17,
+        "rooms": 3,
+        "matterpak": "unlocked"
+      }
+    },
+    {
+      "building_id": "239731",
+      "costar_id": "239731",
+      "name": "Brookhollow Two",
+      "address": "9800 Northwest Fwy, Houston, TX 77092",
+      "city": "Houston",
+      "lat": 29.804894,
+      "lon": -95.451614,
+      "property_type": "Office",
+      "building_class": "B",
+      "rba_sqft": 100763.0,
+      "stories": 6,
+      "year_built": 1972,
+      "matterport_model_ids": [
+        "8SQkDA3Fz5a",
+        "BfjYay5KMPo",
+        "YnZqEwSebtw"
+      ],
+      "matterport_model_id": "8SQkDA3Fz5a",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 7,
+        "vexcel": "overhead"
+      }
+    },
+    {
+      "building_id": "362982",
+      "costar_id": "362982",
+      "name": "Legacy Pointe",
+      "address": "9700 Bissonnet St, Houston, TX 77036",
+      "city": "Houston",
+      "lat": 29.6774165,
+      "lon": -95.5453569,
+      "property_type": "Office",
+      "building_class": "B",
+      "rba_sqft": 525580.0,
+      "stories": 2,
+      "year_built": 1975,
+      "matterport_model_ids": [
+        "FNC3RNdVtoP",
+        "RSZxCrMMr4j",
+        "XAPubuV3kUT",
+        "umQgfzR2kyL"
+      ],
+      "matterport_model_id": "FNC3RNdVtoP",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 5,
+        "vexcel": "overhead"
+      }
+    },
+    {
+      "building_id": "6550930",
+      "costar_id": "6550930",
+      "name": "7900 Fannin",
+      "address": "7900 Fannin St, Houston, TX 77054",
+      "city": "Houston",
+      "lat": 29.6915081,
+      "lon": -95.4034524,
+      "property_type": "Office",
+      "building_class": "B",
+      "rba_sqft": 175923.0,
+      "stories": 4,
+      "year_built": 2004,
+      "matterport_model_ids": [
+        "YJLLXyw1xbf"
+      ],
+      "matterport_model_id": "YJLLXyw1xbf",
+      "hero": false,
+      "coverage": {
+        "costar_aerial_photos": 8,
+        "vexcel": "overhead"
+      }
+    }
+  ]
+}

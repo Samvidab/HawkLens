@@ -1,3 +1,5 @@
+
+
 .env
 .venv/
 __pycache__/
@@ -6,10 +8,10 @@ data/cache/
 *.obj
 *.ply
 .DS_Store
-.env
 backend/cache/
 backend/data/*
 !backend/data/portfolio.json
 .claude/worktrees/
 __pycache__/
 .venv/
+

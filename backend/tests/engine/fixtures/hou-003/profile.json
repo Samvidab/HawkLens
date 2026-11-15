@@ -1,0 +1,9 @@
+{
+  "building_id": "hou-003", "costar_id": "FIXTURE-0003", "name": "Fixture Office B",
+  "address": "300 Example Blvd, Houston, TX", "city": "Houston", "lat": 29.7499, "lon": -95.3584,
+  "footprint_wkt": null, "footprint_source": "estimated",
+  "property_type": "Office", "building_class": "B", "year_built": 1978,
+  "stories": 5, "rba_sqft": 80000, "occupancy_pct": 0.76,
+  "matterport_model_id": null,
+  "source_fields": {"rba_sqft": "FIXTURE", "year_built": "FIXTURE"}
+}

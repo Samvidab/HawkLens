@@ -1,0 +1,6 @@
+{
+  "building_id": "hou-001", "model_id": "FIXTURE-MP-0001",
+  "lighting_type": "fluorescent", "hvac_visible": ["rooftop_unit_old"], "window_type": "single",
+  "floor_area_sqft": 112000, "envelope_area_sqft": 51400,
+  "claim_ids": ["c-hou-001-i1"], "evidence_ids": ["e-hou-001-i1"], "pins": []
+}

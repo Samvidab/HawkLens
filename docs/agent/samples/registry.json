@@ -1,0 +1,1787 @@
+{
+  "grid_columns": {
+    "full": 12,
+    "wide": 8,
+    "half": 6,
+    "side": 4
+  },
+  "max_widgets": 8,
+  "widgets": {
+    "target_control": {
+      "description": "Goal sliders and p(hit)",
+      "default_size": "full",
+      "emits": [
+        "set_target",
+        "set_budget",
+        "set_risk"
+      ],
+      "required": [
+        "target_pct",
+        "risk_lambda"
+      ],
+      "props_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "target_pct": {
+            "title": "Target Pct",
+            "type": "number"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Budget Usd"
+          },
+          "risk_lambda": {
+            "title": "Risk Lambda",
+            "type": "number"
+          },
+          "p_hit_target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "P Hit Target"
+          },
+          "tonnes_needed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tonnes Needed"
+          },
+          "tonnes_planned": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tonnes Planned"
+          },
+          "risk_supported": {
+            "default": true,
+            "title": "Risk Supported",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "target_pct",
+          "risk_lambda"
+        ],
+        "title": "TargetControl",
+        "type": "object"
+      }
+    },
+    "portfolio_3d": {
+      "description": "Buildings in 3D",
+      "default_size": "wide",
+      "emits": [
+        "open_building",
+        "exclude_building",
+        "include_building"
+      ],
+      "required": [
+        "buildings"
+      ],
+      "props_schema": {
+        "$defs": {
+          "Building3D": {
+            "additionalProperties": false,
+            "properties": {
+              "building_id": {
+                "title": "Building Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "lat": {
+                "title": "Lat",
+                "type": "number"
+              },
+              "lon": {
+                "title": "Lon",
+                "type": "number"
+              },
+              "footprint_wkt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Footprint Wkt"
+              },
+              "height_m": {
+                "title": "Height M",
+                "type": "number"
+              },
+              "roof_texture_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Roof Texture Url"
+              },
+              "color_metric": {
+                "title": "Color Metric",
+                "type": "string"
+              },
+              "color_value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Color Value"
+              },
+              "excluded": {
+                "default": false,
+                "title": "Excluded",
+                "type": "boolean"
+              },
+              "overlays": {
+                "default": [],
+                "items": {
+                  "$ref": "#/$defs/Overlay"
+                },
+                "title": "Overlays",
+                "type": "array"
+              }
+            },
+            "required": [
+              "building_id",
+              "name",
+              "lat",
+              "lon",
+              "height_m",
+              "color_metric"
+            ],
+            "title": "Building3D",
+            "type": "object"
+          },
+          "Overlay": {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": [
+                  "solar",
+                  "cool_roof",
+                  "window"
+                ],
+                "title": "Type",
+                "type": "string"
+              },
+              "polygon_wkt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Polygon Wkt"
+              },
+              "facade": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "N",
+                      "E",
+                      "S",
+                      "W"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Facade"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "Overlay",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "buildings": {
+            "items": {
+              "$ref": "#/$defs/Building3D"
+            },
+            "title": "Buildings",
+            "type": "array"
+          },
+          "focus_building_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Focus Building Id"
+          }
+        },
+        "required": [
+          "buildings"
+        ],
+        "title": "Portfolio3D",
+        "type": "object"
+      }
+    },
+    "hero_3d": {
+      "description": "Matterport mesh with finding pins",
+      "default_size": "wide",
+      "emits": [],
+      "required": [
+        "building_id"
+      ],
+      "props_schema": {
+        "$defs": {
+          "Pin": {
+            "properties": {
+              "claim_id": {
+                "title": "Claim Id",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "xyz": {
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "title": "Xyz",
+                "type": "array"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              }
+            },
+            "required": [
+              "claim_id",
+              "label",
+              "xyz",
+              "status"
+            ],
+            "title": "Pin",
+            "type": "object"
+          },
+          "Room": {
+            "additionalProperties": false,
+            "properties": {
+              "room_id": {
+                "title": "Room Id",
+                "type": "string"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "polygon": {
+                "default": [],
+                "items": {
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array"
+                },
+                "title": "Polygon",
+                "type": "array"
+              },
+              "area_sqft": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Area Sqft"
+              }
+            },
+            "required": [
+              "room_id"
+            ],
+            "title": "Room",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "`mode` \"mesh\": render the OBJ/MTL (pins are in mesh coordinates). `mode` \"showcase\": embed the Matterport\n3D tour (`showcase_url`, an iframe link); mesh urls are then null and pins are informational only.",
+        "properties": {
+          "building_id": {
+            "title": "Building Id",
+            "type": "string"
+          },
+          "mode": {
+            "default": "mesh",
+            "enum": [
+              "mesh",
+              "showcase"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "mesh_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mesh Url"
+          },
+          "mtl_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mtl Url"
+          },
+          "showcase_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Showcase Url"
+          },
+          "pins": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/Pin"
+            },
+            "title": "Pins",
+            "type": "array"
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/Room"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rooms"
+          }
+        },
+        "required": [
+          "building_id"
+        ],
+        "title": "Hero3D",
+        "type": "object"
+      }
+    },
+    "abatement_curve": {
+      "description": "Marginal abatement cost curve",
+      "default_size": "half",
+      "emits": [
+        "select_bar"
+      ],
+      "required": [
+        "bars"
+      ],
+      "props_schema": {
+        "$defs": {
+          "Bar": {
+            "additionalProperties": false,
+            "properties": {
+              "upgrade_id": {
+                "title": "Upgrade Id",
+                "type": "string"
+              },
+              "building_id": {
+                "title": "Building Id",
+                "type": "string"
+              },
+              "building_name": {
+                "title": "Building Name",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "tonnes_per_year": {
+                "title": "Tonnes Per Year",
+                "type": "number"
+              },
+              "cost_per_tonne": {
+                "title": "Cost Per Tonne",
+                "type": "number"
+              },
+              "in_plan": {
+                "title": "In Plan",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "upgrade_id",
+              "building_id",
+              "building_name",
+              "type",
+              "tonnes_per_year",
+              "cost_per_tonne",
+              "in_plan"
+            ],
+            "title": "Bar",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "bars": {
+            "items": {
+              "$ref": "#/$defs/Bar"
+            },
+            "title": "Bars",
+            "type": "array"
+          },
+          "selected_upgrade_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Selected Upgrade Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "bars"
+        ],
+        "title": "AbatementCurve",
+        "type": "object"
+      }
+    },
+    "plan_table": {
+      "description": "Selected upgrades with totals",
+      "default_size": "wide",
+      "emits": [
+        "toggle_upgrade",
+        "open_building"
+      ],
+      "required": [
+        "rows",
+        "totals"
+      ],
+      "props_schema": {
+        "$defs": {
+          "PlanRow": {
+            "additionalProperties": false,
+            "properties": {
+              "upgrade_id": {
+                "title": "Upgrade Id",
+                "type": "string"
+              },
+              "building_name": {
+                "title": "Building Name",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "size": {
+                "title": "Size",
+                "type": "string"
+              },
+              "upfront_usd": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Upfront Usd"
+              },
+              "exp_npv": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Exp Npv"
+              },
+              "cost_per_tonne": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Cost Per Tonne"
+              },
+              "tonnes_per_year": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tonnes Per Year"
+              },
+              "verified": {
+                "enum": [
+                  "verified",
+                  "unverified",
+                  "assumed"
+                ],
+                "title": "Verified",
+                "type": "string"
+              },
+              "owner_included": {
+                "default": false,
+                "title": "Owner Included",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "upgrade_id",
+              "building_name",
+              "type",
+              "size",
+              "verified"
+            ],
+            "title": "PlanRow",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/$defs/PlanRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Totals",
+            "type": "object"
+          },
+          "sample_pricing": {
+            "default": false,
+            "title": "Sample Pricing",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rows",
+          "totals"
+        ],
+        "title": "PlanTable",
+        "type": "object"
+      }
+    },
+    "risk_histogram": {
+      "description": "NPV distribution",
+      "default_size": "half",
+      "emits": [],
+      "required": [
+        "bins",
+        "scope"
+      ],
+      "props_schema": {
+        "$defs": {
+          "HistBin": {
+            "additionalProperties": false,
+            "properties": {
+              "x0": {
+                "title": "X0",
+                "type": "number"
+              },
+              "x1": {
+                "title": "X1",
+                "type": "number"
+              },
+              "count": {
+                "title": "Count",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x0",
+              "x1",
+              "count"
+            ],
+            "title": "HistBin",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "bins": {
+            "items": {
+              "$ref": "#/$defs/HistBin"
+            },
+            "title": "Bins",
+            "type": "array"
+          },
+          "exp_npv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Exp Npv"
+          },
+          "cvar5": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cvar5"
+          },
+          "p_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "P Loss"
+          },
+          "scope": {
+            "enum": [
+              "plan",
+              "building"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bins",
+          "scope"
+        ],
+        "title": "RiskHistogram",
+        "type": "object"
+      }
+    },
+    "evidence_gallery": {
+      "description": "Images with marks and verifier status",
+      "default_size": "wide",
+      "emits": [],
+      "required": [
+        "items"
+      ],
+      "props_schema": {
+        "$defs": {
+          "GalleryItem": {
+            "additionalProperties": false,
+            "properties": {
+              "image_id": {
+                "title": "Image Id",
+                "type": "string"
+              },
+              "url": {
+                "title": "Url",
+                "type": "string"
+              },
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Source"
+              },
+              "orientation": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Orientation"
+              },
+              "marks": {
+                "default": [],
+                "items": {
+                  "$ref": "#/$defs/Mark"
+                },
+                "title": "Marks",
+                "type": "array"
+              },
+              "claim_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Claim Ids",
+                "type": "array"
+              },
+              "claim_summaries": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Claim Summaries",
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "pending",
+                  "verified",
+                  "sent_back",
+                  "unverified",
+                  "rejected"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "verifier_notes": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "title": "Verifier Notes",
+                "type": "array"
+              }
+            },
+            "required": [
+              "image_id",
+              "url",
+              "claim_ids",
+              "claim_summaries",
+              "status"
+            ],
+            "title": "GalleryItem",
+            "type": "object"
+          },
+          "Mark": {
+            "properties": {
+              "image_id": {
+                "title": "Image Id",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "bbox": {
+                "anyOf": [
+                  {
+                    "maxItems": 4,
+                    "minItems": 4,
+                    "prefixItems": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bbox"
+              },
+              "polygon": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "maxItems": 2,
+                      "minItems": 2,
+                      "prefixItems": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ],
+                      "type": "array"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Polygon"
+              }
+            },
+            "required": [
+              "image_id",
+              "label"
+            ],
+            "title": "Mark",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/GalleryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "EvidenceGallery",
+        "type": "object"
+      }
+    },
+    "facade_compass": {
+      "description": "Glazing per facade",
+      "default_size": "half",
+      "emits": [],
+      "required": [
+        "facades"
+      ],
+      "props_schema": {
+        "$defs": {
+          "FacadeStats": {
+            "additionalProperties": false,
+            "properties": {
+              "glazing_ratio": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Glazing Ratio"
+              },
+              "window_count_est": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Window Count Est"
+              }
+            },
+            "title": "FacadeStats",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "facades": {
+            "additionalProperties": {
+              "$ref": "#/$defs/FacadeStats"
+            },
+            "propertyNames": {
+              "enum": [
+                "N",
+                "E",
+                "S",
+                "W"
+              ]
+            },
+            "title": "Facades",
+            "type": "object"
+          }
+        },
+        "required": [
+          "facades"
+        ],
+        "title": "FacadeCompass",
+        "type": "object"
+      }
+    },
+    "floor_plan": {
+      "description": "Matterport rooms and pins",
+      "default_size": "half",
+      "emits": [],
+      "required": [
+        "rooms"
+      ],
+      "props_schema": {
+        "$defs": {
+          "Pin": {
+            "properties": {
+              "claim_id": {
+                "title": "Claim Id",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "xyz": {
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "title": "Xyz",
+                "type": "array"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              }
+            },
+            "required": [
+              "claim_id",
+              "label",
+              "xyz",
+              "status"
+            ],
+            "title": "Pin",
+            "type": "object"
+          },
+          "Room": {
+            "additionalProperties": false,
+            "properties": {
+              "room_id": {
+                "title": "Room Id",
+                "type": "string"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Type"
+              },
+              "polygon": {
+                "default": [],
+                "items": {
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array"
+                },
+                "title": "Polygon",
+                "type": "array"
+              },
+              "area_sqft": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Area Sqft"
+              }
+            },
+            "required": [
+              "room_id"
+            ],
+            "title": "Room",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "rooms": {
+            "items": {
+              "$ref": "#/$defs/Room"
+            },
+            "title": "Rooms",
+            "type": "array"
+          },
+          "pins": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/Pin"
+            },
+            "title": "Pins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rooms"
+        ],
+        "title": "FloorPlan",
+        "type": "object"
+      }
+    },
+    "upgrade_list": {
+      "description": "Feasible upgrades",
+      "default_size": "half",
+      "emits": [
+        "toggle_upgrade",
+        "include_unverified"
+      ],
+      "required": [
+        "upgrades"
+      ],
+      "props_schema": {
+        "$defs": {
+          "FeasibleUpgrade": {
+            "properties": {
+              "upgrade_id": {
+                "title": "Upgrade Id",
+                "type": "string"
+              },
+              "building_id": {
+                "title": "Building Id",
+                "type": "string"
+              },
+              "category": {
+                "enum": [
+                  "lighting",
+                  "hvac",
+                  "envelope",
+                  "solar",
+                  "roof"
+                ],
+                "title": "Category",
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "rooftop_solar",
+                  "cool_roof",
+                  "window_upgrade",
+                  "heat_pump",
+                  "insulation",
+                  "led_retrofit"
+                ],
+                "title": "Type",
+                "type": "string"
+              },
+              "size_value": {
+                "title": "Size Value",
+                "type": "number"
+              },
+              "size_unit": {
+                "enum": [
+                  "kW",
+                  "sqft",
+                  "fixtures"
+                ],
+                "title": "Size Unit",
+                "type": "string"
+              },
+              "reason": {
+                "title": "Reason",
+                "type": "string"
+              },
+              "confidence": {
+                "title": "Confidence",
+                "type": "number"
+              },
+              "claim_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Claim Ids",
+                "type": "array"
+              },
+              "evidence_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Evidence Ids",
+                "type": "array"
+              },
+              "verified": {
+                "enum": [
+                  "verified",
+                  "unverified",
+                  "assumed"
+                ],
+                "title": "Verified",
+                "type": "string"
+              },
+              "include_in_optimizer": {
+                "title": "Include In Optimizer",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "upgrade_id",
+              "building_id",
+              "category",
+              "type",
+              "size_value",
+              "size_unit",
+              "reason",
+              "confidence",
+              "claim_ids",
+              "evidence_ids",
+              "verified",
+              "include_in_optimizer"
+            ],
+            "title": "FeasibleUpgrade",
+            "type": "object"
+          },
+          "UpgradeRow": {
+            "additionalProperties": false,
+            "properties": {
+              "upgrade": {
+                "$ref": "#/$defs/FeasibleUpgrade"
+              },
+              "in_plan": {
+                "title": "In Plan",
+                "type": "boolean"
+              },
+              "owner_included": {
+                "default": false,
+                "title": "Owner Included",
+                "type": "boolean"
+              },
+              "highlighted": {
+                "default": false,
+                "title": "Highlighted",
+                "type": "boolean"
+              },
+              "tonnes_per_year": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tonnes Per Year"
+              },
+              "upfront_usd": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Upfront Usd"
+              },
+              "exp_npv": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Exp Npv"
+              }
+            },
+            "required": [
+              "upgrade",
+              "in_plan"
+            ],
+            "title": "UpgradeRow",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "upgrades": {
+            "items": {
+              "$ref": "#/$defs/UpgradeRow"
+            },
+            "title": "Upgrades",
+            "type": "array"
+          }
+        },
+        "required": [
+          "upgrades"
+        ],
+        "title": "UpgradeList",
+        "type": "object"
+      }
+    },
+    "building_header": {
+      "description": "Building profile and baseline",
+      "default_size": "full",
+      "emits": [],
+      "required": [
+        "profile",
+        "baseline"
+      ],
+      "props_schema": {
+        "$defs": {
+          "Baseline": {
+            "additionalProperties": false,
+            "properties": {
+              "annual_spend_usd": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Annual Spend Usd"
+              },
+              "tonnes_per_year": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tonnes Per Year"
+              }
+            },
+            "title": "Baseline",
+            "type": "object"
+          },
+          "BuildingProfile": {
+            "properties": {
+              "building_id": {
+                "title": "Building Id",
+                "type": "string"
+              },
+              "costar_id": {
+                "title": "Costar Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "address": {
+                "title": "Address",
+                "type": "string"
+              },
+              "city": {
+                "enum": [
+                  "Houston",
+                  "Los Angeles"
+                ],
+                "title": "City",
+                "type": "string"
+              },
+              "lat": {
+                "title": "Lat",
+                "type": "number"
+              },
+              "lon": {
+                "title": "Lon",
+                "type": "number"
+              },
+              "footprint_wkt": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Footprint Wkt"
+              },
+              "footprint_source": {
+                "enum": [
+                  "costar",
+                  "estimated"
+                ],
+                "title": "Footprint Source",
+                "type": "string"
+              },
+              "property_type": {
+                "title": "Property Type",
+                "type": "string"
+              },
+              "building_class": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Building Class"
+              },
+              "year_built": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Year Built"
+              },
+              "stories": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Stories"
+              },
+              "rba_sqft": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Rba Sqft"
+              },
+              "occupancy_pct": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Occupancy Pct"
+              },
+              "matterport_model_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Matterport Model Id"
+              },
+              "showcase_url": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Showcase Url"
+              },
+              "source_fields": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "title": "Source Fields",
+                "type": "object"
+              }
+            },
+            "required": [
+              "building_id",
+              "costar_id",
+              "name",
+              "address",
+              "city",
+              "lat",
+              "lon",
+              "footprint_source",
+              "property_type",
+              "source_fields"
+            ],
+            "title": "BuildingProfile",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "$ref": "#/$defs/BuildingProfile"
+          },
+          "baseline": {
+            "$ref": "#/$defs/Baseline"
+          }
+        },
+        "required": [
+          "profile",
+          "baseline"
+        ],
+        "title": "BuildingHeader",
+        "type": "object"
+      }
+    },
+    "target_gap_card": {
+      "description": "Shortfall and cheapest extra cuts",
+      "default_size": "half",
+      "emits": [],
+      "required": [
+        "shortfall_tonnes",
+        "cheapest_extra"
+      ],
+      "props_schema": {
+        "$defs": {
+          "ExtraCut": {
+            "additionalProperties": false,
+            "properties": {
+              "upgrade_id": {
+                "title": "Upgrade Id",
+                "type": "string"
+              },
+              "cost_per_tonne": {
+                "title": "Cost Per Tonne",
+                "type": "number"
+              },
+              "tonnes_per_year": {
+                "title": "Tonnes Per Year",
+                "type": "number"
+              }
+            },
+            "required": [
+              "upgrade_id",
+              "cost_per_tonne",
+              "tonnes_per_year"
+            ],
+            "title": "ExtraCut",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "shortfall_tonnes": {
+            "title": "Shortfall Tonnes",
+            "type": "number"
+          },
+          "cheapest_extra": {
+            "items": {
+              "$ref": "#/$defs/ExtraCut"
+            },
+            "title": "Cheapest Extra",
+            "type": "array"
+          }
+        },
+        "required": [
+          "shortfall_tonnes",
+          "cheapest_extra"
+        ],
+        "title": "TargetGapCard",
+        "type": "object"
+      }
+    },
+    "financing_card": {
+      "description": "Plan financing and Approve",
+      "default_size": "half",
+      "emits": [
+        "approve"
+      ],
+      "required": [],
+      "props_schema": {
+        "$defs": {
+          "Bill": {
+            "additionalProperties": false,
+            "properties": {
+              "contractor": {
+                "title": "Contractor",
+                "type": "string"
+              },
+              "amount": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Amount"
+              }
+            },
+            "required": [
+              "contractor"
+            ],
+            "title": "Bill",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan Id"
+          },
+          "total_upfront_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Upfront Usd"
+          },
+          "bills": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/Bill"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "state": {
+            "default": "proposed",
+            "enum": [
+              "proposed",
+              "executed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "nessie_ids": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Nessie Ids"
+          }
+        },
+        "title": "FinancingCard",
+        "type": "object"
+      }
+    },
+    "memo": {
+      "description": "Investment memo",
+      "default_size": "wide",
+      "emits": [],
+      "required": [
+        "markdown"
+      ],
+      "props_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "Memo",
+        "type": "object"
+      }
+    },
+    "activity_feed": {
+      "description": "Live agent events (frontend reads SSE)",
+      "default_size": "side",
+      "emits": [],
+      "required": [
+        "run_id"
+      ],
+      "props_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "title": "ActivityFeed",
+        "type": "object"
+      }
+    }
+  }
+}
