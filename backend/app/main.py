@@ -63,13 +63,44 @@ def registry() -> dict:
     return json_schemas()
 
 
+# What a building card needs (matterport-ui shows our buildings from these). Always present; null when not recorded.
+CARD_FIELDS = ("building_id", "name", "address", "lat", "lon", "matterport_model_id", "showcase_url", "stories", "sqft", "year_built")
+_PROFILE_FALLBACK = {"name": "name", "address": "address", "lat": "lat", "lon": "lon", "stories": "stories",
+                     "sqft": "rba_sqft", "year_built": "year_built"}
+
+
+def _portfolio_card(b: dict, data_dir) -> dict:
+    """One building of data/portfolio.json, read-only, plus the card fields. Every value is recorded data (the CoStar
+    record in portfolio.json, else the building's profile.json; the tour from tour.json); a missing one is null.
+    `matterport_model_id` is the scan whose tour is shown (tour.json = the scan the agents surveyed), so a card that opens
+    it gets the verified CO2 tags for that scan; the CoStar record's own primary model stays in `costar_matterport_model_id`."""
+    bdir = data_dir / "buildings" / str(b.get("building_id"))
+    tour = json.loads((bdir / "tour.json").read_text()) if (bdir / "tour.json").exists() else None
+    profile = json.loads((bdir / "profile.json").read_text()) if (bdir / "profile.json").exists() else {}
+    out = dict(b)
+    out["costar_matterport_model_id"] = b.get("matterport_model_id")
+    out["matterport_model_id"] = (tour or {}).get("model_id") or b.get("matterport_model_id")
+    out["showcase_url"] = tour.get("showcase_url") if tour and tour.get("available") else None
+    out["sqft"] = b.get("rba_sqft")
+    for field, pkey in _PROFILE_FALLBACK.items():
+        if out.get(field) is None:
+            out[field] = profile.get(pkey)
+    for field in CARD_FIELDS:
+        out.setdefault(field, None)
+    return out
+
+
 @app.get("/portfolio")
 def portfolio():
-    """data/portfolio.json as written by scripts/pick_portfolio.py."""
-    path = get_settings().data_dir / "portfolio.json"
+    """data/portfolio.json as written by scripts/pick_portfolio.py (never modified), each building with the card fields
+    (CARD_FIELDS) filled from recorded data; see _portfolio_card."""
+    data_dir = get_settings().data_dir
+    path = data_dir / "portfolio.json"
     if not path.exists():
         raise HTTPException(404, "portfolio.json not found; run scripts/pick_portfolio.py")
-    return json.loads(path.read_text())
+    p = json.loads(path.read_text())
+    p["buildings"] = [_portfolio_card(b, data_dir) for b in p.get("buildings", [])]
+    return p
 
 
 @app.get("/assumptions")

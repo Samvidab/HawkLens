@@ -100,3 +100,36 @@ def test_assumptions_route_serves_the_engine_file():
     r = c.get("/assumptions?city=houston").json()
     assert r["city"] == "Houston" and r["city_values"] == stored["cities"]["Houston"] and r["global"] == stored["global"]
     assert c.get("/assumptions?city=Nowhere").json()["city_values"] is None
+
+
+def test_portfolio_cards_from_recorded_data_only(tmp_path, monkeypatch):
+    """GET /portfolio: card fields from portfolio.json / profile.json / tour.json; missing -> null; files untouched."""
+    from app.main import CARD_FIELDS
+    data = tmp_path / "data"
+    (data / "buildings" / "b1").mkdir(parents=True)
+    (data / "buildings" / "b2").mkdir(parents=True)
+    pf = {"city": "Houston", "buildings": [
+        {"building_id": "b1", "name": "One", "address": "1 Main St", "lat": 29.7, "lon": -95.3, "rba_sqft": 1000.0,
+         "stories": 3, "year_built": None, "matterport_model_id": "COSTAR1", "hero": True},
+        {"building_id": "b2", "name": "Two", "address": None, "lat": None, "lon": None, "rba_sqft": None,
+         "matterport_model_id": None}]}
+    (data / "portfolio.json").write_text(json.dumps(pf))
+    (data / "buildings" / "b1" / "tour.json").write_text(json.dumps(
+        {"model_id": "SCAN1", "available": True, "showcase_url": "https://my.matterport.com/show/?m=SCAN1"}))
+    (data / "buildings" / "b1" / "profile.json").write_text(json.dumps({"year_built": 1984}))
+    (data / "buildings" / "b2" / "tour.json").write_text(json.dumps({"model_id": "PRIV", "available": False, "showcase_url": None}))
+    monkeypatch.setenv("DATA_DIR", str(data))
+    get_settings.cache_clear()
+    try:
+        before = (data / "portfolio.json").read_text()
+        b1, b2 = TestClient(app).get("/portfolio").json()["buildings"]
+        assert all(set(CARD_FIELDS) <= set(b) for b in (b1, b2))
+        # the tour's scan (tour.json) is the card's model; the CoStar record's own model is kept separately
+        assert b1["matterport_model_id"] == "SCAN1" and b1["costar_matterport_model_id"] == "COSTAR1"
+        assert b1["showcase_url"] == "https://my.matterport.com/show/?m=SCAN1" and b1["sqft"] == 1000.0
+        assert b1["year_built"] == 1984 and b1["hero"] is True  # profile.json fills a missing value; other fields kept
+        assert b2["showcase_url"] is None and b2["matterport_model_id"] == "PRIV"  # not viewable: no link, never guessed
+        assert b2["address"] is None and b2["lat"] is None and b2["sqft"] is None and b2["stories"] is None
+        assert (data / "portfolio.json").read_text() == before
+    finally:
+        get_settings.cache_clear()
