@@ -114,6 +114,48 @@ def map_record(rec: dict[str, Any], *, building_id: str | None = None,
     )
 
 
+
+def profile_from_portfolio(entry: dict[str, Any]) -> BuildingProfile:
+    """Use property metadata already saved by pick_portfolio.py.
+
+    These are CoStar-derived snapshot fields, not a fresh CoStar API response.
+    Missing values remain missing; never invent property attributes.
+    """
+    required = ("building_id", "name", "address", "city", "lat", "lon")
+    missing = [key for key in required if entry.get(key) is None]
+    if missing:
+        raise ValueError(f"Portfolio snapshot missing required fields: {missing}")
+
+    city = entry["city"]
+    lat, lon = float(entry["lat"]), float(entry["lon"])
+    stories, rba = entry.get("stories"), entry.get("rba_sqft")
+    footprint = None
+    if rba and stories and float(stories) > 0:
+        side_m = math.sqrt(float(rba) / float(stories) / SQFT_PER_M2)
+        footprint = square_wkt(lat, lon, side_m, city)
+
+    model_id = entry.get("matterport_model_id") if entry.get("hero") else None
+    fields = {key: f"portfolio.json: {key} (CoStar-derived snapshot)"
+              for key in ("costar_id", "name", "address", "city", "lat", "lon",
+                          "property_type", "building_class", "year_built", "stories", "rba_sqft")
+              if entry.get(key) is not None}
+    if footprint:
+        fields["footprint_wkt"] = "estimated from portfolio rba_sqft / stories and lat/lon"
+    if model_id:
+        fields["matterport_model_id"] = "portfolio.json: matterport_model_id"
+
+    return BuildingProfile(
+        building_id=str(entry["building_id"]),
+        costar_id=str(entry.get("costar_id", entry["building_id"])),
+        name=entry["name"], address=entry["address"], city=city,
+        lat=lat, lon=lon, footprint_wkt=footprint, footprint_source="estimated",
+        property_type=entry.get("property_type") or "Unknown",
+        building_class=entry.get("building_class"), year_built=entry.get("year_built"),
+        stories=stories, rba_sqft=rba, occupancy_pct=None,
+        matterport_model_id=model_id, source_fields=fields,
+    )
+
+
 def summary(p: BuildingProfile) -> str:
     parts = []
     if p.stories:
@@ -133,8 +175,19 @@ async def run(building_id: str, run_id: str | None = None) -> BuildingProfile:
     costar_id = entry.get("costar_id", building_id)
     model_id = entry.get("matterport_model_id") if entry.get("hero") else None
 
-    rec = await costar.get_property(costar_id)
-    profile = map_record(rec, building_id=building_id, matterport_model_id=model_id)
+    try:
+        rec = await costar.get_property(costar_id)
+    except (FileNotFoundError, OSError) as exc:
+        # The CoStar kit is optional when pick_portfolio.py already saved its
+        # property fields. Do not mask other API/authentication errors.
+        if not entry:
+            raise
+        profile = profile_from_portfolio(entry)
+        if run_id:
+            emit(run_id, AGENT, "fetch", "Using stored portfolio snapshot (CoStar kit unavailable)",
+                 building_id, building_name=profile.name)
+    else:
+        profile = map_record(rec, building_id=building_id, matterport_model_id=model_id)
     write_json_atomic(profile_path(building_id), profile.model_dump(mode="json"))
     if run_id:
         emit(run_id, AGENT, "fetch", summary(profile), building_id, building_name=profile.name)
