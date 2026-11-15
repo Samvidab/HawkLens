@@ -82,7 +82,7 @@ test('goal form -> live survey -> workspace -> actions -> evidence -> approval, 
   // 7. Evidence: images are served by /media/{image_id}
   await page.goto('/survey-evidence')
   await expect(page.locator(`img[src^="${API}/media/"]`).first()).toBeVisible()
-  expect(await page.locator(`img[src^="${API}/media/"]`).first().evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true)
+  await expect.poll(() => page.locator(`img[src^="${API}/media/"]`).first().evaluate((i) => i.complete && i.naturalWidth > 0), { timeout: 10_000 }).toBe(true) // the real image loaded
   await shot(page, '8-evidence')
 
   // 8. Approve: consent + Approve & fund -> POST /compose approve {plan_id} -> confirmation with Nessie ids
