@@ -1,0 +1,32 @@
+{
+  "building_id": "239890",
+  "costar_id": "239890",
+  "name": "Denmark House",
+  "address": "12777 Jones Rd, Houston, TX 77070",
+  "city": "Houston",
+  "lat": 29.9581009,
+  "lon": -95.5859031,
+  "footprint_wkt": "POLYGON ((-95.58562435829258 29.957868884932477, -95.58563665273583 29.958343621299196, -95.58618184300008 29.95833291439269, -95.58616954597153 29.957858178229994, -95.58562435829258 29.957868884932477))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "B",
+  "year_built": 1982,
+  "stories": 4,
+  "rba_sqft": 119388.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

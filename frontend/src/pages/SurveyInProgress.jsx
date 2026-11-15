@@ -12,8 +12,8 @@ const EVENTS = [
 ]
 
 const PROGRESS = [
-  { label: 'Records', detail: '8 / 8 complete' },
-  { label: 'Aerial inspection', detail: '6 / 8 complete' },
+  { label: 'Records', detail: '7 / 7 complete' },
+  { label: 'Aerial inspection', detail: '6 / 7 complete' },
   { label: 'Interior inspection', detail: 'Hero building pending' },
   { label: 'Verification', detail: 'In progress' },
 ]
@@ -44,7 +44,7 @@ export default function SurveyInProgress() {
           Survey activity
         </p>
         <p className="absolute left-[19px] top-[46px] text-muted text-[11px] leading-[1.45]">
-          6 of 8 buildings inspected · Example event stream
+          6 of 7 buildings inspected · Example event stream
         </p>
         <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">In progress</p>
         {EVENTS.map((e, i) => {
@@ -77,7 +77,7 @@ export default function SurveyInProgress() {
       {/* Survey progress */}
       <section className="absolute left-[944px] top-[265px] w-[440px] h-[440px] rounded-[8px] bg-[#f5f7f2] overflow-hidden">
         <p className="absolute left-[24px] top-[21px] font-semibold text-ink text-[20px] leading-[1.45]">
-          6 of 8 buildings inspected
+          6 of 7 buildings inspected
         </p>
         <div className="absolute left-[24px] top-[81px] w-[392px] h-[6px] rounded-[3px] bg-model" />
         <div className="absolute left-[24px] top-[81px] w-[294px] h-[6px] rounded-[3px] bg-brand" />

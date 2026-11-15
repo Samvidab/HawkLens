@@ -1,0 +1,30 @@
+[
+  {
+    "upgrade_id": "23551:heat_pump",
+    "building_id": "23551",
+    "category": "hvac",
+    "type": "heat_pump",
+    "size_value": 105717.0,
+    "size_unit": "sqft",
+    "reason": "built 1983",
+    "confidence": 1.0,
+    "claim_ids": [],
+    "evidence_ids": [],
+    "verified": "verified",
+    "include_in_optimizer": true
+  },
+  {
+    "upgrade_id": "23551:led_retrofit",
+    "building_id": "23551",
+    "category": "lighting",
+    "type": "led_retrofit",
+    "size_value": 105717.0,
+    "size_unit": "sqft",
+    "reason": "lighting type not observed; assumed non-LED",
+    "confidence": 0.5,
+    "claim_ids": [],
+    "evidence_ids": [],
+    "verified": "assumed",
+    "include_in_optimizer": true
+  }
+]

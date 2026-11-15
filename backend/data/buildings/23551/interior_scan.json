@@ -1,0 +1,135 @@
+{
+  "rooms": [
+    {
+      "room_id": "613htqkzf66zz7hf7n8kzszed",
+      "type": null,
+      "area_sqft": 112.2,
+      "height_m": 2.7348639965057373
+    },
+    {
+      "room_id": "cdz3fkt38kae7tapstpt0eaeb",
+      "type": null,
+      "area_sqft": 792.2,
+      "height_m": 2.7428739070892334
+    },
+    {
+      "room_id": "xy2x8mpaaqknp7q2c3nnbw1ma",
+      "type": null,
+      "area_sqft": 121.9,
+      "height_m": 2.7401294708251953
+    }
+  ],
+  "scanned_floor_area_sqft": 1026.3,
+  "coverage_of_rba": 0.0097,
+  "wall_edges": 0,
+  "floorplans": [
+    {
+      "format": "jpg",
+      "flags": [
+        "photogramy"
+      ],
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+        "x": -9.276778221130371,
+        "y": -2.049567937850952
+      }
+    },
+    {
+      "format": "png",
+      "flags": [
+        "photogramy",
+        "alpha"
+      ],
+      "width": 1035,
+      "height": 982,
+      "resolution": 100.0,
+      "origin": {
+        "x": -8.576778411865234,
+        "y": -1.3495680093765259
+      }
+    },
+    {
+      "format": "jpg",
+      "flags": [
+        "photogramy",
+        "colored_rooms"
+      ],
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+        "x": -9.276778221130371,
+        "y": -2.049567937850952
+      }
+    },
+    {
+      "format": "jpg",
+      "flags": [
+        "photogramy",
+        "measurements"
+      ],
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+        "x": -9.276778221130371,
+        "y": -2.049567937850952
+      }
+    },
+    {
+      "format": "jpg",
+      "flags": [
+        "photogramy",
+        "measurements"
+      ],
+      "width": 1175,
+      "height": 1122,
+      "resolution": 100.0,
+      "origin": {
+        "x": -9.276778221130371,
+        "y": -2.049567937850952
+      }
+    },
+    {
+      "format": "png",
+      "flags": [
+        "photogramy",
+        "alpha"
+      ],
+      "width": 512,
+      "height": 486,
+      "resolution": 49.4663200378418,
+      "origin": {
+        "x": -8.576778411865234,
+        "y": -1.3495680093765259
+      }
+    },
+    {
+      "format": "dxf",
+      "flags": [
+        "schematic"
+      ],
+      "width": null,
+      "height": null,
+      "resolution": null,
+      "origin": null
+    },
+    {
+      "format": "png",
+      "flags": [
+        "schematic"
+      ],
+      "width": null,
+      "height": null,
+      "resolution": null,
+      "origin": null
+    }
+  ],
+  "mesh": null,
+  "mesh_error": "no MatterPak download for hu9LX64osUN",
+  "model_id": "hu9LX64osUN",
+  "mesh_url": null,
+  "mtl_url": null
+}

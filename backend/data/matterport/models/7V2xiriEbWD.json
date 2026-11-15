@@ -1,0 +1,66 @@
+{
+  "id": "7V2xiriEbWD",
+  "name": "Gym",
+  "created": "2026-11-10T00:40:02Z",
+  "modified": "2026-11-12T01:57:56Z",
+  "address": {
+    "locality": "Houston",
+    "administrative_area": "TX",
+    "postal_code": "77028",
+    "country_code": "US",
+    "formatted": "7600 East Houston Road, Houston, TX, 77028, US"
+  },
+  "geo": {
+    "lat": null,
+    "lon": null
+  },
+  "thumbnail_url": "https://cdn-2.matterport.com/apifs/models/7V2xiriEbWD/images/nrE8z3YQKWB/07.21.2017_14.35.23.jpg?t=2-c27d3028011ffb40f9567ac6f3fa55d7b0ec6d6c-1794703213-1",
+  "thumbnail_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/mp/7V2xiriEbWD/thumb.jpg",
+  "embed_html": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=7V2xiriEbWD' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+  "show_url": "https://my.matterport.com/show/?m=7V2xiriEbWD",
+  "published": true,
+  "pi_available": false,
+  "raw": {
+    "search": {
+      "id": "7V2xiriEbWD",
+      "name": "Gym",
+      "created": "2026-11-10T00:40:02Z",
+      "modified": "2026-11-12T01:57:56Z",
+      "demo": false,
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77028",
+        "countryCode": "US",
+        "address": "7600 East Houston Road, Houston, TX, 77028, US"
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/7V2xiriEbWD/images/nrE8z3YQKWB/07.21.2017_14.35.23.jpg?t=2-c2e531189c9eaa6f89db82c4ea5236262cf716d2-1794703212-1"
+      },
+      "publication": {
+        "published": true
+      }
+    },
+    "model": {
+      "id": "7V2xiriEbWD",
+      "name": "Gym",
+      "created": "2026-11-10T00:40:02Z",
+      "modified": "2026-11-12T01:57:56Z",
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77028",
+        "countryCode": "US",
+        "address": "7600 East Houston Road, Houston, TX, 77028, US"
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/7V2xiriEbWD/images/nrE8z3YQKWB/07.21.2017_14.35.23.jpg?t=2-c27d3028011ffb40f9567ac6f3fa55d7b0ec6d6c-1794703213-1"
+      },
+      "publication": {
+        "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=7V2xiriEbWD' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+        "url": "https://my.matterport.com/show/?m=7V2xiriEbWD",
+        "published": true
+      }
+    }
+  }
+}

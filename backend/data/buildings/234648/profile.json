@@ -1,0 +1,32 @@
+{
+  "building_id": "234648",
+  "costar_id": "234648",
+  "name": "CityNorth 6",
+  "address": "12450 Greenspoint Dr, Houston, TX 77060",
+  "city": "Houston",
+  "lat": 29.948556,
+  "lon": -95.409407,
+  "footprint_wkt": "POLYGON ((-95.40914992645975 29.948341336502292, -95.40916050328356 29.948779874883563, -95.40966407464305 29.948770662928066, -95.40965349561364 29.948332124708983, -95.40914992645975 29.948341336502292))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "A",
+  "year_built": 1987,
+  "stories": 14,
+  "rba_sqft": 356468.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

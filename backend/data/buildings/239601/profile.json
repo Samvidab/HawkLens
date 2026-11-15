@@ -1,0 +1,32 @@
+{
+  "building_id": "239601",
+  "costar_id": "239601",
+  "name": "Paragon Center I",
+  "address": "450 Gears Rd, Houston, TX 77067",
+  "city": "Houston",
+  "lat": 29.9465882,
+  "lon": -95.4212289,
+  "footprint_wkt": "POLYGON ((-95.4209872039037 29.94638641425969, -95.4209971953735 29.946798687484836, -95.42147059707084 29.946789985236563, -95.42146060365198 29.946377712155442, -95.4209872039037 29.94638641425969))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "A",
+  "year_built": 1984,
+  "stories": 8,
+  "rba_sqft": 180030.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

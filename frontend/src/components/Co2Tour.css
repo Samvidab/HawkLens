@@ -1,0 +1,14 @@
+/* Verified CO2 list beside the tour and the evidence close-up, in the light theme and in mission (dark) mode.
+   Everything else uses the theme's own classes (bg-white, text-ink, text-muted, text-brand, border-line). */
+.co2-item-movable:hover { background-color: #f1f4ed; }
+.co2-item-active { background-color: #edf3e6; }
+.co2-evidence { background: #ffffff; color: #1f2a24; }
+.co2-evidence::backdrop { background: rgba(0, 0, 0, 0.55); }
+.co2-evidence-scroll { background: #f3f4f6; }
+
+body.mission-mode .co2-item-movable:hover { background-color: #1a3024; }
+body.mission-mode .co2-item-active { background-color: #263d30; }
+body.mission-mode .co2-item-active .text-ink { color: #e2f4e8 !important; }
+/* the native <dialog> keeps the UA white background: give it the dark surface so the theme's light text stays readable */
+body.mission-mode .co2-evidence { background: #101d17; color: #e2f4e8; border-color: #365341 !important; }
+body.mission-mode .co2-evidence-scroll { background: #07120e; }

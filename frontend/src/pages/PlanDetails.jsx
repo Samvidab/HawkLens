@@ -31,13 +31,13 @@ const ACTIVITY = [
   },
   {
     time: '09:43 · Pricing agent',
-    line: '18 upgrades across 8 buildings',
+    line: '18 upgrades across 7 buildings',
     meta: 'Baseline sample · 10,000 scenarios',
   },
 ]
 
 const ROWS = [
-  { name: 'LED retrofit', coverage: '8 buildings · 8 bills', cost: '$120k', co2: '192 tCO₂', npv: '+$170k' },
+  { name: 'LED retrofit', coverage: '7 buildings · 7 bills', cost: '$120k', co2: '192 tCO₂', npv: '+$170k' },
   { name: 'Rooftop solar', coverage: '6 buildings · 6 bills', cost: '$760k', co2: '480 tCO₂', npv: '+$260k' },
   { name: 'Heat pump conversion', coverage: '4 buildings · 4 bills', cost: '$400k', co2: '360 tCO₂', npv: '+$56k' },
 ]
@@ -198,7 +198,7 @@ export default function PlanDetails() {
           Survey activity
         </button>
         <div className="absolute left-[314px] top-[19px] w-[86px] h-[23px] rounded-[5px] bg-[#edf3e6] flex items-center">
-          <span className="ml-[12px] font-medium text-brand text-[10px]">8 / 8 ready</span>
+          <span className="ml-[12px] font-medium text-brand text-[10px]">7 / 7 ready</span>
         </div>
         <p className="absolute left-[21px] top-[44px] text-muted text-[12px]">
           Latest completed survey events
@@ -251,7 +251,7 @@ export default function PlanDetails() {
           Upgrade breakdown
         </p>
         <p className="absolute left-[237px] top-[21px] text-muted text-[11px]">
-          18 upgrades across 8 buildings
+          18 upgrades across 7 buildings
         </p>
         <p className="absolute left-[919px] top-[20px] text-muted text-[11px]">
           Baseline downside: −$94k NPV

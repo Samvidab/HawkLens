@@ -4,6 +4,7 @@ import logging
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from app.documents.routes import router as documents_router
 
 from app import events, media
 from app.agents import graph
@@ -35,6 +36,7 @@ def configure_cors(application: FastAPI) -> None:
 
 
 app = FastAPI(title="RetroAlpha backend")
+app.include_router(documents_router)
 configure_cors(app)
 app.include_router(events.router)  # GET /events/{run_id}
 app.include_router(media.router)   # GET /media/mesh/{model_id}/{file}, GET /media/{image_id}

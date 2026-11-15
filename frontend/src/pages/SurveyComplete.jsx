@@ -11,7 +11,7 @@ const EVENTS = [
 ]
 
 const SUMMARY = [
-  { label: 'Aerial coverage', value: '8 buildings' },
+  { label: 'Aerial coverage', value: '7 buildings' },
   { label: 'Interior coverage', value: '1 hero building' },
   { label: 'Feasible upgrades', value: '18 upgrades' },
   { label: 'Unverified claims', value: 'Excluded from plan' },
@@ -33,7 +33,7 @@ export default function SurveyComplete() {
         Your survey is ready
       </h1>
       <p className="absolute left-[56px] top-[202px] text-muted text-[14px] leading-[1.45]">
-        8 buildings inspected. Verified findings are ready for pricing and planning.
+        7 buildings inspected. Verified findings are ready for pricing and planning.
       </p>
 
       {/* Activity feed */}
@@ -42,7 +42,7 @@ export default function SurveyComplete() {
           Survey activity
         </p>
         <p className="absolute left-[19px] top-[46px] text-muted text-[11px] leading-[1.45]">
-          8 of 8 buildings inspected · Workspace ready
+          7 of 7 buildings inspected · Workspace ready
         </p>
         <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">Complete</p>
         {EVENTS.map((e, i) => {
@@ -75,7 +75,7 @@ export default function SurveyComplete() {
       {/* Survey result summary */}
       <section className="absolute left-[944px] top-[265px] w-[440px] h-[340px] rounded-[8px] bg-[#f5f7f2] overflow-hidden">
         <p className="absolute left-[24px] top-[23px] font-semibold text-ink text-[20px] leading-[1.45]">
-          8 buildings ready
+          7 buildings ready
         </p>
         {SUMMARY.map((s, i) => {
           const top = 85 + i * 46

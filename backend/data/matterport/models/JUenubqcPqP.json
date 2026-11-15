@@ -1,0 +1,66 @@
+{
+  "id": "JUenubqcPqP",
+  "name": "1 BD, 1 BA - 726 SF",
+  "created": "2026-11-10T00:40:01Z",
+  "modified": "2026-11-12T02:12:40Z",
+  "address": {
+    "locality": "Houston",
+    "administrative_area": "TX",
+    "postal_code": "77028",
+    "country_code": "US",
+    "formatted": "7600 East Houston Road, Houston, TX, 77028, US"
+  },
+  "geo": {
+    "lat": null,
+    "lon": null
+  },
+  "thumbnail_url": "https://cdn-2.matterport.com/apifs/models/JUenubqcPqP/images/qBJLtWpafXA/07.21.2017_14.33.15.jpg?t=2-6ec6e36ff9d01586720fd9e8a52a267f9437cbcf-1794703213-1",
+  "thumbnail_path": "/Users/vedikadangi/Downloads/HawkLens/backend/cache/media/mp/JUenubqcPqP/thumb.jpg",
+  "embed_html": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=JUenubqcPqP' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+  "show_url": "https://my.matterport.com/show/?m=JUenubqcPqP",
+  "published": true,
+  "pi_available": false,
+  "raw": {
+    "search": {
+      "id": "JUenubqcPqP",
+      "name": "1 BD, 1 BA - 726 SF",
+      "created": "2026-11-10T00:40:01Z",
+      "modified": "2026-11-12T02:12:40Z",
+      "demo": false,
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77028",
+        "countryCode": "US",
+        "address": "7600 East Houston Road, Houston, TX, 77028, US"
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/JUenubqcPqP/images/qBJLtWpafXA/07.21.2017_14.33.15.jpg?t=2-7d08bd930f8154b338ae650ed60bc0ea35205433-1794703212-1"
+      },
+      "publication": {
+        "published": true
+      }
+    },
+    "model": {
+      "id": "JUenubqcPqP",
+      "name": "1 BD, 1 BA - 726 SF",
+      "created": "2026-11-10T00:40:01Z",
+      "modified": "2026-11-12T02:12:40Z",
+      "address": {
+        "locality": "Houston",
+        "administrativeArea": "TX",
+        "postalCode": "77028",
+        "countryCode": "US",
+        "address": "7600 East Houston Road, Houston, TX, 77028, US"
+      },
+      "image": {
+        "url": "https://cdn-2.matterport.com/apifs/models/JUenubqcPqP/images/qBJLtWpafXA/07.21.2017_14.33.15.jpg?t=2-6ec6e36ff9d01586720fd9e8a52a267f9437cbcf-1794703213-1"
+      },
+      "publication": {
+        "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=JUenubqcPqP' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+        "url": "https://my.matterport.com/show/?m=JUenubqcPqP",
+        "published": true
+      }
+    }
+  }
+}

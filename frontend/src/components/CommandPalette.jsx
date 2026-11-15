@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchProperties } from '../lib/api'
+import { fetchPortfolioProperties } from '../lib/portfolioApi'
 import ShowcaseModal from './ShowcaseModal'
 import './CommandPalette.css'
 
@@ -38,7 +38,7 @@ export default function CommandPalette() {
     setLoading(true)
     setError('')
 
-    fetchProperties({ limit: 24 })
+    fetchPortfolioProperties() // the demo portfolio's buildings only (GET /portfolio)
       .then((data) => {
         if (!cancelled) {
           setProperties(data.results || [])

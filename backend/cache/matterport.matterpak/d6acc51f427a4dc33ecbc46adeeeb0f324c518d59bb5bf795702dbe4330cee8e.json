@@ -1,0 +1,31 @@
+{
+ "namespace": "matterport.matterpak",
+ "params": {
+  "variables": {
+   "id": "hu9LX64osUN"
+  }
+ },
+ "value": {
+  "model": {
+   "bundle": {
+    "availability": "unlocked"
+   },
+   "assets": {
+    "resources": [
+     {
+      "status": "unavailable",
+      "filename": "mp_matterpak_7457-Harwin-Suite-266_hu9LX64osUN.zip"
+     },
+     {
+      "status": "unavailable",
+      "filename": "mp_obj_7457-Harwin-Suite-266_hu9LX64osUN.zip"
+     },
+     {
+      "status": "unavailable",
+      "filename": "mp_obj-low-res_7457-Harwin-Suite-266_hu9LX64osUN.zip"
+     }
+    ]
+   }
+  }
+ }
+}

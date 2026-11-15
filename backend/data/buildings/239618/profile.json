@@ -1,0 +1,32 @@
+{
+  "building_id": "239618",
+  "costar_id": "239618",
+  "name": "Southwest Center",
+  "address": "6671 Southwest Fwy, houston, TX 77074",
+  "city": "Houston",
+  "lat": 29.7145739,
+  "lon": -95.4989982,
+  "footprint_wkt": "POLYGON ((-95.49877805799713 29.71438987130196, -95.49878738032452 29.71476606669351, -95.49921834280475 29.71475792828012, -95.49920901887364 29.71438173301208, -95.49877805799713 29.71438987130196))",
+  "footprint_source": "estimated",
+  "property_type": "Office",
+  "building_class": "B",
+  "year_built": 1984,
+  "stories": 8,
+  "rba_sqft": 149907.0,
+  "occupancy_pct": null,
+  "matterport_model_id": null,
+  "source_fields": {
+    "costar_id": "portfolio.json: costar_id (CoStar-derived snapshot)",
+    "name": "portfolio.json: name (CoStar-derived snapshot)",
+    "address": "portfolio.json: address (CoStar-derived snapshot)",
+    "city": "portfolio.json: city (CoStar-derived snapshot)",
+    "lat": "portfolio.json: lat (CoStar-derived snapshot)",
+    "lon": "portfolio.json: lon (CoStar-derived snapshot)",
+    "property_type": "portfolio.json: property_type (CoStar-derived snapshot)",
+    "building_class": "portfolio.json: building_class (CoStar-derived snapshot)",
+    "year_built": "portfolio.json: year_built (CoStar-derived snapshot)",
+    "stories": "portfolio.json: stories (CoStar-derived snapshot)",
+    "rba_sqft": "portfolio.json: rba_sqft (CoStar-derived snapshot)",
+    "footprint_wkt": "estimated from portfolio rba_sqft / stories and lat/lon"
+  }
+}

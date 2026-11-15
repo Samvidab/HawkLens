@@ -1,0 +1,36 @@
+{
+ "namespace": "matterport",
+ "params": {
+  "op": "model_ToE6qK9LGJG",
+  "variables": {
+   "id": "ToE6qK9LGJG"
+  }
+ },
+ "value": {
+  "model": {
+   "id": "ToE6qK9LGJG",
+   "name": "1BR, 2BA - 817SF",
+   "created": "2026-11-10T00:26:55Z",
+   "modified": "2026-11-12T03:19:47Z",
+   "address": {
+    "locality": "Houston",
+    "administrativeArea": "TX",
+    "postalCode": "77049",
+    "countryCode": "US",
+    "address": "S Lake Houston Pkwy, Houston, TX, 77049, US"
+   },
+   "geocoordinates": {
+    "latitude": 29.811898116614287,
+    "longitude": -95.21037538159972
+   },
+   "image": {
+    "url": "https://cdn-2.matterport.com/apifs/models/ToE6qK9LGJG/images/1V2MGMv7p4r/09.25.2024_16.36.37.jpg?t=2-b27c2c0095ebc0530290ca8b945d9b9fd7bfe17b-1794703213-1"
+   },
+   "publication": {
+    "embed": "<iframe width='853' height='480' src='https://my.matterport.com/show/?m=ToE6qK9LGJG' frameborder='0' allowfullscreen allow='xr-spatial-tracking'></iframe>",
+    "url": "https://my.matterport.com/show/?m=ToE6qK9LGJG",
+    "published": true
+   }
+  }
+ }
+}

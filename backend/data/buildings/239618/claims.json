@@ -1,0 +1,82 @@
+[
+  {
+    "claim_id": "239618.aerial.roof.type",
+    "building_id": "239618",
+    "agent": "aerial",
+    "field": "roof.type",
+    "value": "unknown",
+    "confidence": 0.0,
+    "evidence_ids": [
+      "vxo_1b22f8af7dbba787"
+    ],
+    "marks": [],
+    "status": "unverified",
+    "verifier_score": null,
+    "loops": 0,
+    "verifier_note": "nothing observed to verify"
+  },
+  {
+    "claim_id": "239618.aerial.roof.color",
+    "building_id": "239618",
+    "agent": "aerial",
+    "field": "roof.color",
+    "value": "unknown",
+    "confidence": 0.0,
+    "evidence_ids": [
+      "vxo_1b22f8af7dbba787"
+    ],
+    "marks": [],
+    "status": "unverified",
+    "verifier_score": null,
+    "loops": 0,
+    "verifier_note": "nothing observed to verify"
+  },
+  {
+    "claim_id": "239618.aerial.roof.usable_fraction",
+    "building_id": "239618",
+    "agent": "aerial",
+    "field": "roof.usable_fraction",
+    "value": "unknown",
+    "confidence": 0.0,
+    "evidence_ids": [
+      "vxo_1b22f8af7dbba787"
+    ],
+    "marks": [],
+    "status": "unverified",
+    "verifier_score": null,
+    "loops": 0,
+    "verifier_note": "nothing observed to verify"
+  },
+  {
+    "claim_id": "239618.aerial.roof.shading",
+    "building_id": "239618",
+    "agent": "aerial",
+    "field": "roof.shading",
+    "value": "unknown",
+    "confidence": 0.0,
+    "evidence_ids": [
+      "vxo_1b22f8af7dbba787"
+    ],
+    "marks": [],
+    "status": "unverified",
+    "verifier_score": null,
+    "loops": 0,
+    "verifier_note": "nothing observed to verify"
+  },
+  {
+    "claim_id": "239618.aerial.roof.existing_solar",
+    "building_id": "239618",
+    "agent": "aerial",
+    "field": "roof.existing_solar",
+    "value": "unknown",
+    "confidence": 0.0,
+    "evidence_ids": [
+      "vxo_1b22f8af7dbba787"
+    ],
+    "marks": [],
+    "status": "unverified",
+    "verifier_score": null,
+    "loops": 0,
+    "verifier_note": "nothing observed to verify"
+  }
+]
