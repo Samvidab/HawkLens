@@ -169,9 +169,9 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite, typically:
+Open the URL
 
-**http://localhost:5173**
+**https://hawklens.vip/**
 
 To create a production build:
 
