@@ -31,7 +31,8 @@ UPS = [up("b1", "rooftop_solar", "solar", 300, "kW"), up("b1", "led_retrofit", "
 
 
 def params(fn):
-    return list(inspect.signature(fn).parameters)
+    """Positional parameters (TRD §8.1); keyword-only extras are additions, as in live_contract_drift()."""
+    return [n for n, p in inspect.signature(fn).parameters.items() if p.kind != p.KEYWORD_ONLY]
 
 
 def test_engine_signatures_match_trd():

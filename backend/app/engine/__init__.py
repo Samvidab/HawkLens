@@ -39,6 +39,7 @@ from .models import FeasibleUpgrade, load_assumptions
 __all__ = ["simulate", "macc", "optimize", "set_assumption", "baseline"]
 
 _VALIDATION_SCENARIOS = 50
+_last_root: dict[str, str | Path | None] = {"root": None}   # buildings_root of the latest simulate()
 
 
 # --- assumptions -------------------------------------------------------------------------
@@ -139,6 +140,7 @@ def simulate(upgrades: list[FeasibleUpgrade | dict], assumptions: dict | None = 
     """
     ups = _as_upgrades(upgrades)
     a = _effective(assumptions)
+    _last_root["root"] = buildings_root
     buildings = _load_buildings((u.building_id for u in ups), buildings_root, a)
     sim = _run(ups, buildings, a, assumptions)
     cpt = _macc_mod.cost_per_tonne(sim.npv, sim.tonnes_lifetime)
@@ -164,17 +166,30 @@ def macc(exclusions: list[str] | None = None) -> dict:
 
 
 def optimize(target_pct: float, risk_lambda: float = 0.0, budget_usd: float | None = None,
-             exclusions: list[str] | None = None, *, min_p_hit: float = 0.8) -> dict:
+             exclusions: list[str] | None = None, *, min_p_hit: float = 0.8,
+             baseline_building_ids: Iterable[str] | None = None) -> dict:
     """Cheapest plan (max expected NPV) that hits target_pct % of the portfolio's baseline CO2.
 
     risk_lambda is accepted and part of plan_id but not applied yet (build step 7).
     min_p_hit: raise the internal target until the plan hits the real target in at
     least this share of scenarios (see optimizer.solve_with_min_p_hit). 0 turns it off.
+    baseline_building_ids: extra buildings whose CO2 counts toward the portfolio baseline even
+    though they have no simulated upgrade (surveyed, nothing feasible). Without it the baseline
+    is only the buildings that appear in the last simulate(), which shrinks the target.
+
+    Raises ValueError when the portfolio baseline is 0 t/yr: a percentage of nothing is not a
+    target, and an empty plan must not be reported as hitting it.
     """
     sim = _ensure_fresh()
     _, upgrades = state.current()
     a = _effective(state.request_assumptions())
-    base = sum(baseline_tonnes_per_year(b, a) for b in state.buildings().values())
+    facts = dict(state.buildings())
+    extra = sorted(set(baseline_building_ids or ()) - set(facts))
+    if extra:
+        facts.update(_load_buildings(extra, _last_root["root"], a))
+    base = sum(baseline_tonnes_per_year(b, a) for b in facts.values())
+    if not base > 0:
+        raise ValueError("portfolio baseline is 0 t/yr (no surveyed buildings); nothing to optimize against")
     return _opt.solve_with_min_p_hit(
         sim, upgrades, baseline_tonnes_per_year=base, target_pct=target_pct,
         min_p_hit=min_p_hit, budget_usd=budget_usd, exclusions=exclusions or [],

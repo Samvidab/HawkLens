@@ -198,6 +198,22 @@ def get_bills(building_id: str) -> list[Bill]:
 
 
 # -----------------------------------------
+# GET ACCOUNT
+# -----------------------------------------
+
+def get_account(account_id: str) -> dict:
+    """Live: Nessie GET /accounts/{id} -> {account_id, nickname, type, balance, simulated: False}.
+    Stub: no account exists, so nothing is invented: balance None, simulated True."""
+    if _is_live():
+        data = _request("GET", f"/accounts/{account_id}")
+        bal = data.get("balance")
+        return {"account_id": str(data.get("_id", account_id)), "nickname": data.get("nickname"),
+                "type": data.get("type"), "balance": float(bal) if isinstance(bal, (int, float)) else None,
+                "simulated": False}
+    return {"account_id": account_id, "nickname": None, "type": None, "balance": None, "simulated": True}
+
+
+# -----------------------------------------
 # CREATE ACCOUNT
 # -----------------------------------------
 

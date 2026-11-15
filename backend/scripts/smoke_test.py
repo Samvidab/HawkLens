@@ -150,7 +150,25 @@ async def run(base: str, run_id: str, strict: bool, live_engine: bool = False) -
         plan_id = st.get("plan_id")
         rep.check("GET /state has the plan id and layout", bool(plan_id) and st["layout"]["widgets"], str(plan_id))
         await act("approve with a stale plan_id", "approve", {"plan_id": "plan_stale"}, expect=409)
-        ap = await act("approve", "approve", {"plan_id": plan_id}, situation="approved")
+        stub_pricing = strict and not live_engine
+        pv = (await c.get("/plan")).json()
+        rep.check("GET /plan is the plan in /state", pv.get("plan_id") == plan_id, str(pv.get("plan_id")))
+        ap = None
+        if stub_pricing:  # sample pricing must never be fundable
+            rep.check("GET /plan says stub pricing is not approvable", pv["approval"]["approvable"] is False)
+            await act("approve a stub-priced plan is refused", "approve", {"plan_id": plan_id}, expect=409)
+        else:
+            if pv.get("status") != "ok":  # an infeasible plan must be refused, then a reachable target funded
+                rep.check("GET /plan says an infeasible plan is not approvable", pv["approval"]["approvable"] is False)
+                await act("approve an infeasible plan is refused", "approve", {"plan_id": plan_id}, expect=409)
+                await act("reachable goal", "goal", {"city": "Houston", "target_pct": 5, "risk_lambda": 0.5})
+                pv = (await c.get("/plan")).json()
+                plan_id = pv.get("plan_id")
+            rep.check("GET /plan approvable for a feasible engine plan", pv["approval"]["approvable"] is True,
+                      "; ".join(pv["approval"]["reasons"]))
+            rep.check("plan line items reconcile to total_upfront", pv.get("reconciles") is True and
+                      abs(sum(r["upfront_usd"] for r in pv["line_items"]) - pv["total_upfront"]) < 0.01)
+            ap = await act("approve", "approve", {"plan_id": plan_id}, situation="approved")
         if ap:
             fc = w_of(ap, "financing_card")
             rep.check("financing executed with Nessie ids", fc["state"] == "executed" and bool(fc["nessie_ids"]), str(list((fc["nessie_ids"] or {}))[:2]))
@@ -176,7 +194,8 @@ async def run(base: str, run_id: str, strict: bool, live_engine: bool = False) -
         rep.check("live stream == recorded events", [e["seq"] for e in live] == [e["seq"] for e in replay], f"{len(live)} live / {len(replay)} recorded")
         rep.check("event seq contiguous", [e["seq"] for e in replay] == list(range(len(replay))))
         rep.check("event kinds legal, messages <= 90 chars", all(e["kind"] in EVENT_KINDS and len(e["message"]) <= 90 for e in replay))
-        rep.check("Orchestrator, Pricing, Composer, Finance all spoke", {"Orchestrator", "Pricing", "Composer", "Finance"} <= {e["agent"] for e in replay})
+        speakers = {"Orchestrator", "Pricing", "Composer"} | (set() if stub_pricing else {"Finance"})
+        rep.check(f"{', '.join(sorted(speakers))} all spoke", speakers <= {e["agent"] for e in replay})
     return rep
 
 

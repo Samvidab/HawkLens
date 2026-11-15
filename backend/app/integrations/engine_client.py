@@ -205,19 +205,28 @@ def baseline(building_id: str) -> dict:
             "tonnes_per_year": round(sqft * b["kg_co2_per_sqft_year"] / 1000, 2)}
 
 
-def optimize(target_pct: float, risk_lambda: float, budget_usd: float | None, exclusions: list[str]) -> dict:
+def optimize(target_pct: float, risk_lambda: float, budget_usd: float | None, exclusions: list[str], *,
+             baseline_building_ids: list[str] | None = None) -> dict:
     """Stub optimizer: greedy by cost per tonne, one upgrade per building per category, within budget.
     target_pct is 0-100. Result flag `risk_supported`: False when risk_lambda has no effect on the plan, so the UI
-    can disable the risk slider."""
+    can disable the risk slider. baseline_building_ids: surveyed buildings whose CO2 counts toward the portfolio
+    baseline even when they have no upgrade. A zero baseline raises ValueError (both modes)."""
     if _live_mode():
         # risk_lambda is passed through, but the engine reports whether it is applied (CVaR objective, its build
         # step 7) in `risk_supported`; an engine that does not say so is treated as not supporting it.
-        out = dict(_live().optimize(target_pct, risk_lambda, budget_usd, exclusions))
+        import inspect  # noqa: PLC0415
+        fn = _live().optimize
+        takes = "baseline_building_ids" in inspect.signature(fn).parameters
+        kw = {"baseline_building_ids": baseline_building_ids} if (baseline_building_ids and takes) else {}
+        out = dict(fn(target_pct, risk_lambda, budget_usd, exclusions, **kw))
         out.setdefault("risk_supported", False)
         return out
     p = _params()
-    buildings = sorted({u.building_id for u in _state["upgrades"].values()})
-    needed = round(sum(baseline(b)["tonnes_per_year"] for b in buildings) * target_pct / 100, 2)
+    buildings = sorted({u.building_id for u in _state["upgrades"].values()} | set(baseline_building_ids or ()))
+    base_total = sum(baseline(b)["tonnes_per_year"] for b in buildings)
+    if not base_total > 0:
+        raise ValueError("portfolio baseline is 0 t/yr (no surveyed buildings); nothing to optimize against")
+    needed = round(base_total * target_pct / 100, 2)
     pool = sorted(_eligible(exclusions), key=lambda u: (_state["models"][u.upgrade_id]["cost_per_tonne"], u.upgrade_id))
     chosen: list[FeasibleUpgrade] = []
     used: set[tuple[str, str]] = set()

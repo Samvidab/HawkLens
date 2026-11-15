@@ -4,7 +4,8 @@
 
 Runs the real pipeline (site-engineer rules -> pricing -> replan -> composer -> resolver) on four
 synthetic buildings in a temp data dir, with Gemini disabled (stock `why` lines, fallback memo), so
-output is deterministic and needs no keys or network. NOT real CoStar data; pricing is the stub's.
+output is deterministic and needs no keys or network. NOT real CoStar data; pricing is the stub's, except
+the approved sample, which the real engine prices (sample pricing cannot be approved).
 """
 from __future__ import annotations
 
@@ -132,9 +133,17 @@ async def generate(out: Path) -> dict[str, dict]:
     scan = DATA / "buildings/b1/interior_scan.json"  # Lane A supplies a Matterport tour link: hero_3d embeds it instead of the mesh
     write_json(scan, {**json.loads(scan.read_text()), "showcase_url": "https://my.matterport.com/show/?m=SYNTH-MODEL"})
     samples["building_detail_showcase"] = await act("sample", "open_building", {"building_id": "b1"})
-    fresh(); await act("sample", "goal", GOAL)
-    pid = json.loads((DATA / "plans/current.json").read_text())["plan_id"]
-    samples["approved"] = await act("sample", "approve", {"plan_id": pid})
+    # Approval refuses stub (sample) pricing and infeasible plans, so the approved sample is priced by the real
+    # quant engine at a target this synthetic portfolio can reach.
+    fresh(); os.environ["ENGINE_MODE"] = "live"; get_settings.cache_clear()
+    from app.engine import state as engine_state
+    engine_state.clear()
+    try:
+        await act("sample", "goal", {**GOAL, "target_pct": 5})
+        pid = json.loads((DATA / "plans/current.json").read_text())["plan_id"]
+        samples["approved"] = await act("sample", "approve", {"plan_id": pid})
+    finally:
+        os.environ["ENGINE_MODE"] = "stub"; get_settings.cache_clear()
 
     out.mkdir(parents=True, exist_ok=True)
     for name, lay in samples.items():

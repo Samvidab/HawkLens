@@ -11,6 +11,7 @@ import asyncio
 import re
 
 from app import events
+from app.agents import approval
 from app.agents.llm import _env
 from app.config import get_settings
 from app.integrations import nessie_client as nessie
@@ -22,7 +23,12 @@ STUB_CUSTOMER, STUB_SOURCE = "demo-customer", "demo-operating-account"
 
 
 class ApprovalError(Exception):
-    """approve rejected: no plan, plan_id mismatch, or the plan has nothing to finance."""
+    """approve rejected: no plan, plan_id mismatch, or the plan fails approval.check()."""
+
+
+def simulated() -> bool:
+    """True when NESSIE_MODE=stub: no Nessie call is made; ids are local hashes and no money moves."""
+    return get_settings().nessie_mode != "live"
 
 
 def _ids() -> tuple[str, str]:
@@ -69,21 +75,26 @@ async def run_finance(run_id: str, plan_id: str | None) -> dict:
         raise ApprovalError("no current plan to approve")
     if plan_id != plan["plan_id"]:
         raise ApprovalError(f"plan_id {plan_id!r} is not the current plan {plan['plan_id']!r}")
-    if not plan.get("selected"):
-        raise ApprovalError("plan has no upgrades to finance")
-
     done = read_json(result_path(plan_id), {})
     if done.get("state") == "executed":
         if plan.get("financing", {}).get("state") != "executed":
             _publish(plan, done)  # e.g. plan re-priced to the same id after approval
         return done  # idempotent: second approve books nothing
+    verdict = approval.check(plan)
+    if not verdict["approvable"]:
+        raise ApprovalError("plan cannot be approved: " + "; ".join(verdict["reasons"]))
     bills = plan_bills(plan)
-    total = plan.get("total_upfront")
-    if total is None or total <= 0:
-        raise ApprovalError("plan has no upfront cost")
+    total = plan["total_upfront"]
+    if abs(sum(b["amount"] for b in bills) - total) > 0.01 * max(len(bills), 1):
+        raise ApprovalError("contractor bills do not add up to the plan's upfront cost")
     customer, source = _ids()
+    if not simulated() and not done.get("account_id"):
+        bal = (await asyncio.to_thread(nessie.get_account, source)).get("balance")
+        if not isinstance(bal, (int, float)) or bal < total:
+            raise ApprovalError(f"source account balance {bal!r} does not cover ${total:,.2f}")
     st = {"plan_id": plan_id, "state": "proposed", "account_id": None, "transfer_id": None,
-          "bills": [{**b, "bill_id": None} for b in bills], **done}
+          "bills": [{**b, "bill_id": None} for b in bills], "amount": round(total, 2),
+          "source_account_id": source, "mode": get_settings().nessie_mode, "simulated": simulated(), **done}
 
     def save() -> None:
         write_json(result_path(plan_id), st)
@@ -120,6 +131,7 @@ def _publish(plan: dict, st: dict) -> None:
     nessie_ids = {"account": st["account_id"], "transfer": st["transfer_id"],
                   **{f"bill: {b['contractor']}": b["bill_id"] for b in st["bills"]}}
     plan = {**plan, "bills": [{"contractor": b["contractor"], "amount": b["amount"]} for b in st["bills"]],
-            "financing": {"state": st["state"], "nessie_ids": nessie_ids}}
+            "financing": {"state": st["state"], "nessie_ids": nessie_ids, "amount": st.get("amount"),
+                          "mode": st.get("mode"), "simulated": st.get("simulated", True)}}
     write_json(data_path("plans", "current.json"), plan)
     write_json(data_path("plans", f"{plan['plan_id']}.json"), plan)

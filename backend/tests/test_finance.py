@@ -15,8 +15,12 @@ from tests.test_memo import data, fake_llm, GOOD  # noqa: F401  (fixtures/helper
 
 
 @pytest.fixture(autouse=True)
-def clean(monkeypatch):
-    monkeypatch.setenv("NESSIE_MODE", "stub"); get_settings.cache_clear(); nes.reset_stub()
+def clean(data, monkeypatch):  # after `data`, which sets ENGINE_MODE=stub
+    # Real engine: approval refuses stub (sample) pricing, so financing is tested on quant-engine numbers.
+    monkeypatch.setenv("NESSIE_MODE", "stub"); monkeypatch.setenv("ENGINE_MODE", "live")
+    get_settings.cache_clear(); nes.reset_stub()
+    from app.engine import state as engine_state
+    engine_state.clear()
     yield
     get_settings.cache_clear()
 

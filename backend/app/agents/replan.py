@@ -22,7 +22,7 @@ from app.agents import composer
 from app.agents.composer import View
 from app.agents.finance import ApprovalError, run_finance
 from app.agents.memo import write_memo
-from app.agents.pricing import load_upgrades, run_pricing
+from app.agents.pricing import load_upgrades, requested_ids, run_pricing
 from app.schemas.goal import Goal, OwnerAction
 from app.schemas.layout import Layout
 from app.storage import data_path, read_json
@@ -97,8 +97,13 @@ async def replan(action: OwnerAction) -> Layout:
             raise ReplanError(422, str(e)) from e
         excl_b, excl_u, owner_inc = set(), set(), set()  # a new goal is a fresh run
         view = View()
-        missing = [b for b in (goal.building_ids or []) if b not in load_upgrades(goal.building_ids)]
-        n = len(goal.building_ids) if goal.building_ids else len(names)
+        # No explicit list means the whole portfolio: survey any portfolio building without results, so a goal sent
+        # straight to /compose never prices an empty portfolio.
+        wanted = requested_ids(goal)
+        have = load_upgrades(wanted)
+        tried = (read_json(data_path("runs", rid, "state.json"), {}) or {}).get("results", {})  # this run's survey
+        missing = [b for b in wanted if b not in have and b not in tried]
+        n = len(wanted)
         events.emit(rid, "Orchestrator", "plan", f"Plan: price {n} buildings at {goal.target_pct:g}% target")
         if missing and _survey_runner is not None:
             await _survey_runner(rid, goal, missing)

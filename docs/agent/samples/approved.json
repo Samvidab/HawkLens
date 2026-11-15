@@ -13,24 +13,29 @@
       "size": "half",
       "data_ref": "plans/current.json#/financing",
       "props": {
-        "plan_id": "plan_3249c72ce7",
-        "total_upfront_usd": 4161500.0,
+        "plan_id": "9456f854d6e8",
+        "total_upfront_usd": 3273846.7,
         "bills": [
           {
-            "contractor": "Electrical contractor",
-            "amount": 2825000.0
+            "contractor": "Glazing contractor",
+            "amount": 1718180.0
+          },
+          {
+            "contractor": "Roofing contractor",
+            "amount": 36916.7
           },
           {
             "contractor": "Solar installer",
-            "amount": 1336500.0
+            "amount": 1518750.0
           }
         ],
         "state": "executed",
         "nessie_ids": {
           "account": "1447ded07d026a78476b0d59",
-          "transfer": "563212e67efe1427aa9fc20b",
-          "bill: Electrical contractor": "062649e7d6c28ba76785188c",
-          "bill: Solar installer": "b920b5feb88d7c8ca4b8b943"
+          "transfer": "96c7ab61f7fc19e340743689",
+          "bill: Glazing contractor": "bb214930677299b2a67dcc98",
+          "bill: Roofing contractor": "0a564482b935fac794123051",
+          "bill: Solar installer": "8a40dac6ba3ec1bc2fde0bab"
         }
       }
     },
@@ -40,9 +45,9 @@
       "title": "Investment memo",
       "why": "The plan in prose; every number comes from the engine.",
       "size": "wide",
-      "data_ref": "memo/plan_3249c72ce7.md",
+      "data_ref": "memo/9456f854d6e8.md",
       "props": {
-        "markdown": "# Retrofit plan memo (plan_3249c72ce7)\n\nThis plan cuts 1,685 t/yr against a need of 1,620 t/yr for a 25% reduction target, using 5 upgrades across 3 buildings.\n\nIt costs $4.2M upfront (no budget cap), with an expected net present value of $692,850. In the worst 5 percent of outcomes the value is -$1.7M, and the chance of a loss is 28%.\n\nThe probability of hitting the target is 100%. Every upgrade is backed by images the agents inspected and checked.\n\n## Upgrades in the plan\n\n| Building | Upgrade | Size | Upfront | Tonnes/yr |\n|---|---|---|---|---|\n| Sample Tower | rooftop_solar | 360 kW | $792,000 | 396 |\n| Sample Plaza | rooftop_solar | 158 kW | $346,500 | 173 |\n| Sample Lofts | rooftop_solar | 90 kW | $198,000 | 99 |\n| Sample Tower | led_retrofit | 820,000 sqft | $2.0M | 738 |\n| Sample Plaza | led_retrofit | 310,000 sqft | $775,000 | 279 |\n\n_Sample pricing: figures come from placeholder stub values, not the quant engine._\n"
+        "markdown": "# Retrofit plan memo (9456f854d6e8)\n\nThis plan cuts 675 t/yr against a need of 410 t/yr for a 5% reduction target, using 8 upgrades across 4 buildings.\n\nIt costs $3.3M upfront (no budget cap), with an expected net present value of $213,292. In the worst 5 percent of outcomes the value is -$1.3M, and the chance of a loss is 44%.\n\nThe probability of hitting the target is 99%. Every upgrade is backed by images the agents inspected and checked.\n\n## Upgrades in the plan\n\n| Building | Upgrade | Size | Upfront | Tonnes/yr |\n|---|---|---|---|---|\n| Sample Tower | rooftop_solar | 360 kW | $900,000 | 189 |\n| Sample Tower | cool_roof | 30,000 sqft | $15,000 | 5 |\n| Sample Tower | window_upgrade | 68,191 sqft | $1.4M | 257 |\n| Sample Plaza | rooftop_solar | 158 kW | $393,750 | 82 |\n| Sample Plaza | cool_roof | 25,833 sqft | $12,917 | 4 |\n| Sample Plaza | window_upgrade | 17,718 sqft | $354,360 | 89 |\n| Sample Lofts | rooftop_solar | 90 kW | $225,000 | 47 |\n| Sample Annex | cool_roof | 18,000 sqft | $9,000 | 3 |\n"
       }
     },
     {
@@ -59,10 +64,34 @@
             "building_name": "Sample Tower",
             "type": "rooftop_solar",
             "size": "360 kW",
-            "upfront_usd": 792000.0,
-            "exp_npv": 382681.18,
-            "cost_per_tonne": -38.65,
-            "tonnes_per_year": 396.0,
+            "upfront_usd": 900000.0,
+            "exp_npv": 72320.79282769865,
+            "cost_per_tonne": -15.331857232587296,
+            "tonnes_per_year": 188.60213970602845,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b1:cool_roof",
+            "building_name": "Sample Tower",
+            "type": "cool_roof",
+            "size": "30,000 sqft",
+            "upfront_usd": 15000.0,
+            "exp_npv": 929.5225001039173,
+            "cost_per_tonne": -11.572909512583728,
+            "tonnes_per_year": 4.589001938156932,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b1:window_upgrade",
+            "building_name": "Sample Tower",
+            "type": "window_upgrade",
+            "size": "68,191 sqft",
+            "upfront_usd": 1363820.0,
+            "exp_npv": -21241.36770516228,
+            "cost_per_tonne": 2.7601043581662346,
+            "tonnes_per_year": 256.71285023125915,
             "verified": "verified",
             "owner_included": false
           },
@@ -71,10 +100,34 @@
             "building_name": "Sample Plaza",
             "type": "rooftop_solar",
             "size": "158 kW",
-            "upfront_usd": 346500.0,
-            "exp_npv": 167423.02,
-            "cost_per_tonne": -38.65,
-            "tonnes_per_year": 173.25,
+            "upfront_usd": 393750.0,
+            "exp_npv": 30156.61975157789,
+            "cost_per_tonne": -14.589827539348322,
+            "tonnes_per_year": 82.44843253175435,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b2:cool_roof",
+            "building_name": "Sample Plaza",
+            "type": "cool_roof",
+            "size": "25,833 sqft",
+            "upfront_usd": 12916.699999999997,
+            "exp_npv": 709.6307965394407,
+            "cost_per_tonne": -10.339098064289722,
+            "tonnes_per_year": 3.9232329188661175,
+            "verified": "verified",
+            "owner_included": false
+          },
+          {
+            "upgrade_id": "b2:window_upgrade",
+            "building_name": "Sample Plaza",
+            "type": "window_upgrade",
+            "size": "17,718 sqft",
+            "upfront_usd": 354360.0,
+            "exp_npv": 111777.2117640313,
+            "cost_per_tonne": -41.88437987099444,
+            "tonnes_per_year": 88.87453752488398,
             "verified": "verified",
             "owner_included": false
           },
@@ -83,44 +136,32 @@
             "building_name": "Sample Lofts",
             "type": "rooftop_solar",
             "size": "90 kW",
-            "upfront_usd": 198000.0,
-            "exp_npv": 95670.3,
-            "cost_per_tonne": -38.65,
-            "tonnes_per_year": 99.0,
+            "upfront_usd": 225000.0,
+            "exp_npv": 18177.019859906977,
+            "cost_per_tonne": -15.403199108050572,
+            "tonnes_per_year": 47.14737440747817,
             "verified": "verified",
             "owner_included": false
           },
           {
-            "upgrade_id": "b1:led_retrofit",
-            "building_name": "Sample Tower",
-            "type": "led_retrofit",
-            "size": "820,000 sqft",
-            "upfront_usd": 2050000.0,
-            "exp_npv": 34160.88,
-            "cost_per_tonne": -3.86,
-            "tonnes_per_year": 738.0,
+            "upgrade_id": "b4:cool_roof",
+            "building_name": "Sample Annex",
+            "type": "cool_roof",
+            "size": "18,000 sqft",
+            "upfront_usd": 9000.0,
+            "exp_npv": 462.91619939076213,
+            "cost_per_tonne": -9.695658341692226,
+            "tonnes_per_year": 2.7307748019785985,
             "verified": "verified",
-            "owner_included": false
-          },
-          {
-            "upgrade_id": "b2:led_retrofit",
-            "building_name": "Sample Plaza",
-            "type": "led_retrofit",
-            "size": "310,000 sqft",
-            "upfront_usd": 775000.0,
-            "exp_npv": 12914.48,
-            "cost_per_tonne": -3.86,
-            "tonnes_per_year": 279.0,
-            "verified": "assumed",
             "owner_included": false
           }
         ],
         "totals": {
-          "upfront_usd": 4161500.0,
-          "exp_npv": 692849.86,
-          "tonnes_per_year": 1685.25
+          "upfront_usd": 3273846.7,
+          "exp_npv": 213292.34599408665,
+          "tonnes_per_year": 675.0283440604057
         },
-        "sample_pricing": true
+        "sample_pricing": false
       }
     },
     {

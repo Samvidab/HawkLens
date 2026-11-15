@@ -6,10 +6,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import events, media
-from app.agents import graph
+from app.agents import approval, finance, graph
 from app.agents.replan import ReplanError, register_survey_runner, replan
 from app.config import get_settings
 from app.envutil import env_value
+from app.integrations import nessie_client
 from app.matterport.routes import router as matterport_router
 from app.schemas.goal import Goal, OwnerAction
 from app.schemas.layout import Layout
@@ -108,3 +109,37 @@ def state(run_id: str) -> dict:
     if st is None:
         raise HTTPException(404, f"unknown run {run_id}")
     return st
+
+
+@app.get("/plan")
+def current_plan() -> dict:
+    """The one persisted plan (plans/current.json) every page reads, plus the approval verdict and funding mode.
+    Numbers are the quant engine's; the frontend formats them and never recomputes them.
+    status: "ok" | "infeasible" | "no_data"; 404 until a goal has been priced."""
+    plan = read_json(data_path("plans", "current.json"))
+    if not plan:
+        raise HTTPException(404, "no plan yet; POST /run to survey and price the portfolio")
+    plan.pop("simulate", None)  # per-upgrade scenario summaries: large, and already folded into line_items
+    fin = plan.get("financing") or {}
+    return {**plan, "approval": approval.check(read_json(data_path("plans", "current.json"))),
+            "funding": {"mode": get_settings().nessie_mode, "simulated": finance.simulated(),
+                        "state": fin.get("state", "proposed"), "executed": fin.get("state") == "executed"}}
+
+
+@app.get("/funding-account")
+def funding_account() -> dict:
+    """The Nessie source account the approved amount is drawn from. Live: its real balance from Nessie.
+    Stub: no account exists, so balance is null and simulated is true (nothing is invented)."""
+    s = get_settings()
+    src = env_value("NESSIE_SOURCE_ACCOUNT_ID")
+    if s.nessie_mode != "live":
+        return {"mode": s.nessie_mode, "simulated": True, "configured": bool(src),
+                "account_id": None, "nickname": None, "balance": None}
+    if not src:
+        return {"mode": "live", "simulated": False, "configured": False,
+                "account_id": None, "nickname": None, "balance": None, "error": "NESSIE_SOURCE_ACCOUNT_ID is not set"}
+    try:
+        acct = nessie_client.get_account(src)
+    except Exception as e:  # noqa: BLE001 - surface the failure; never fall back to a made-up balance
+        raise HTTPException(502, f"Nessie account lookup failed: {type(e).__name__}") from e
+    return {"mode": "live", "configured": True, **acct, "account_id": "…" + str(acct["account_id"])[-4:]}
