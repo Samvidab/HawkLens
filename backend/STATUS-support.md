@@ -269,3 +269,19 @@ Say which of these you want and I will add them.
 - `baseline.basis = "benchmark estimate"` so the UI labels baselines as estimates.
 - Stock `why` lines no longer claim "cheapest"/"best" (the engine maximises E[NPV]+λ·CVaR, not cost).
 - 507 passed, 1 skipped; samples regenerated.
+
+## Merge agent (Investigator) + truth fixes + Workspace page removed (2026-11-14)
+- Merged origin/agent (`bc5bf87`: Investigator, verifier/interior changes): clean. 529 passed, 1 skipped.
+- Warm cache, CACHE_MODE=read_only, ENGINE_MODE=live: a full Houston survey at 40 % / λ 0.2 replays the Investigator from cache
+  (235 events, 56 Investigator steps, `Workspace ready`; only errors = "3D mesh not available from Matterport yet").
+  At other targets the Investigator's Gemini calls miss the cache (the goal is in its prompt) and it falls back to the fixed
+  pipeline, saying so in the feed ("investigator could not decide (CacheMiss)").
+- smoke_test.py: self-contained `--engine live` 103/103; against the warm-cache server 94/94 once the plan cache is warm.
+  Cold server: two engine solves take 3.2-4.0 s (over the 3 s budget) for plans not yet cached.
+- Fixes: resolver fills each gallery image's `source`/`orientation` from the survey's `images.json` (was always null);
+  Finance records "plan … already funded: nothing booked again" when an approve hits an already-funded plan (it was
+  silent); smoke test compares GET /state with the last layout (it compared with the first approve).
+- Browser path (frontend-wiring, Playwright, this backend): 5/5 pass (live survey -> plan -> risk -> building -> evidence
+  -> approve; reload; risk control; strict audits with and without a backend).
+- Workspace page removed from frontend-wiring by `git revert 866f623` (commit `4133682`); no Workspace commits on lane-support.
+- Waiting on Lane A: the `investigation_trace` widget (to show the Investigator's steps on the building page).

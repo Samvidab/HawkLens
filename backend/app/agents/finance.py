@@ -77,7 +77,9 @@ async def run_finance(run_id: str, plan_id: str | None) -> dict:
     if done.get("state") == "executed":
         if plan.get("financing", {}).get("state") != "executed":
             _publish(plan, done)  # e.g. plan re-priced to the same id after approval
-        return done  # idempotent: second approve books nothing
+        # idempotent: a second approve (in this run or another run that reached the same plan) books nothing; say so
+        events.emit(run_id, "Finance", "act", f"plan {plan_id} already funded (acct {_short(done.get('account_id') or '')}): nothing booked again")
+        return done
     bills = plan_bills(plan)
     total = plan.get("total_upfront")
     if total is None or total <= 0:

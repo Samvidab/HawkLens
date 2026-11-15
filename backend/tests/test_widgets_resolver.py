@@ -127,6 +127,19 @@ def test_building_detail_with_and_without_matterport(data):
     assert widgets(lay2)["risk_histogram"].props["scope"] == "plan"  # no per-building risk available
 
 
+def test_gallery_source_comes_from_images_json(data):
+    """The gallery says where each image came from (images.json, written by the tool that fetched it), never a guess."""
+    write(data / "buildings/b1/images.json", {"img1": {"image_id": "img1", "source": "vexcel_overhead", "orientation": None},
+                                              "img2": {"image_id": "img2", "source": "vexcel_oblique", "orientation": "S"}})
+    ctx = ResolveContext.load(data, "r1", focus_building_id="b1")
+    ev = {i["image_id"]: i for i in widgets(resolve_layout(ctx, "building_detail"))["evidence_gallery"].props["items"]}
+    assert ev["img1"]["source"] == "vexcel_overhead" and ev["img1"]["orientation"] is None
+    assert ev["img2"]["source"] == "vexcel_oblique" and ev["img2"]["orientation"] == "S"
+    (data / "buildings/b1/images.json").unlink()  # no record: unknown stays unknown
+    ctx2 = ResolveContext.load(data, "r1", focus_building_id="b1")
+    assert all(i["source"] is None for i in widgets(resolve_layout(ctx2, "building_detail"))["evidence_gallery"].props["items"])
+
+
 def test_building_detail_requires_focus(data):
     with pytest.raises(ResolveError):
         resolve_layout(ResolveContext.load(data, "r1"), "building_detail")
