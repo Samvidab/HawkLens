@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
 import { Estimate, NA, Sources, Stub, useStub } from '../components/Truth'
 import { FootprintMap, hasFootprints } from '../components/widgets'
+import EmissionsTour from '../components/EmissionsTour'
+import { emissions3dOn } from '../lib/emissions'
 import { useBuildingFocus } from '../lib/store'
 import { buildingModel as selectBuilding, buildingTotals, upgradeRows, widget } from '../lib/viewModels'
 import { useGo } from '../lib/ui'
@@ -85,10 +87,14 @@ export default function BuildingDetails() {
 
       {/* Building picture card */}
       <section className="absolute left-[56px] top-[262px] w-[848px] h-[375px] rounded-[8px] bg-model overflow-hidden">
-        <p className="absolute left-[22px] top-[20px] font-medium text-ink text-[14px] z-10">
-          Building model
-        </p>
-        <div className="absolute inset-0"><BuildingPicture layout={run.layout} height={250} /></div>
+        {!emissions3dOn() && ( // with the tour on, Matterport's own header and controls use these corners
+          <p className="absolute left-[22px] top-[20px] font-medium text-ink text-[14px] z-10">
+            Building model
+          </p>
+        )}
+        {emissions3dOn() // behind VITE_EMISSIONS_3D: the tour via the Showcase SDK with CO2-source tags and a legend
+          ? <EmissionsTour key={bm.id} layout={run.layout} />
+          : <div className="absolute inset-0"><BuildingPicture layout={run.layout} height={250} /></div>}
         {solar && (
           <div className="absolute left-[555px] top-[98px] w-[260px] h-[58px] rounded-[6px] bg-white overflow-hidden shadow-sm">
             <p className="absolute left-[13px] top-[11px] w-[240px] truncate font-medium text-brand text-[14px]">
@@ -103,13 +109,15 @@ export default function BuildingDetails() {
             </button>
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => go('/expanded-building-model')}
-          className="absolute left-[736px] top-[339px] text-muted text-[12px] hover:text-ink"
-        >
-          Expand ↗
-        </button>
+        {!emissions3dOn() && (
+          <button
+            type="button"
+            onClick={() => go('/expanded-building-model')}
+            className="absolute left-[736px] top-[339px] text-muted text-[12px] hover:text-ink"
+          >
+            Expand ↗
+          </button>
+        )}
       </section>
 
       {/* Property profile */}

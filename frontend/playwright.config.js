@@ -6,6 +6,7 @@ import { defineConfig } from '@playwright/test'
 const API = process.env.E2E_API_URL || 'http://localhost:8000'
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: /emissions\.spec\.js/, // runs with its own config (flag on): playwright.emissions.config.js
   timeout: 120_000,
   workers: 1,
   reporter: [['list']],
