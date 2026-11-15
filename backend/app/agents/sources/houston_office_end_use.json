@@ -1,0 +1,210 @@
+{
+  "citation": "U.S. EIA, 2018 Commercial Buildings Energy Consumption Survey (CBECS), Table E5",
+  "url": "https://www.eia.gov/consumption/commercial/data/2018/ce/pdf/e5.pdf",
+  "table": "E5",
+  "table_title": "Table E5. Electricity consumption (in kilowatthours [kWh]) by end use, 2018",
+  "unit": "Total electricity consumption (billion kWh)",
+  "section": "Principal building activity",
+  "row": "Office",
+  "row_quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+  "scope": "all U.S. office buildings (Table E5 has no office x census-region cross-tabulation, so the South region is not broken out for offices)",
+  "measures": "electricity",
+  "basis": "share of the row's total electricity consumption",
+  "verification": {
+    "status": "verified",
+    "method": "every quote and value found verbatim in the fetched PDF text; shares computed in code as value / row total",
+    "checks": [
+      {
+        "check": "table title quoted verbatim",
+        "passed": true,
+        "detail": "Table E5. Electricity consumption (in kilowatthours [kWh]) by end use, 2018"
+      },
+      {
+        "check": "title measures electricity consumption (not intensity)",
+        "passed": true
+      },
+      {
+        "check": "unit quoted verbatim",
+        "passed": true,
+        "detail": "Total electricity consumption (billion kWh)"
+      },
+      {
+        "check": "column headers quoted verbatim, in order",
+        "passed": true,
+        "detail": "Total Space heating Cooling Ventilation Water heating Lighting Cooking Refrigeration Office equipment Computing Other"
+      },
+      {
+        "check": "row quoted verbatim as a full line",
+        "passed": true,
+        "detail": "Office 227 13 23 63 2 38 1 6 4 25 52"
+      },
+      {
+        "check": "row sits under the quoted section",
+        "passed": true,
+        "detail": "Principal building activity"
+      },
+      {
+        "check": "end-use columns match the quoted headers",
+        "passed": true,
+        "detail": "Total Space heating Cooling Ventilation Water heating Lighting Cooking Refrigeration Office equipment Computing Other"
+      },
+      {
+        "check": "row has one value per column",
+        "passed": true,
+        "detail": "11 values"
+      },
+      {
+        "check": "total equals the row's first value",
+        "passed": true,
+        "detail": "227"
+      },
+      {
+        "check": "Space heating = 13 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Cooling = 23 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Ventilation = 63 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Water heating = 2 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Lighting = 38 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Cooking = 1 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Refrigeration = 6 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Office equipment = 4 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Computing = 25 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "Other = 52 at its column in the row",
+        "passed": true
+      },
+      {
+        "check": "end uses add up to the total (rounding allowed)",
+        "passed": true,
+        "detail": "sum 227 vs total 227"
+      }
+    ]
+  },
+  "end_uses": [
+    {
+      "name": "Space heating",
+      "category": "heating",
+      "column": "Space heating",
+      "value_text": "13",
+      "total_text": "227",
+      "share": 0.05726872246696035,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Cooling",
+      "category": "cooling",
+      "column": "Cooling",
+      "value_text": "23",
+      "total_text": "227",
+      "share": 0.1013215859030837,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Ventilation",
+      "category": "ventilation",
+      "column": "Ventilation",
+      "value_text": "63",
+      "total_text": "227",
+      "share": 0.2775330396475771,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Water heating",
+      "category": "water_heating",
+      "column": "Water heating",
+      "value_text": "2",
+      "total_text": "227",
+      "share": 0.00881057268722467,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Lighting",
+      "category": "lighting",
+      "column": "Lighting",
+      "value_text": "38",
+      "total_text": "227",
+      "share": 0.16740088105726872,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Cooking",
+      "category": "cooking",
+      "column": "Cooking",
+      "value_text": "1",
+      "total_text": "227",
+      "share": 0.004405286343612335,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Refrigeration",
+      "category": "refrigeration",
+      "column": "Refrigeration",
+      "value_text": "6",
+      "total_text": "227",
+      "share": 0.02643171806167401,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Office equipment",
+      "category": "office_equipment",
+      "column": "Office equipment",
+      "value_text": "4",
+      "total_text": "227",
+      "share": 0.01762114537444934,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Computing",
+      "category": "computing",
+      "column": "Computing",
+      "value_text": "25",
+      "total_text": "227",
+      "share": 0.11013215859030837,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    },
+    {
+      "name": "Other",
+      "category": "other",
+      "column": "Other",
+      "value_text": "52",
+      "total_text": "227",
+      "share": 0.2290748898678414,
+      "quote": "Office 227 13 23 63 2 38 1 6 4 25 52",
+      "verified": true
+    }
+  ]
+}
