@@ -13,7 +13,7 @@ const linked = new Map() // any linked model id -> building name
 for (const b of ours.buildings) {
   const data = await get(OURS, `/co2_equipment/${encodeURIComponent(b.building_id)}`)
   if (data.model_id && data.items.length) surveyed.set(data.model_id, { name: b.name, data })
-  for (const id of [b.matterport_model_id, ...(b.matterport_model_ids || [])].filter(Boolean)) linked.set(id, b.name)
+  for (const id of [b.matterport_model_id, b.costar_matterport_model_id, ...(b.matterport_model_ids || [])].filter(Boolean)) linked.set(id, b.name)
 }
 for (const p of their) {
   const hit = surveyed.get(p.id)

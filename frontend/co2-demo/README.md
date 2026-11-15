@@ -16,6 +16,18 @@ Nothing else changed: no other page, no design, no data source, no backend code.
 `src/components/ShowcaseModal.jsx` (wraps their iframe), `src/components/Co2Tour.jsx`, `src/lib/co2Api.js`,
 `src/lib/co2Tags.js` (+ test), `package.json` (`@matterport/sdk` 1.6.2, a `test` script), this folder.
 
+## Showing our 8 buildings on the Portfolio
+To show our 8 buildings, fetch `GET {VITE_API_URL}/portfolio` and render one card per building, opening `showcase_url` in
+`ShowcaseModal`; the CO₂ tags then match automatically by model id.
+- Each building has `building_id, name, address, lat, lon, matterport_model_id, showcase_url, stories, sqft, year_built`
+  (sample: `docs/agent/samples/portfolio.json` on `lane-support`); anything not recorded is `null`, never filled in.
+- Use `matterport_model_id` as the property id passed to `ShowcaseModal` (it builds the tour from `property.id`, and that id
+  is exactly the scan our tags belong to); `showcase_url` is the same tour as a link (`show_url` in their shape).
+- `showcase_url` is null when Matterport does not report the tour as viewable: show no tour for that card.
+- 7 of the 8 have verified CO₂ sources (23 tags); 7900 Fannin has a tour but no interior survey, so it shows the plain tour.
+- CORS: our backend allows `http://localhost:5173` and `:3000`. If Vite moves to another port (5173 busy), start our
+  backend with `CORS_ORIGIN_REGEX='http://(localhost|127\.0\.0\.1):\d+'` or pin the dev port with `--port 3000`.
+
 ## Two backends, two variables
 | | what | variable | here |
 |---|---|---|---|
