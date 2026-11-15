@@ -21,4 +21,4 @@ export const inventedIn = (text) => FORBIDDEN.filter((s) => forbiddenRe(s).test(
 export const ROUTES = ['/', '/plan', '/building', '/start-survey', '/survey-in-progress', '/survey-complete', '/financing-approval',
   '/funding-confirmation', '/documents', '/survey-evidence', '/investment-memo', '/risk-and-target', '/plan-preferences',
   '/assumptions', '/funding-account', '/building-insights', '/building-excluded', '/expanded-portfolio-model',
-  '/expanded-building-model', '/expanded-survey-image', '/workspace', '/demo-document-notice']
+  '/expanded-building-model', '/expanded-survey-image', '/demo-document-notice']

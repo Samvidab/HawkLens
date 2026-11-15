@@ -35,17 +35,15 @@ id; "Replay the recorded survey" (shown only when it is set) replays that run's 
 | `store.jsx` | `RunProvider` + `useRun()`: `{runId, phase, events, state, layout, portfolio, health, busy, error, prefs, setPrefs, start, act, refresh, reset}`. Remembers the run id in `sessionStorage` (a reload resumes). `useOverview()` / `useBuildingFocus()` ask the backend for the view a page needs. |
 | `viewModels.js` | Pure functions from `layout` to what each page renders. Widgets are found **by type**. Every selector returns `null` when its widget is absent; formatters return `NA` for missing values. |
 | `components/Truth.jsx` | `Stub`, `Estimate`, `NA`, `useStub`, `Sources`, `NoData`, `RequireRun`. |
-| `components/widgets.jsx` | a renderer for every widget type (the Workspace page), plus `FootprintMap`. |
+| `components/widgets.jsx` | `FootprintMap` (real footprints) and the widget renderers the pages reuse (floor plan, facades). |
 
 ## Flow
 `StartSurvey` builds a Goal (target/budget/risk from `prefs`, buildings from `GET /portfolio`) -> `POST /run` -> `SurveyInProgress`
-streams `GET /events/{id}` and advances by itself on `done` -> `SurveyComplete` -> **Workspace** (the composer's layout, in its
-order and sizes, each widget with its `why` line) -> every control sends `POST /compose`.
+streams `GET /events/{id}` and advances by itself on `done` -> `SurveyComplete` -> Portfolio -> every control sends `POST /compose`.
 
 ## Page status (all wired; none static)
 | page | shows |
 |---|---|
-| Workspace | `layout.widgets` in order, `size` -> 12/8/6/4 columns, title + `why`, one renderer per widget type |
 | StartSurvey | the portfolio's buildings with their real data layers (records / aerial / interior) |
 | SurveyInProgress / SurveyComplete | live feed, progress per layer, summary from `state.results` |
 | Portfolio | target slider, metrics, upgrade summary, the real footprints (click = open building) |
@@ -67,7 +65,7 @@ order and sizes, each widget with its `why` line) -> every control sends `POST /
 
 ## Tests
 ```bash
-npm test            # 225 unit tests: api client, SSE, view-models, store, preferences, Workspace, and the strict audit
+npm test            # 225 unit tests: api client, SSE, view-models, store, preferences, and the strict audit
                     # (pages/Strict.test.jsx): every route x (no run + 6 sample layouts) never shows a prototype string or
                     # image (src/test/forbidden.js); STUB and estimate labels appear where they must.
 npm run e2e         # Playwright against a RUNNING backend: goal form -> live survey -> workspace -> slider -> plan -> risk ->

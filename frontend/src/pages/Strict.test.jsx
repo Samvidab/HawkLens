@@ -48,7 +48,7 @@ describe('strict mode: without a run no page shows prototype content', () => {
     it(route, async () => {
       mount(route)
       await waitFor(() => expect(text().length).toBeGreaterThan(0))
-      if (!['/workspace', '/demo-document-notice', '/start-survey'].includes(route)) {
+      if (!['/demo-document-notice', '/start-survey'].includes(route)) {
         expect(document.querySelector('[data-testid="no-data"]'), 'shows the no-data state').not.toBeNull()
       }
       expectNothingInvented()

@@ -76,7 +76,7 @@ export default function SurveyComplete() {
 
       <button
         type="button"
-        onClick={() => navigate('/workspace')} // the composer's layout for this run
+        onClick={() => navigate('/')}
         disabled={!ready}
         className="absolute left-[944px] top-[637px] w-[440px] h-[46px] rounded-[6px] bg-brand text-white text-[13px] font-medium leading-[1.45] hover:brightness-110 active:brightness-95 transition disabled:opacity-50"
       >

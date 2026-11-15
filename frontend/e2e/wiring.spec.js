@@ -183,7 +183,7 @@ test('strict mode: without a backend no page shows prototype data', async ({ pag
   for (const route of ROUTES) {
     await page.goto(route)
     await expect(page.locator('body')).not.toBeEmpty()
-    if (!['/workspace', '/demo-document-notice'].includes(route)) await expect(page.getByTestId('no-data')).toBeVisible()
+    if (!['/demo-document-notice'].includes(route)) await expect(page.getByTestId('no-data')).toBeVisible()
     expect(inventedIn(await page.locator('body').innerText()), route).toEqual([])
   }
   await shot(page, '14-no-backend')

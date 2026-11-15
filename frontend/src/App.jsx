@@ -23,7 +23,6 @@ import ExpandedPortfolioModel from './pages/ExpandedPortfolioModel'
 import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
-import Workspace from './pages/Workspace'
 import { RequireRun } from './components/Truth'
 
 // Strict demo mode (always on): a page that needs a run shows "no survey data yet" instead of prototype content.
@@ -35,7 +34,6 @@ export function AppRoutes() {
         <Routes>
           <Route path="/" element={gate(<Portfolio />)} />
           <Route path="/plan" element={gate(<PlanDetails />, 'layout', 'plan')} />
-          <Route path="/workspace" element={<Workspace />} />
           <Route path="/building" element={gate(<BuildingDetails />)} />
           <Route path="/start-survey" element={gate(<StartSurvey />, 'portfolio')} />
           <Route path="/survey-in-progress" element={gate(<SurveyInProgress />, 'run')} />
