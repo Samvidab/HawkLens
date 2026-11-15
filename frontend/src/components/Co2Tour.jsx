@@ -1,15 +1,20 @@
 // Verified CO2 highlighting for a building's Matterport tour (VITE_EMISSIONS_3D). Used by ShowcaseModal.
+// Tour behaviour from the Codex 3D work (codex-3d-work 229f721), adapted to main's modal and VITE_API_URL.
 //
-// <Co2Highlight modelId={property.id}>{their plain iframe}</Co2Highlight>
-//   - the building's model id is not one of the scans our agents surveyed, or it has no verified items, or the feature is
-//     off / our API is unreachable -> renders `children` unchanged (their iframe): no tags, no list, nothing invented;
-//   - matched -> the tour through the Showcase SDK with one tag per verified item seen in it, and beside it the list of
-//     those items. Clicking an item moves the tour to the panorama where it was seen (Sweep.moveTo) and opens its tag.
-//     If the SDK cannot start (no key, error) their iframe is shown and the list stays, read-only.
-// Everything comes from OUR backend's GET /co2_equipment; nothing is computed here.
+// <Co2Highlight modelId={property.id}>{the plain iframe}</Co2Highlight>
+//   - the model id is not one of the scans our agents surveyed, or it has no verified items, or the feature is off / the
+//     backend has no /co2_equipment -> renders `children` unchanged: no markers, no list, nothing invented;
+//   - matched -> the tour through the Showcase SDK with one observation marker ("Photo taken here") per verified item, on
+//     the sweep where its evidence was recorded, and beside it the list of those items. Selecting an item (in the list or
+//     its marker in the tour) flies to that sweep and turns to the evidence face (ceiling or level). "Inspection Close-Up"
+//     / "View evidence" opens the original recorded image with the recorded object outlines (InspectionEvidence).
+//     If the SDK cannot start (no key, error) the plain iframe is shown and the list stays, read-only.
+// Everything comes from GET /co2_equipment; nothing is computed here. Fixture 3D positions are not recorded, so no marker
+// claims to sit on a fixture.
 import { useEffect, useRef, useState } from 'react'
 import { emissions3dOn, loadCo2Models, ourApiBase } from '../lib/co2Api'
-import { KIND, sdkKey, tagPlan } from '../lib/co2Tags'
+import { KIND, OBSERVATION, sdkKey, tagPlan } from '../lib/co2Tags'
+import InspectionEvidence from './InspectionEvidence'
 import './Co2Tour.css'
 
 const SDK_TIMEOUT_MS = 30_000
@@ -28,7 +33,7 @@ function loadSweeps(sdk) {
   })
 }
 
-function Co2List({ items, placed, focus, onPick, note, canMove }) {
+export function Co2List({ items, placed, focus, onPick, onEvidence, note, canMove }) {
   const base = ourApiBase()
   return (
     <div data-testid="co2-panel" className="h-full overflow-y-auto p-3 text-[11px] leading-[16px] bg-white">
@@ -46,13 +51,16 @@ function Co2List({ items, placed, focus, onPick, note, canMove }) {
                 <span>
                   <span className="text-ink">{it.equipment} seen (verified)</span>
                   <span className="block text-muted">
-                    {KIND[it.kind]?.name} · {placed.has(i) ? 'tagged in the tour' : 'not located in the tour'}
+                    {KIND[it.kind]?.name} · {placed.has(i) ? OBSERVATION : 'not located in the tour'}
                     {active && focus.state === 'moving' ? ' · moving…' : ''}
                   </span>
                 </span>
               </button>
               {it.image_url && (
-                <a className="ml-[22px] text-brand underline" href={`${base}${it.image_url}`} target="_blank" rel="noreferrer">panorama</a>
+                <span className="ml-[22px] flex gap-3">
+                  <button type="button" className="text-brand underline" onClick={() => onEvidence(i)} data-testid={`co2-evidence-${i}`}>View evidence</button>
+                  <a className="text-brand underline" href={`${base}${it.image_url}`} target="_blank" rel="noreferrer">panorama</a>
+                </span>
               )}
             </li>
           )
@@ -63,16 +71,20 @@ function Co2List({ items, placed, focus, onPick, note, canMove }) {
   )
 }
 
-function Co2Tour({ data, modelId, plain }) {
+export function Co2Tour({ data, modelId, plain }) {
   const [status, setStatus] = useState('loading') // loading | ready | failed | no-key
   const [placed, setPlaced] = useState(new Set())
-  const [tagIds, setTagIds] = useState(0) // tags the SDK confirmed (ids returned by Tag.add)
+  const [tagIds, setTagIds] = useState(0) // markers the SDK confirmed (ids returned by Tag.add)
   const [focus, setFocus] = useState(null) // { index, state: 'moving'|'open'|'failed' }
-  const [view, setView] = useState({ sweep: null, docked: null }) // what the tour reports: current sweep, docked tag
+  const [view, setView] = useState({ sweep: null, docked: null }) // what the tour reports: current sweep, open tag
+  const [evidenceIndex, setEvidenceIndex] = useState(null)
+  const [pose, setPose] = useState(null) // the camera rotation the tour reports (read-only)
   const box = useRef(null)
   const sdkRef = useRef(null)
-  const targetsRef = useRef(new Map()) // item index -> { sweepId, heading, tagId }
+  const targetsRef = useRef(new Map()) // item index -> { sweepId, rotation, tagId }
   const currentRef = useRef(null) // the sweep the tour reports
+  const pickRef = useRef(null)
+  const movingRef = useRef(false)
   const key = sdkKey()
   const base = ourApiBase()
 
@@ -85,7 +97,7 @@ function Co2Tour({ data, modelId, plain }) {
     const mount = document.createElement('div')
     mount.style.cssText = 'position:absolute;inset:0'
     box.current?.appendChild(mount)
-    setStatus('loading'); setPlaced(new Set()); setTagIds(0); setFocus(null); setView({ sweep: null, docked: null })
+    setStatus('loading'); setPlaced(new Set()); setTagIds(0); setFocus(null); setView({ sweep: null, docked: null }); setEvidenceIndex(null)
     sdkRef.current = null; targetsRef.current = new Map()
     const fail = (e) => {
       if (cancelled) return
@@ -102,18 +114,33 @@ function Co2Tour({ data, modelId, plain }) {
         clearTimeout(timer)
         let done = new Set()
         let ids = []
-        const sweeps = await loadSweeps(sdk)
+        // markers only in the scan the evidence was recorded in (the modal shows model `modelId`; data.model_id is the scan)
+        if (modelId === data.model_id && data.items?.length) {
+          const sweeps = await loadSweeps(sdk)
+          if (cancelled) return
+          const { descriptors, placed: p, targets } = tagPlan(data.items, sweeps, base)
+          if (descriptors.length) ids = (await sdk.Tag.add(...descriptors)) || []
+          // opening a marker must not fly the camera to the floor marker: selection moves to the observation sweep itself
+          await Promise.all(ids.map((id) => sdk.Tag.allowAction?.(id, { opening: true, navigating: false, docking: true, sharing: false })?.catch?.(() => {})))
+          done = p
+          if (ids.length === targets.length) targets.forEach((t, k) => targetsRef.current.set(t.index, { sweepId: t.sweepId, rotation: t.rotation, tagId: ids[k] }))
+        }
         if (cancelled) return
-        const { descriptors, placed: p, targets } = tagPlan(data.items, sweeps, base)
-        if (descriptors.length) ids = (await sdk.Tag.add(...descriptors)) || []
-        // opening a tag must not fly the camera elsewhere: the list click has already moved to where it was seen
-        await Promise.all(ids.map((id) => sdk.Tag.allowAction?.(id, { opening: true, navigating: false, docking: true, sharing: false })?.catch?.(() => {})))
-        done = p
-        if (ids.length === targets.length) targets.forEach((t, k) => targetsRef.current.set(t.index, { sweepId: t.sweepId, heading: t.heading, tagId: ids[k] }))
-        if (cancelled) return
-        try { // what the tour itself reports, so the page (and tests) see the move and the open tag
+        try { // what the tour itself reports, so the page (and tests) see the move and the open marker
           subs.push(sdk.Sweep.current.subscribe((s) => { if (s?.id || s?.sid) { currentRef.current = s.id || s.sid; setView((v) => ({ ...v, sweep: s.id || s.sid })) } }))
-          subs.push(sdk.Tag.openTags.subscribe((o) => setView((v) => ({ ...v, docked: o?.docked || [...(o?.selected || [])][0] || null }))))
+          let selected = null
+          subs.push(sdk.Tag.openTags.subscribe((o) => {
+            const id = o?.docked || [...(o?.selected || [])][0] || null
+            setView((v) => ({ ...v, docked: id }))
+            // a marker selected in the tour itself: go to its observation view, like a list click
+            if (id && id !== selected && !movingRef.current) {
+              const entry = [...targetsRef.current].find(([, t]) => t.tagId === id)
+              if (entry) pickRef.current?.(entry[0])
+            }
+            selected = id
+          }))
+          const poseSub = sdk.Camera?.pose?.subscribe?.((p) => setPose(p?.rotation ? { x: Math.round(p.rotation.x), y: Math.round(p.rotation.y) } : null))
+          if (poseSub) subs.push(poseSub)
         } catch { /* observables unavailable: the move still works */ }
         sdkRef.current = sdk
         setPlaced(ids.length === done.size ? done : new Set()); setTagIds(ids.length); setStatus('ready')
@@ -126,34 +153,36 @@ function Co2Tour({ data, modelId, plain }) {
     }
   }, [data, modelId, key, base])
 
-  /** Go to the panorama where item `i` was seen and open its tag. */
+  /** Fly to the sweep where item `i`'s evidence was recorded, turn to its evidence face, and open its marker. */
   const pick = async (i) => {
     const sdk = sdkRef.current
     const t = targetsRef.current.get(i)
-    if (!sdk || !t) return
+    if (!sdk || !t || movingRef.current) return
+    movingRef.current = true
     setFocus({ index: i, state: 'moving' })
     try {
-      // arrive looking down at the floor under the panorama, where the item's tag stands
-      const go = () => sdk.Sweep.moveTo(t.sweepId, { transition: sdk.Sweep.Transition?.FLY ?? 'transition.fly', transitionTime: 1500,
-        rotation: { x: -70, y: t.heading ?? 0 } })
+      const go = () => sdk.Sweep.moveTo(t.sweepId, { transition: sdk.Sweep.Transition?.FLY ?? 'transition.fly', transitionTime: 1500, rotation: t.rotation })
       await go()
-      // open the tag's billboard in place (docking it makes the tour fly to a viewpoint of the tag, away from the panorama)
+      // open the marker's billboard in place (docking makes the tour fly to a viewpoint of the marker, away from the sweep)
       try { await sdk.Tag.open(t.tagId, { force: true }) } catch { await sdk.Tag.dock(t.tagId, { force: true }) }
       // if the tour still moved away from where the item was seen, come back
       await new Promise((r) => setTimeout(r, 1200))
       if (currentRef.current && currentRef.current !== t.sweepId) await go()
+      // opening a billboard can also change orientation without changing sweeps
+      if (sdk.Camera?.setRotation) await sdk.Camera.setRotation(t.rotation)
       setFocus({ index: i, state: 'open' })
     } catch (e) {
       console.warn('Matterport move failed:', e?.message || e)
       setFocus({ index: i, state: 'failed' })
-    }
+    } finally { movingRef.current = false }
   }
+  pickRef.current = pick
 
   const note = {
     loading: 'Loading the 3D tour…',
-    'no-key': 'Tags unavailable: the Matterport SDK key is not configured (their tour is shown instead).',
-    failed: 'Tags unavailable: the tour could not be started through the SDK (their tour is shown instead).',
-    ready: `${tagIds} tag${tagIds === 1 ? '' : 's'} in the tour, each at the panorama where it was seen.`,
+    'no-key': 'Markers unavailable: the Matterport SDK key is not configured (the plain tour is shown instead).',
+    failed: 'Markers unavailable: the tour could not be started through the SDK (the plain tour is shown instead).',
+    ready: `${tagIds} marker${tagIds === 1 ? '' : 's'} in the tour: ${OBSERVATION}. Fixture positions are not recorded.`,
   }[status]
   const showSdk = status === 'loading' || status === 'ready'
   const focusTarget = focus ? targetsRef.current.get(focus.index) : null
@@ -161,14 +190,27 @@ function Co2Tour({ data, modelId, plain }) {
   return (
     <div className="relative flex flex-1 min-h-0" data-testid="co2-tour" data-status={status} data-tags={tagIds}
       data-focus-index={focus?.index ?? ''} data-focus-state={focus?.state ?? ''} data-focus-sweep={focusTarget?.sweepId ?? ''}
-      data-focus-tag={focusTarget?.tagId ?? ''} data-current-sweep={view.sweep ?? ''} data-docked-tag={view.docked ?? ''}>
-      <div className="relative flex-1 min-w-0 flex">
-        <div ref={box} className={`absolute inset-0 ${showSdk ? '' : 'hidden'}`} data-testid="co2-tour-frame" />
-        {!showSdk && plain}
+      data-focus-tag={focusTarget?.tagId ?? ''} data-current-sweep={view.sweep ?? ''} data-docked-tag={view.docked ?? ''}
+      data-camera-rotation={pose ? `${pose.x},${pose.y}` : ''} data-focus-rotation={focusTarget ? `${focusTarget.rotation.x},${Math.round(focusTarget.rotation.y)}` : ''}>
+      <div className="relative flex-1 min-w-0 flex flex-col">
+        {showSdk && (
+          <div className="h-[38px] shrink-0 flex items-center gap-4 px-3 bg-white border-b border-line" aria-label="Inspection views">
+            <span className="text-ink text-[12px] font-medium">Matterport 3D View</span>
+            <button type="button" disabled={focus?.index == null || !data.items?.[focus.index]?.image_url}
+              onClick={() => setEvidenceIndex(focus.index)} className="text-brand text-[12px] underline disabled:text-muted disabled:no-underline">Inspection Close-Up</button>
+          </div>
+        )}
+        <div className="relative flex-1 min-h-0 flex">
+          <div ref={box} className={`absolute inset-0 ${showSdk ? '' : 'hidden'}`} data-testid="co2-tour-frame" />
+          {!showSdk && plain}
+        </div>
       </div>
       <div className="shrink-0 border-l border-line" style={{ width: LIST_W }}>
-        <Co2List items={data.items} placed={placed} focus={focus} onPick={pick} note={note} canMove={status === 'ready'} />
+        <Co2List items={data.items} placed={placed} focus={focus} onPick={pick} onEvidence={setEvidenceIndex} note={note} canMove={status === 'ready'} />
       </div>
+      {data.items?.[evidenceIndex] && (
+        <InspectionEvidence key={`${modelId}-${evidenceIndex}`} item={data.items[evidenceIndex]} onClose={() => setEvidenceIndex(null)} />
+      )}
     </div>
   )
 }

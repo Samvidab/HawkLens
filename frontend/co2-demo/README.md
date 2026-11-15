@@ -1,25 +1,33 @@
 # Verified CO₂ highlighting in the Matterport tour
 
-Behind `VITE_EMISSIONS_3D=true`. In the tour modal (`ShowcaseModal`, opened from a Portfolio building card or from the
-⌘K search), a building whose Matterport model is **a scan our agents surveyed**, and which has **verified** CO₂-emitting
-equipment, gets:
+Behind `VITE_EMISSIONS_3D=true`. Tour behaviour from the Codex 3D work (`codex-3d-work` 229f721), adapted to main's
+`ShowcaseModal` (opened from a Portfolio building card or from the ⌘K search). A building whose Matterport model is **a
+scan our agents surveyed**, with **verified** CO₂-emitting equipment (lighting fixtures with their type, air diffusers), gets:
 
-- the tour through the **Showcase SDK** with one tag per verified item (lighting fixtures with their type, air diffusers),
-  label "<equipment> seen (verified): CO₂ source"; a click shows the claim, the verifier's result and the panorama;
-- beside it, the **list** of those items: clicking one moves the tour to the panorama where it was seen and opens its tag.
+- the tour through the **Showcase SDK** with one **observation marker, "Photo taken here"**, per verified item, on the sweep
+  where its evidence photo was recorded. No 3D fixture position is recorded, so no marker claims to sit on a fixture;
+- beside it, the **list** of every verified item (all of them: there is no CO₂ ranking, see below). Selecting an item (in the
+  list, or its marker in the tour) flies to that sweep and turns to the evidence face: up to the ceiling (+80° pitch) for
+  ceiling-face evidence, level for wall-face evidence;
+- **Inspection Close-Up / View evidence**: the original recorded image with the recorded object outline (yellow ellipse at
+  the stored box bounds, or the stored polygon), plus the claim and the verifier's result.
 
-Every other building, the flag off, or a backend without the data: **the iframe, unchanged** — no tags, no list, nothing
-invented. If the SDK cannot start (no `VITE_MATTERPORT_SDK_KEY` in `frontend/.env.local`, or an error) the iframe is shown
-and the list stays, read-only. Works in both themes (`Co2Tour.css` has the mission-mode colours).
+Every other building, the flag off, or a backend without the data: **the iframe, unchanged** — no markers, no list, nothing
+invented. If the SDK cannot start (no `VITE_MATTERPORT_SDK_KEY`, or an error) the iframe is shown and the list stays,
+read-only. Works in light and mission (dark) mode (`Co2Tour.css`).
 
-Files: `src/components/ShowcaseModal.jsx` (wraps the iframe), `src/components/Co2Tour.jsx` + `.css`, `src/lib/co2Api.js`,
-`src/lib/co2Tags.js` (+ test: `npm test`), `package.json` (`@matterport/sdk` 1.6.2), this folder.
+Not ranked: items carry no CO₂ quantity (no tonnes or shares), so a "top 3 by CO₂" would be invented; all verified items are
+listed (2–5 per building).
+
+Files: `src/components/ShowcaseModal.jsx` (wraps the iframe), `src/components/Co2Tour.jsx` + `.css` + test,
+`src/components/InspectionEvidence.jsx` + test, `src/lib/co2Api.js`, `src/lib/co2Tags.js`, `e2e/emissions.spec.js`,
+`playwright.config.js`, `vitest.config.js`, `package.json` (`@matterport/sdk` 1.6.2; test tooling), this folder.
 
 ## Backend
 One backend, the same `VITE_API_URL` as the rest of the site. The highlighting needs, on that backend:
-- `GET /co2_equipment/{building_id}` and the `/portfolio` card fields (on `lane-support` / `agent`, not yet on `main`);
-- the survey data behind it: `buildings/<id>/interior.json`, `claims.json`, `tour.json` (main's shipped data has
-  `interior.json` for Harwin only and no `tour.json`);
+- `GET /co2_equipment/{building_id}` in the Codex version (with `image_marks` and `placement`; not on `main` yet);
+- the survey data behind it: `buildings/<id>/interior.json`, `claims.json` (with the recorded marks), `images.json` and the
+  cached panorama lists (main's shipped data has `interior.json` for Harwin only);
 - the surveyed scans in the Matterport store (`data/matterport/models/`): main ships 8 stock Houston models, none of
   which is one of our scans. `backfill_our_scans.py` adds ours using the backend's own Matterport client and store.
 Until then the feature is dormant (every tour shows as before).
@@ -52,6 +60,7 @@ cd backend
 ## Check
 ```bash
 cd frontend
-npm test                                   # pure logic: matching, tag placement, label/click text
-node co2-demo/check_matches.mjs            # which Portfolio buildings match, and tags each (needs the backend)
+npm test                                   # unit tests (Vitest): placement, selection, evidence outlines, fallbacks
+E2E_SITE=http://localhost:3000 E2E_API=<the site's VITE_API_URL> npm run e2e   # every Portfolio tour, light and dark
+node co2-demo/check_matches.mjs            # which Portfolio buildings match, and markers each (needs the backend)
 ```
