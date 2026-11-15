@@ -70,6 +70,20 @@ def portfolio():
     return json.loads(path.read_text())
 
 
+@app.get("/assumptions")
+def assumptions(city: str | None = None) -> dict:
+    """The quant engine's pricing assumptions (app/engine/assumptions.json, read only) for `city` (default: the demo
+    city): the global settings and the city's rates, each with its recorded `source` text. The UI shows these, never
+    sample values."""
+    from app.engine.models import ASSUMPTIONS_PATH  # the engine's own file; read, never edited
+    a = json.loads(ASSUMPTIONS_PATH.read_text())
+    name = city or get_settings().demo_city
+    cities = a.get("cities", {})
+    key = next((k for k in cities if k.lower() == str(name).lower()), None)
+    return {"city": key, "global": a.get("global", {}), "city_values": cities.get(key) if key else None,
+            "notes": a.get("_notes", [])}
+
+
 @app.post("/run")
 async def start_run(goal: Goal) -> dict:
     """Survey (Lane A graph) -> pricing -> compose in the background; returns run_id at once.

@@ -39,7 +39,8 @@
         },
         "baseline": {
           "annual_spend_usd": 1890000.0,
-          "tonnes_per_year": 4050.0
+          "tonnes_per_year": 4050.0,
+          "basis": "benchmark estimate"
         }
       }
     },
@@ -578,8 +579,8 @@
     {
       "id": "w7",
       "type": "risk_histogram",
-      "title": "Building risk",
-      "why": "How this building's upgrades return across outcomes.",
+      "title": "Risk",
+      "why": "How returns spread across outcomes; the chart says if it is this building or the plan.",
       "size": "half",
       "data_ref": "plans/current.json",
       "props": {

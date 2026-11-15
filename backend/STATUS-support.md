@@ -259,3 +259,29 @@ Say which of these you want and I will add them.
 - **Effect saturates early on this portfolio:** 20 % target: 0.2, 0.3, 0.4, 0.5 and 1.0 all give the same plan; 10 %: jump between 0 and 0.2 (upfront $9.5M -> $4.0M, worst 5 % -$4.5M -> -$1.7M); 30 %: 0 and 0.2 are the same, the change comes at 0.4. So Balanced -> Cautious often changes nothing. First solves at lambda >= 0.5 took 1.7-3.4 s (over the 3 s action budget); 0.2 took ~1.2 s, 0.4 ~1.7 s, later calls are cached/precomputed by the engine.
 - **Open point for you:** the backend `Goal.risk_lambda` default is still 0.5 (TRD value), which on the engine's scale is "fully cautious" and slow; the UI always sends 0, 0.2 or 0.4. Say if you want the schema default changed to 0.2.
 - Also on that branch: the feed shows the run's recorded events after a reload and after every action (the replay stream carries owner actions after the survey's `done`); the preferences screen follows the loaded plan; the Plan page no longer flashes prototype activity next to a real plan. 53 unit tests, 4 browser tests.
+
+- **Memo: digits in building names and addresses (fixed):** the memo spelled such names out ("seventy-nine hundred Fannin", "CityNorth six", "Harwin Plaza two"), because the prompt said "never write a digit". The prompt now allows digits in building names and addresses and tells the model to copy them exactly, never in words; the number guard accepts digits from names and addresses (addresses added to its sources), and the stricter "no digits at all" rule on the regenerated draft is gone (only invented numbers are rejected). Plan `64f6562caa73` regenerated in the data worktree (`data/memo/64f6562caa73.md`, untracked: `data/` is gitignored). Not changed, worth a look: the model still editorialises (it called the plan's "downside protections" strong although the expected NPV is -$3.3M and the worst-5 % average -$10.2M) and writes "23 distinct upgrade types" for 23 upgrades.
+
+- **Memo: neutral wording and matching counts (done):** (1) `guardrails.check_wording` + `EVALUATIVE_WORDS` (strong, robust, attractive, solid, compelling, excellent, protection(s), rigorous, thoroughly, absolute, guaranteed, ...): a draft using them is rejected, regenerated ONCE with the reason in the prompt, then the neutral template is used; the plan JSON carries no thresholds, so no evaluative word is allowed today (`allowed=` is the hook if thresholds are ever added). (2) The plain statement of the return is written by code, not the model: placeholder `{{return_summary}}`, required exactly once in every draft, e.g. "On average the plan costs more than it saves; the rooftop solar portion pays for itself." (from the plan's and each upgrade type's expected NPV; "saves more than it costs" when positive; names types that do not pay for themselves). (3) Counts: `{{n_upgrades}}` = individual upgrades, new `{{n_upgrade_types}}` = distinct types; drafts writing "N upgrade types" for the upgrade count (or "N upgrades" for the type count) are rejected with the reason. 16 new tests (memo + guardrails); 503 tests pass. Plan `64f6562caa73` regenerated in the data worktree with `CACHE_MODE=read_write` (one new Gemini response cached; first draft accepted) and re-loaded with `CACHE_MODE=read_only` with the LLM call patched to fail: byte-identical, no new cache entry. Result: "3 upgrade types totaling 23 upgrades", "On average the plan costs more than it saves; the rooftop solar portion pays for itself.", no evaluative words, building names copied exactly. The memo file itself is untracked (`data/` is gitignored). Approved-layout sample regenerated (its fallback memo now has the return sentence).
+
+## Fabricated-data audit, backend (2026-11-14)
+- Plan JSON now carries `upgrades` (type/size/verified of each selected upgrade) and `building_names`; the memo appendix reads only these, and the appendix is number-checked against the plan (raises if a number is not from it). Old plans show size "not available".
+- `baseline.basis = "benchmark estimate"` so the UI labels baselines as estimates.
+- Stock `why` lines no longer claim "cheapest"/"best" (the engine maximises E[NPV]+λ·CVaR, not cost).
+- 507 passed, 1 skipped; samples regenerated.
+
+## Merge agent (Investigator) + truth fixes + Workspace page removed (2026-11-14)
+- Merged origin/agent (`bc5bf87`: Investigator, verifier/interior changes): clean. 529 passed, 1 skipped.
+- Warm cache, CACHE_MODE=read_only, ENGINE_MODE=live: a full Houston survey at 40 % / λ 0.2 replays the Investigator from cache
+  (235 events, 56 Investigator steps, `Workspace ready`; only errors = "3D mesh not available from Matterport yet").
+  At other targets the Investigator's Gemini calls miss the cache (the goal is in its prompt) and it falls back to the fixed
+  pipeline, saying so in the feed ("investigator could not decide (CacheMiss)").
+- smoke_test.py: self-contained `--engine live` 103/103; against the warm-cache server 94/94 once the plan cache is warm.
+  Cold server: two engine solves take 3.2-4.0 s (over the 3 s budget) for plans not yet cached.
+- Fixes: resolver fills each gallery image's `source`/`orientation` from the survey's `images.json` (was always null);
+  Finance records "plan … already funded: nothing booked again" when an approve hits an already-funded plan (it was
+  silent); smoke test compares GET /state with the last layout (it compared with the first approve).
+- Browser path (frontend-wiring, Playwright, this backend): 5/5 pass (live survey -> plan -> risk -> building -> evidence
+  -> approve; reload; risk control; strict audits with and without a backend).
+- Workspace page removed from frontend-wiring by `git revert 866f623` (commit `4133682`); no Workspace commits on lane-support.
+- Waiting on Lane A: the `investigation_trace` widget (to show the Investigator's steps on the building page).

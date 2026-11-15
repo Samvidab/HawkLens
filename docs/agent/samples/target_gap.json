@@ -202,7 +202,7 @@
       "id": "w4",
       "type": "plan_table",
       "title": "Best plan within limits",
-      "why": "The best verified mix inside your budget.",
+      "why": "The upgrades the engine selected within your limits.",
       "size": "wide",
       "data_ref": "plans/current.json#/selected",
       "props": {

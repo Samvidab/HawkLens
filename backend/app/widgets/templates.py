@@ -24,7 +24,7 @@ TEMPLATES: dict[str, list[Item]] = {
         Item("target_control", "Your target", "Set the goal; agents re-plan on release."),
         Item("portfolio_3d", "Portfolio", "Where the planned upgrades sit across your buildings."),
         Item("abatement_curve", "Which cuts pay for themselves", "Bars below zero cut carbon and save money."),
-        Item("plan_table", "Recommended plan", "The cheapest verified mix that meets the target."),
+        Item("plan_table", "Recommended plan", "The upgrades the engine selected for your target."),
         Item("risk_histogram", "Risk", "How the plan's returns spread across outcomes."),
         Item("financing_card", "Financing", "What approval would set up."),
     ],
@@ -32,7 +32,7 @@ TEMPLATES: dict[str, list[Item]] = {
         Item("target_control", "Your target", "The target is out of reach as set."),
         Item("target_gap_card", "Shortfall", "How far short the plan falls and the cheapest way to close it."),
         Item("abatement_curve", "Which cuts pay for themselves", "Unselected bars are the candidates to add."),
-        Item("plan_table", "Best plan within limits", "The best verified mix inside your budget."),
+        Item("plan_table", "Best plan within limits", "The upgrades the engine selected within your limits."),
         Item("portfolio_3d", "Portfolio", "Where the planned upgrades sit across your buildings."),
     ],
     "verification_issue": [
@@ -49,7 +49,7 @@ TEMPLATES: dict[str, list[Item]] = {
         Item("facade_compass", "Facades", "Glazing on each side drives window upgrades."),
         Item("floor_plan", "Floor plan", "Rooms and findings from the scan.", optional="floor_plan"),
         Item("upgrade_list", "Feasible upgrades", "What this building can take, and how sure we are."),
-        Item("risk_histogram", "Building risk", "How this building's upgrades return across outcomes."),
+        Item("risk_histogram", "Risk", "How returns spread across outcomes; the chart says if it is this building or the plan."),
     ],
     "approved": [
         Item("financing_card", "Financing", "Accounts and bills opened for the approved plan."),

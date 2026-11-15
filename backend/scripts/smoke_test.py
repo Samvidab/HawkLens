@@ -151,17 +151,19 @@ async def run(base: str, run_id: str, strict: bool, live_engine: bool = False) -
         rep.check("GET /state has the plan id and layout", bool(plan_id) and st["layout"]["widgets"], str(plan_id))
         await act("approve with a stale plan_id", "approve", {"plan_id": "plan_stale"}, expect=409)
         ap = await act("approve", "approve", {"plan_id": plan_id}, situation="approved")
+        last = ap  # the last successful layout; GET /state must hold exactly this one
         if ap:
             fc = w_of(ap, "financing_card")
             rep.check("financing executed with Nessie ids", fc["state"] == "executed" and bool(fc["nessie_ids"]), str(list((fc["nessie_ids"] or {}))[:2]))
             rep.check("memo present", "Retrofit plan memo" in (w_of(ap, "memo") or {"markdown": ""})["markdown"])
             again = await act("approve again (idempotent)", "approve", {"plan_id": plan_id}, situation="approved")
+            last = again or ap
             rep.check("repeat approve returns the same ids", again is not None and w_of(again, "financing_card")["nessie_ids"] == fc["nessie_ids"])
         await act("unknown action type", "chat", {}, expect=422)
         await act("bad payload", "set_target", {"target_pct": "lots"}, expect=422)
         await act("unknown building", "exclude_building", {"building_id": "nope"}, expect=422)
         st = (await c.get(f"/state/{run_id}")).json()
-        rep.check("GET /state matches the last layout", ap is None or st["layout"]["layout_id"] == ap["layout_id"])
+        rep.check("GET /state matches the last layout", last is None or st["layout"]["layout_id"] == last["layout_id"])
         rep.check("GET /state 404 for an unknown run", (await c.get("/state/no_such_run")).status_code == 404)
 
         # events: the live stream saw everything, in order, with legal kinds and short messages

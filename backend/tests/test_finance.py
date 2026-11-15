@@ -65,8 +65,10 @@ async def test_idempotent_by_plan_id(data):
     plan = await priced()
     a = await finance.run_finance("r", plan["plan_id"])
     before = ledger()
-    b = await finance.run_finance("r", plan["plan_id"])
+    b = await finance.run_finance("r2", plan["plan_id"])  # e.g. another run that reached the same plan
     assert a == b and ledger() == before
+    ev = [json.loads(l) for l in (data / "runs/r2/events.jsonl").read_text().splitlines()]
+    assert [e["agent"] for e in ev] == ["Finance"] and "already funded" in ev[0]["message"] and len(ev[0]["message"]) <= 90
 
 
 async def test_resume_after_partial_failure_never_double_books(data, monkeypatch):

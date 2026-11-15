@@ -1,6 +1,6 @@
 import pytest
 
-from app.guardrails import (CapExceeded, StepCounter, check_numbers, fill_placeholders, guarded_text)
+from app.guardrails import (CapExceeded, StepCounter, check_numbers, check_wording, fill_placeholders, guarded_text)
 
 SRC = {"tonnes": 3100.0, "p_hit": 0.82, "upfront": 1_234_567.0, "npv": -50.0, "name": "Allen Center 2",
        "rows": [{"kw": 310.4}], "year": 1980}
@@ -61,3 +61,21 @@ def test_caps():
     assert c.loop("k") == 1 and c.loop("k") == 2 and not c.can_loop("k")
     with pytest.raises(CapExceeded):
         c.loop("k")
+
+
+@pytest.mark.parametrize("text,found", [
+    ("A strong plan with robust returns.", ["strong", "robust"]),
+    ("Attractive economics and downside protections.", ["attractive", "protections"]),
+    ("It is Strongly protective. STRONG.", ["strongly", "protective", "strong"]),
+    ("The plan costs more than it saves on average.", []),
+    ("Expected value is {{strong_placeholder}} and {{exp_npv}}.", []),          # placeholders are not wording
+    ("The strongest signal; a protected asset; thoroughfare", []),               # other words that merely contain a stem
+    ("A risk-free, no-brainer deal.", ["risk-free", "no-brainer"]),
+])
+def test_check_wording_flags_evaluative_words(text, found):
+    assert check_wording(text) == found
+
+
+def test_check_wording_allows_words_a_stated_threshold_supports():
+    assert check_wording("A strong and robust plan.", allowed=["strong"]) == ["robust"]
+    assert check_wording("A STRONG plan.", allowed=["Strong"]) == []

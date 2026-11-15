@@ -127,6 +127,12 @@ class ResolveContext:
             ctx.rooms[bid] = _read(bdir / "rooms.json", [])
             if (scan := _read(bdir / "interior_scan.json")) is not None:
                 ctx.scans[bid] = scan
+            # images.json (image_id -> ImageRef, written by the survey): where each image came from, so the gallery can
+            # say "Vexcel" instead of "source not recorded"
+            images = _read(bdir / "images.json", {})
+            for iid, ref in (images.items() if isinstance(images, dict) else []):
+                if isinstance(ref, dict):
+                    ctx.image_meta[iid] = {"source": ref.get("source"), "orientation": ref.get("orientation")}
             model = ctx.profiles[bid].matterport_model_id
             if model:
                 ctx.mesh_files[model] = _mesh_on_disk(model)

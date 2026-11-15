@@ -1395,6 +1395,18 @@
                 ],
                 "default": null,
                 "title": "Tonnes Per Year"
+              },
+              "basis": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": "benchmark estimate",
+                "title": "Basis"
               }
             },
             "title": "Baseline",
