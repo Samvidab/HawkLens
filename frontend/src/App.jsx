@@ -23,7 +23,6 @@ import ExpandedBuildingModel from './pages/ExpandedBuildingModel'
 import ExpandedSurveyImage from './pages/ExpandedSurveyImage'
 import Placeholder from './pages/Placeholder'
 import MissionControl from './components/MissionControl'
-import CommandPalette from './components/CommandPalette'
 
 
 export default function App() {
