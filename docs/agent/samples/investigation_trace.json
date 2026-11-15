@@ -1,0 +1,52 @@
+{
+  "steps": [
+    {
+      "feed_line": "inspected roof: for solar, given built 1982",
+      "tool": "inspect_roof",
+      "facts_quoted": [
+        {
+          "id": "built",
+          "text": "built 1982",
+          "source": "CoStar record"
+        }
+      ],
+      "image_ids": [
+        "vxo_b1_1"
+      ]
+    },
+    {
+      "feed_line": "pulled wider Vexcel context (300 m): to check shading, given shading none",
+      "tool": "get_vexcel_wider_context",
+      "facts_quoted": [
+        {
+          "id": "shading",
+          "text": "shading none",
+          "source": "roof inspection"
+        }
+      ],
+      "image_ids": [
+        "vxo_b1_2"
+      ]
+    },
+    {
+      "feed_line": "inspected interior (5 panoramas): for LED evidence",
+      "tool": "inspect_interior",
+      "facts_quoted": [],
+      "image_ids": [
+        "pano_b1_1"
+      ]
+    },
+    {
+      "feed_line": "finished: more evidence won't change an upgrade, given lighting fluorescent",
+      "tool": "finish",
+      "facts_quoted": [
+        {
+          "id": "lighting",
+          "text": "lighting fluorescent",
+          "source": "interior inspection"
+        }
+      ],
+      "image_ids": []
+    }
+  ]
+}

@@ -48,6 +48,23 @@ def claim(cid, bid, agent, field, value, status="verified", conf=0.85, img="vxo_
                  verifier_note=note)
 
 
+SAMPLE_TRACE = {"building_id": "b1", "run_id": "sample", "max_calls": 8, "steps": [  # synthetic, same shape as the real file
+    {"tool": "inspect_roof", "args": {}, "purpose": "solar_evidence", "because": ["built"],
+     "result": "roof flat (0.95), dark (0.90); ...", "shown": "inspected roof: for solar, given built 1982",
+     "quoted": {"built": {"text": "built 1982", "source": "CoStar record"}}, "evidence": "vxo_b1_1"},
+    {"tool": "get_vexcel_wider_context", "args": {}, "purpose": "shading_check", "because": ["shading"],
+     "result": "wider overhead `vxo_b1_2`, 300 m across; ...",
+     "shown": "pulled wider Vexcel context (300 m): to check shading, given shading none",
+     "quoted": {"shading": {"text": "shading none", "source": "roof inspection"}}, "evidence": "vxo_b1_2"},
+    {"tool": "inspect_interior", "args": {"model_id": "SYNTH-MODEL"}, "purpose": "lighting_for_led", "because": [],
+     "result": "from 5 panoramas: lighting fluorescent (0.90); ...", "shown": "inspected interior (5 panoramas): for LED evidence",
+     "quoted": {}, "evidence": "pano_b1_1"},
+    {"tool": "finish", "args": {}, "purpose": "no_more_value", "because": ["lighting"], "result": "done",
+     "shown": "finished: more evidence won't change an upgrade, given lighting fluorescent",
+     "quoted": {"lighting": {"text": "lighting fluorescent", "source": "interior inspection"}}, "evidence": None},
+]}
+
+
 def build_world(root: Path, *, issue: bool = False) -> None:
     for bid, name, lat, lon, stories, rba, year, hero, roof, color, shade, glaze in BUILDINGS:
         d = root / "buildings" / bid
@@ -79,6 +96,7 @@ def build_world(root: Path, *, issue: bool = False) -> None:
                                           {"room_id": "r2", "type": "corridor", "polygon": [[10, 0], [22, 0], [22, 3], [10, 3]], "area_sqft": 390.0},
                                           {"room_id": "r3", "type": "mechanical", "polygon": [[10, 3], [22, 3], [22, 8], [10, 8]], "area_sqft": 640.0}])
             write_json(d / "interior.json", interior)
+            write_json(d / "investigation.json", SAMPLE_TRACE)  # Lane A's investigator trace (synthetic)
             write_json(d / "interior_scan.json", {  # Lane A's scan summary: mesh urls + rooms (+ optional showcase_url)
                 "model_id": "SYNTH-MODEL", "mesh_url": "/media/mesh/SYNTH-MODEL/model.obj", "mtl_url": "/media/mesh/SYNTH-MODEL/model.mtl",
                 "rooms": [{"room_id": "r1", "type": "office", "area_sqft": 860.0, "height_m": 2.7},
@@ -140,6 +158,13 @@ async def generate(out: Path) -> dict[str, dict]:
     for name, lay in samples.items():
         (out / f"{name}.json").write_text(json.dumps(finalize(lay, name), indent=2) + "\n")
     (out / "registry.json").write_text(json.dumps(json_schemas(), indent=2) + "\n")
+    # widget props sample (not a layout): the investigator trace for the hero, through the real resolver
+    from app.schemas.layout import WidgetSpec
+    from app.widgets.resolver import ResolveContext, resolve_widget
+    ctx = ResolveContext.load(DATA, "sample", focus_building_id="b1")
+    w = resolve_widget(WidgetSpec(id="w0", type="investigation_trace", title="How the agent investigated", why="", size="wide",
+                                  props={}), ctx)
+    (out / "investigation_trace.json").write_text(json.dumps(w.props, indent=2) + "\n")
     return samples
 
 

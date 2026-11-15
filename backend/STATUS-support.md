@@ -291,3 +291,23 @@ Say which of these you want and I will add them.
   frontend 206 unit tests; Playwright 5/5 against the warm-cache backend (read_only, live engine, stub Nessie).
 - origin/nessie_data's cb1722a, 1f763d7, 0867940 NOT merged (review only): the engine reads only app/engine/assumptions.json,
   which they do not touch, so plan numbers would not change. Details in the chat report.
+
+## emissions-3d merged into lane-support; verified CO2 list with click-to-move; Playwright sandbox (2026-11-14)
+- Building page (VITE_EMISSIONS_3D): Matterport tour via the Showcase SDK, beside it the list of verified CO2-emitting items
+  (GET /co2_equipment: verified lighting fixtures with type + verified air diffusers). Click = Sweep.moveTo to the panorama
+  where it was seen (looking down at the tag on the floor under it) + Tag.open. Tags never navigate the camera
+  (Tag.allowAction navigating:false; docking flew the camera away, so the tag opens in place).
+- 23 tags on 7 buildings, every one clicked in Playwright: tour at the item's sweep (reported by the tour) and its tag open.
+- Playwright starts its own backend (scripts/e2e_backend.sh): temp copy of the demo data, CACHE_MODE=read_only,
+  /health sandbox=true; e2e/guard.js refuses any other API (checked with a fake non-sandbox server). Demo data dirs
+  checksummed before/after every run: unchanged.
+- lane-support after the merge: 554 passed, 1 skipped; frontend 218; Playwright 5/5 + 8-building suite green.
+
+## Merge origin/lane-data (investigation_trace) (2026-11-14)
+- Conflicts in resolver.py (kept both: images.json sources + Lane A's traces) and STATUS-A.md (kept both). Registry and
+  samples merged cleanly; make_samples produces no diff.
+- GET /investigation_trace/{id}: the widget's props via resolve_widget (registry-validated); 404 when no trace. Not added to
+  the building layout (already MAX_WIDGETS = 8; adding it would change the layout contract and the composer).
+- Building page: numbered list of the steps (feed line, quoted facts, image thumbnails) below the fixed frame.
+- 560 passed, 2 skipped; frontend 220; Playwright 5/5 + 8-building suite (tags, clicks and trace steps per building); demo
+  data dirs unchanged.

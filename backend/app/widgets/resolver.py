@@ -96,6 +96,7 @@ class ResolveContext:
     claims: dict[str, list[Claim]] = field(default_factory=dict)
     rooms: dict[str, list[dict]] = field(default_factory=dict)
     scans: dict[str, dict] = field(default_factory=dict)  # buildings/<id>/interior_scan.json (Lane A)
+    traces: dict[str, list[dict]] = field(default_factory=dict)  # buildings/<id>/investigation.json steps (Lane A)
     mesh_files: dict[str, dict] = field(default_factory=dict)  # model_id -> {"obj": url|None, "mtl": url|None} on disk
     memo_md: str = ""
     focus_building_id: str | None = None
@@ -133,6 +134,8 @@ class ResolveContext:
             for iid, ref in (images.items() if isinstance(images, dict) else []):
                 if isinstance(ref, dict):
                     ctx.image_meta[iid] = {"source": ref.get("source"), "orientation": ref.get("orientation")}
+            if (trace := _read(bdir / "investigation.json")) is not None:
+                ctx.traces[bid] = trace.get("steps") or []
             model = ctx.profiles[bid].matterport_model_id
             if model:
                 ctx.mesh_files[model] = _mesh_on_disk(model)
@@ -390,6 +393,21 @@ def _memo(ctx: ResolveContext) -> tuple[str, dict]:
     return f"memo/{ctx.plan.get('plan_id')}.md", dict(markdown=ctx.memo_md)
 
 
+def _investigation_trace(ctx: ResolveContext) -> tuple[str, dict]:
+    """The investigator's steps, copied from investigation.json: the recorded feed line, the tool, the
+    facts it quoted and the image it returned. Nothing is computed or reworded here."""
+    bid = _need_focus(ctx)
+    steps = ctx.traces.get(bid)
+    if not steps:
+        raise ResolveError(f"{bid} has no investigation trace")
+    if any("shown" not in s for s in steps):
+        raise ResolveError(f"{bid} trace predates recorded feed lines")
+    return f"buildings/{bid}/investigation.json#/steps", dict(steps=[dict(
+        feed_line=s["shown"], tool=s["tool"],
+        facts_quoted=[dict(id=k, text=v["text"], source=v["source"]) for k, v in (s.get("quoted") or {}).items()],
+        image_ids=[s["evidence"]] if s.get("evidence") else []) for s in steps])
+
+
 def _activity_feed(ctx: ResolveContext) -> tuple[str, dict]:
     return f"runs/{ctx.run_id}/events.jsonl", dict(run_id=ctx.run_id)
 
@@ -400,6 +418,7 @@ RESOLVERS: dict[str, Callable[[ResolveContext], tuple[str, dict]]] = {
     "evidence_gallery": _evidence_gallery, "facade_compass": _facade_compass, "floor_plan": _floor_plan,
     "upgrade_list": _upgrade_list, "building_header": _building_header, "target_gap_card": _target_gap_card,
     "financing_card": _financing_card, "memo": _memo, "activity_feed": _activity_feed,
+    "investigation_trace": _investigation_trace,
 }
 
 

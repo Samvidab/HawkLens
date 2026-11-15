@@ -10,7 +10,7 @@ from app.widgets.templates import TEMPLATES, stock_title, stock_why, template_fo
 
 SPEC_TYPES = {"target_control", "portfolio_3d", "hero_3d", "abatement_curve", "plan_table", "risk_histogram",
               "evidence_gallery", "facade_compass", "floor_plan", "upgrade_list", "building_header",
-              "target_gap_card", "financing_card", "memo", "activity_feed"}
+              "target_gap_card", "financing_card", "memo", "activity_feed", "investigation_trace"}
 
 SPEC_REQUIRED = {  # App Flow §5 "Required props"
     "target_control": {"target_pct", "budget_usd", "risk_lambda", "p_hit_target", "tonnes_needed", "tonnes_planned"},
@@ -21,6 +21,7 @@ SPEC_REQUIRED = {  # App Flow §5 "Required props"
     "hero_3d": {"building_id", "mesh_url", "mtl_url", "pins"},
     "activity_feed": {"run_id"},
     "memo": {"markdown"},
+    "investigation_trace": {"steps"},
 }
 
 

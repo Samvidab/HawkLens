@@ -131,6 +131,7 @@ Rules:
 | `financing_card` | `plan_id, total_upfront_usd, bills: [{contractor, amount}], state: proposed|executed, nessie_ids?` | Approve button |
 | `memo` | `markdown` | Numbers already substituted by code |
 | `activity_feed` | `run_id` | Frontend reads SSE directly |
+| `investigation_trace` | `steps: [{feed_line, tool, facts_quoted: [{id, text, source}], image_ids}]` | Copied from `buildings/<id>/investigation.json`; building_detail, after the header (placement: Lane B). Sample: `samples/investigation_trace.json` |
 
 ## 6. Situation logic (composer)
 
