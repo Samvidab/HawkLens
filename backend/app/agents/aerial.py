@@ -288,7 +288,8 @@ async def inspect(profile: BuildingProfile, run_id: str | None = None,
     solar = {True: "panels present", False: "no panels"}[findings.existing_solar] \
         if obs.existing_solar.value != "unknown" else "panels unknown"
     ev("observe", f"roof {findings.roof_type}, {findings.roof_color}, {solar}", overhead.image_id)
-    ev("observe", f"usable roof {findings.usable_roof_fraction:.0%}, shading {obs.shading.value}", overhead.image_id)
+    usable = "unknown" if obs.usable_roof_fraction.value is None else f"{findings.usable_roof_fraction:.0%}"
+    ev("observe", f"usable roof {usable}, shading {obs.shading.value}", overhead.image_id)  # never "0%" for unknown
     return AerialResult(images=images, obs=obs, findings=findings, claims=claims)
 
 
