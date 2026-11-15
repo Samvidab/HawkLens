@@ -1,5 +1,55 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { clampTarget } from './model'
+
+// ---------------------------------------------------------------------------
+// Goal — the carbon reduction target, shared across every page and persisted to
+// localStorage so it survives navigation and reloads.
+// ---------------------------------------------------------------------------
+const GOAL_KEY = 'hawklens.target'
+const DEFAULT_TARGET = 40
+
+function readStoredTarget() {
+  if (typeof window === 'undefined') return DEFAULT_TARGET
+  const raw = window.localStorage.getItem(GOAL_KEY)
+  const n = Number(raw)
+  return raw !== null && Number.isFinite(n) ? clampTarget(n) : DEFAULT_TARGET
+}
+
+const GoalContext = createContext(null)
+
+export function GoalProvider({ children }) {
+  const [target, setTargetState] = useState(readStoredTarget)
+
+  const setTarget = useCallback((next) => {
+    setTargetState((prev) => {
+      const value = clampTarget(typeof next === 'function' ? next(prev) : next)
+      try {
+        window.localStorage.setItem(GOAL_KEY, String(value))
+      } catch {
+        /* ignore storage errors (private mode, etc.) */
+      }
+      return value
+    })
+  }, [])
+
+  // Keep multiple tabs/windows in sync.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === GOAL_KEY) setTargetState(readStoredTarget())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  return <GoalContext.Provider value={{ target, setTarget }}>{children}</GoalContext.Provider>
+}
+
+export function useGoal() {
+  const ctx = useContext(GoalContext)
+  if (!ctx) throw new Error('useGoal must be used within a GoalProvider')
+  return ctx
+}
 
 // ---------------------------------------------------------------------------
 // Toast — shared transient feedback used when a control has no real destination.

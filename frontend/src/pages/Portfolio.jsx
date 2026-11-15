@@ -1,23 +1,23 @@
 import { useCallback, useRef, useState } from 'react'
 import portfolio3d from '../assets/portfolio-3d.svg'
 import Page from '../components/Page'
-import { useGo } from '../lib/ui'
+import { useGo, useGoal } from '../lib/ui'
 import {
   BUDGET_K,
   SLIDER_WIDTH,
   TARGET_MAX,
   TARGET_MIN,
-  clampTarget,
   deriveModel,
 } from '../lib/model'
 
 export default function Portfolio() {
   const go = useGo()
-  const [target, setTarget] = useState(40)
+  // Shared, persisted target (survives navigation + reload; drives every page).
+  const { target, setTarget } = useGoal()
   const [buildingSelected, setBuildingSelected] = useState(true)
   const model = deriveModel(target)
 
-  const setTargetClamped = useCallback((next) => setTarget(clampTarget(next)), [])
+  const setTargetClamped = setTarget
 
   return (
     <Page active="portfolio">

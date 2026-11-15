@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom'
+import { useGoal } from '../lib/ui'
+import { deriveModel } from '../lib/model'
 import Page from '../components/Page'
 
 // NPV histogram bins: [left, top, height, loss?] — loss bins use the warning color.
@@ -39,6 +41,8 @@ const EXPLAINERS = [
 
 export default function RiskAndTarget() {
   const navigate = useNavigate()
+  const { target } = useGoal()
+  const model = deriveModel(target)
 
   return (
     <Page active="plan">
@@ -132,7 +136,7 @@ export default function RiskAndTarget() {
         </span>
         <span className="absolute left-[19px] top-[139px] w-[400px] h-px bg-line" />
         <span className="absolute left-[19px] top-[165px] text-ink text-[14px] leading-[1.45]">
-          1032 tonnes / year
+          {model.annualLabel}
         </span>
         <span className="absolute left-[19px] top-[203px] text-muted text-[11px] leading-[1.45]">
           See the risk panel for the current simulation status.

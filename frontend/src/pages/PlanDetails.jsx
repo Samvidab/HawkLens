@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
-import { useGo } from '../lib/ui'
+import { useGo, useGoal } from '../lib/ui'
+import { BUDGET_K, deriveModel } from '../lib/model'
 
 // Abatement-curve bars (baseline at the $0 line, y=165 within the 290px card).
 const CUT_BARS = [
@@ -41,16 +42,38 @@ const ROWS = [
   { name: 'Heat pump conversion', coverage: '4 buildings · 4 bills', cost: '$400k', co2: '360 tCO₂', npv: '+$56k' },
 ]
 
-const METRICS = [
-  { label: 'Annual CO₂ reduction', value: '1032 tonnes / year', sub: 'Your goal is covered', left: 0 },
-  { label: 'Lifetime net value', value: '+$486k', sub: 'After retrofit costs', left: 338 },
-  { label: 'Upfront investment', value: '$1280k', sub: 'Budget $1500k · Balanced risk', left: 676 },
-  { label: 'Baseline simulation confidence', value: '87%', sub: 'Baseline sample · 10,000 scenarios', left: 1014 },
-]
+// Metric strip, derived from the shared/persisted target so the Plan page reflects
+// whatever the owner set on the dashboard.
+function buildMetrics(model) {
+  return [
+    {
+      label: 'Annual CO₂ reduction',
+      value: model.annualLabel,
+      sub: model.covered ? 'Your goal is covered' : 'Over your budget',
+      left: 0,
+    },
+    { label: 'Lifetime net value', value: model.netValueLabel, sub: 'After retrofit costs', left: 338 },
+    {
+      label: 'Upfront investment',
+      value: model.investmentLabel,
+      sub: `Budget $${BUDGET_K}k · Balanced risk`,
+      left: 676,
+    },
+    {
+      label: 'Baseline simulation confidence',
+      value: `${model.confidence}%`,
+      sub: 'Baseline sample · 10,000 scenarios',
+      left: 1014,
+    },
+  ]
+}
 
 export default function PlanDetails() {
   const go = useGo()
   const navigate = useNavigate()
+  const { target } = useGoal()
+  const model = deriveModel(target)
+  const METRICS = buildMetrics(model)
 
   return (
     <Page active="plan">
@@ -58,7 +81,7 @@ export default function PlanDetails() {
         What&rsquo;s in your plan
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        18 upgrades · 40% reduction goal
+        18 upgrades · {target}% reduction goal
       </p>
       <button
         type="button"
@@ -133,7 +156,7 @@ export default function PlanDetails() {
         ))}
         <div className="absolute left-[472.11px] top-[110px] w-px h-[131px] bg-[#7a693b]" />
         <p className="absolute left-[442.11px] top-[93px] font-medium text-[#7a693b] text-[10px]">
-          Reference: 40%
+          Reference: {target}%
         </p>
         <p className="absolute left-[59px] top-[237px] text-muted text-[9px]">0</p>
         <p className="absolute left-[229.05px] top-[237px] text-muted text-[9px]">400</p>

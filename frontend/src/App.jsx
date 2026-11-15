@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { ToastProvider } from './lib/ui'
+import { GoalProvider, ToastProvider } from './lib/ui'
 import Portfolio from './pages/Portfolio'
 import PlanDetails from './pages/PlanDetails'
 import BuildingDetails from './pages/BuildingDetails'
@@ -26,6 +26,7 @@ import Placeholder from './pages/Placeholder'
 export default function App() {
   return (
     <BrowserRouter>
+      <GoalProvider>
       <ToastProvider>
         <Routes>
           <Route path="/" element={<Portfolio />} />
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="*" element={<Placeholder title="Not found" />} />
         </Routes>
       </ToastProvider>
+      </GoalProvider>
     </BrowserRouter>
   )
 }
