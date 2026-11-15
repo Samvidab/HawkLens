@@ -1,28 +1,43 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
-import { useGo } from '../lib/ui'
+import { NA, Sources, Stub, useStub } from '../components/Truth'
+import { useGo, useToast } from '../lib/ui'
+import { useOverview } from '../lib/store'
+import { financingModel, planRows, planSummary } from '../lib/viewModels'
 
-const ALLOCATIONS = [
-  { name: 'LED retrofit', bills: '8 buildings · 8 bills', amount: '$120k' },
-  { name: 'Rooftop solar', bills: '6 buildings · 6 bills', amount: '$760k' },
-  { name: 'Heat pump conversion', bills: '4 buildings · 4 bills', amount: '$400k' },
-]
-
-const STEPS = [
-  { n: '01', title: 'Open your Retrofit Reserve', desc: 'Keep retrofit funds separate from day-to-day spending.' },
-  { n: '02', title: 'Transfer the approved investment', desc: 'Move the exact approved investment into the reserve.' },
-  { n: '03', title: 'Create contractor bills', desc: 'Allocate the funds to the 18 upgrades in your plan.' },
-]
-
+// Strict: totals and allocation from the plan; accounts named as the backend names them; Nessie stub marked STUB.
 export default function FinancingApproval() {
   const navigate = useNavigate()
   const go = useGo()
   const [consent, setConsent] = useState(false)
+  const run = useOverview()
+  const toast = useToast()
+  const { engine, nessie } = useStub()
+  const [approving, setApproving] = useState(false)
+  const fin = financingModel(run.layout, run.state)
+  const allocations = (planRows(run.layout) || []).map((r) => ({ name: r.name, bills: r.coverage, amount: r.cost }))
+  const summary = planSummary(run.layout)
+  const nBills = fin?.bills?.length || allocations.length
+  const nUpgrades = summary?.upgrades
+  const steps = [
+    { n: '01', title: 'Open your Retrofit Reserve', desc: 'Keep retrofit funds separate from day-to-day spending.' },
+    { n: '02', title: 'Transfer the approved investment', desc: 'Move the exact approved investment into the reserve.' },
+    { n: '03', title: 'Create contractor bills', desc: nUpgrades ? `Allocate the funds to the ${nUpgrades} upgrades in your plan.` : 'Allocate the funds to the upgrades in your plan.' },
+  ]
+  const approve = async () => {
+    if (!fin?.planId) return
+    setApproving(true)
+    try {
+      await run.act('approve', { plan_id: fin.planId })
+      navigate('/funding-confirmation')
+    } catch (e) {
+      toast(e.status === 409 ? 'The plan changed; review it again before approving.' : `Approval failed: ${e.message}`.slice(0, 90))
+    } finally { setApproving(false) }
+  }
 
   return (
     <Page active="plan">
-      {/* Header */}
       <button
         type="button"
         onClick={() => navigate('/plan')}
@@ -37,7 +52,7 @@ export default function FinancingApproval() {
         Review the funding. Nothing moves until you approve.
       </p>
       <p className="absolute left-[1211px] top-[159px] font-medium text-brand text-[14px]">
-        Awaiting your approval
+        {fin?.executed ? 'Approved' : 'Awaiting your approval'}
       </p>
 
       {/* Funding breakdown */}
@@ -46,31 +61,24 @@ export default function FinancingApproval() {
           Where your investment goes
         </p>
         <p className="absolute left-0 top-[34px] text-muted text-[13px]">
-          18 upgrades across 8 buildings
+          {summary ? summary.count : `Upgrades ${NA}`}
         </p>
         <p className="absolute left-0 top-[91px] text-muted text-[12px]">Upgrade bundle</p>
-        <p className="absolute left-[394px] top-[91px] text-muted text-[12px]">Contractor bills</p>
+        <p className="absolute left-[394px] top-[91px] text-muted text-[12px]">Coverage</p>
         <p className="absolute left-[670px] top-[91px] text-muted text-[12px]">Allocation</p>
-        {ALLOCATIONS.map((a, i) => {
-          const top = 136 + i * 57
-          return (
-            <div key={a.name}>
-              <div className="absolute left-0 w-[816px] h-px bg-line" style={{ top: `${top - 18}px` }} />
-              <p className="absolute left-0 font-medium text-ink text-[15px]" style={{ top: `${top}px` }}>
-                {a.name}
-              </p>
-              <p className="absolute left-[394px] text-muted text-[13px]" style={{ top: `${top}px` }}>
-                {a.bills}
-              </p>
-              <p className="absolute left-[670px] text-ink text-[15px]" style={{ top: `${top}px` }}>
-                {a.amount}
-              </p>
+        {!allocations.length && <p className="absolute left-0 top-[136px] text-muted text-[13px]">No upgrades to fund.</p>}
+        <div className="absolute left-0 top-[118px] w-[816px] h-[170px] overflow-y-auto">
+          {allocations.map((a) => (
+            <div key={a.name} className="relative h-[40px] border-t border-line">
+              <p className="absolute left-0 top-[10px] font-medium text-ink text-[15px]">{a.name}</p>
+              <p className="absolute left-[394px] top-[11px] text-muted text-[13px]">{a.bills}</p>
+              <p className="absolute left-[670px] top-[10px] text-ink text-[15px]">{a.amount}{engine && a.amount !== NA && <Stub />}</p>
             </div>
-          )
-        })}
+          ))}
+        </div>
         <div className="absolute left-0 top-[297px] w-[816px] h-px bg-line" />
         <p className="absolute left-0 top-[318px] font-medium text-ink text-[15px]">Total to fund</p>
-        <p className="absolute left-[650px] top-[313px] font-semibold text-ink text-[22px]">$1280k</p>
+        <p className="absolute left-[650px] top-[313px] font-semibold text-ink text-[22px]">{fin ? fin.total : NA}{engine && fin && <Stub />}</p>
       </section>
 
       {/* Approval summary card */}
@@ -79,7 +87,7 @@ export default function FinancingApproval() {
           Fund your retrofit plan
         </p>
         <p className="absolute left-[28px] top-[74px] text-muted text-[13px]">Amount to transfer</p>
-        <p className="absolute left-[28px] top-[99px] font-semibold text-ink text-[34px]">$1280k</p>
+        <p className="absolute left-[28px] top-[99px] font-semibold text-ink text-[34px]">{fin ? fin.total : NA}{engine && fin && <Stub />}</p>
 
         <p className="absolute left-[28px] top-[166px] text-muted text-[12px]">From</p>
         <button
@@ -88,23 +96,22 @@ export default function FinancingApproval() {
           className="absolute left-[28px] top-[190px] w-[384px] h-[56px] rounded-[5px] bg-white border border-line text-left overflow-hidden"
         >
           <span className="absolute left-[13px] top-[11px] font-medium text-ink text-[14px]">
-            Owner checking · •• 2048
+            Operating account{nessie && <Stub title="Simulated account (stub Nessie)" />}
           </span>
           <span className="absolute left-[13px] top-[33px] text-muted text-[11px]">
-            Available $2,400,000 · Nessie sandbox
+            {nessie ? 'Simulated (stub Nessie)' : 'Nessie sandbox'} · balance {NA}
           </span>
           <span className="absolute left-[331px] top-[19px] text-muted text-[11px]">Details</span>
         </button>
 
         <p className="absolute left-[28px] top-[269px] text-muted text-[12px]">To</p>
-        <p className="absolute left-[28px] top-[292px] font-medium text-ink text-[16px]">Retrofit Reserve</p>
+        <p className="absolute left-[28px] top-[292px] font-medium text-ink text-[16px]">Hawk Lens Retrofit Reserve</p>
         <p className="absolute left-[28px] top-[320px] text-muted text-[12px]">
-          A dedicated account, created after approval.
+          A dedicated account, opened (or reused) on approval.
         </p>
 
         <div className="absolute left-[28px] top-[357px] w-[384px] h-px bg-line" />
 
-        {/* Consent toggle (hotspot covers checkbox + label) */}
         <button
           type="button"
           role="checkbox"
@@ -122,53 +129,44 @@ export default function FinancingApproval() {
           <span className="absolute left-[37px] top-[10px] text-ink text-[13px] leading-[21px]">
             I approve this transfer and the creation
             <br />
-            of 18 contractor bills for this plan.
+            of {nBills} contractor bill{nBills === 1 ? '' : 's'} for this plan.
           </span>
         </button>
 
         <button
           type="button"
-          disabled={!consent}
-          onClick={() => navigate('/funding-confirmation')}
+          disabled={!consent || approving || !fin?.planId}
+          onClick={approve}
           className={`absolute left-[28px] top-[448px] w-[384px] h-[47px] rounded-[6px] text-[14px] font-medium transition ${
-            consent
+            consent && fin?.planId
               ? 'bg-brand text-white hover:brightness-110 active:brightness-95'
               : 'bg-[#dde5d7] text-[#65765e] cursor-not-allowed'
           }`}
         >
-          Approve &amp; fund
+          {approving ? 'Approving…' : 'Approve & fund'}
         </button>
         <p className="absolute left-[28px] top-[515px] text-muted text-[11px]">
-          Confirm above to continue. No money has moved.
+          {fin?.planId ? 'Confirm above to continue. No money has moved.' : `Plan id ${NA}: approval is disabled.`}
         </p>
       </section>
 
-      {/* Safeguards */}
       <section className="absolute left-[56px] top-[674px] w-[816px] h-[210px] overflow-hidden">
         <p className="absolute left-0 top-0 font-semibold text-ink text-[18px]">
           What happens after approval
         </p>
-        {STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const top = 44 + i * 53
           return (
             <div key={s.n}>
-              <p className="absolute left-0 font-medium text-brand text-[12px]" style={{ top: `${top + 1}px` }}>
-                {s.n}
-              </p>
-              <p className="absolute left-[38px] font-medium text-ink text-[14px]" style={{ top: `${top}px` }}>
-                {s.title}
-              </p>
-              <p className="absolute left-[38px] text-muted text-[12px]" style={{ top: `${top + 23}px` }}>
-                {s.desc}
-              </p>
+              <p className="absolute left-0 font-medium text-brand text-[12px]" style={{ top: `${top + 1}px` }}>{s.n}</p>
+              <p className="absolute left-[38px] font-medium text-ink text-[14px]" style={{ top: `${top}px` }}>{s.title}</p>
+              <p className="absolute left-[38px] text-muted text-[12px]" style={{ top: `${top + 23}px` }}>{s.desc}</p>
             </div>
           )
         })}
       </section>
 
-      <p className="absolute left-[56px] top-[947px] text-muted text-[11px]">
-        Illustrative data · Nessie sandbox · No real funds
-      </p>
+      <Sources banking />
       <button
         type="button"
         onClick={() => go('/investment-memo')}

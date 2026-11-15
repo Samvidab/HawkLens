@@ -1,56 +1,35 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import { NA, Sources, Stub, useStub } from '../components/Truth'
 import { useGo } from '../lib/ui'
+import { useOverview } from '../lib/store'
+import { abatementGeometry, feedRows, planMetrics, planRows, planSummary, riskModel, targetModel } from '../lib/viewModels'
 
-// Abatement-curve bars (baseline at the $0 line, y=165 within the 290px card).
-const CUT_BARS = [
-  { name: 'LED · offices', left: 65, width: 37.811, height: 34.679 },
-  { name: 'LED · retail', left: 105.81, width: 37.811, height: 34.679 },
-  { name: 'Solar · group A', left: 146.62, width: 99.027, height: 10.183 },
-  { name: 'Solar · group B', left: 248.65, width: 99.027, height: 10.183 },
-  { name: 'Heat pumps · A', left: 350.68, width: 73.52, height: 4.874 },
-  { name: 'Heat pumps · B', left: 427.2, width: 73.52, height: 4.874 },
-]
-// Above-zero (net-cost) opportunity bars, drawn growing upward from their top.
-const COST_BARS = [
-  { name: 'Window upgrades', left: 503.72, top: 108.6, width: 60.767, height: 56.4 },
-  { name: 'Insulation', left: 567.48, top: 87.45, width: 56.516, height: 77.55 },
-]
-
-const ACTIVITY = [
-  {
-    time: '09:42 · Verifier',
-    line: 'Midtown roof verified · Confidence 0.91',
-    meta: 'Vexcel · Evidence 12',
-  },
-  {
-    time: '09:42 · Interior inspector',
-    line: 'Level 2 fluorescent fixtures flagged.',
-    meta: 'Matterport · Panorama 04',
-  },
-  {
-    time: '09:43 · Pricing agent',
-    line: '18 upgrades across 8 buildings',
-    meta: 'Baseline sample · 10,000 scenarios',
-  },
-]
-
-const ROWS = [
-  { name: 'LED retrofit', coverage: '8 buildings · 8 bills', cost: '$120k', co2: '192 tCO₂', npv: '+$170k' },
-  { name: 'Rooftop solar', coverage: '6 buildings · 6 bills', cost: '$760k', co2: '480 tCO₂', npv: '+$260k' },
-  { name: 'Heat pump conversion', coverage: '4 buildings · 4 bills', cost: '$400k', co2: '360 tCO₂', npv: '+$56k' },
-]
-
-const METRICS = [
-  { label: 'Annual CO₂ reduction', value: '1032 tonnes / year', sub: 'Your goal is covered', left: 0 },
-  { label: 'Lifetime net value', value: '+$486k', sub: 'After retrofit costs', left: 338 },
-  { label: 'Upfront investment', value: '$1280k', sub: 'Budget $1500k · Balanced risk', left: 676 },
-  { label: 'Baseline simulation confidence', value: '87%', sub: 'Baseline sample · 10,000 scenarios', left: 1014 },
-]
-
+// Strict: metrics, chart, events and table come only from the run; nothing is drawn when the data is missing.
 export default function PlanDetails() {
   const go = useGo()
   const navigate = useNavigate()
+  const run = useOverview()
+  const stub = useStub().engine
+  const L = run.layout
+  const metrics = planMetrics(L) || []
+  const rows = planRows(L) || []
+  const geo = abatementGeometry(L)
+  const sum = planSummary(L)
+  const tm = targetModel(L)
+  const risk = riskModel(L)
+  const results = Object.values(run.state?.results || {})
+  const nReady = results.filter((r) => r.status === 'done').length
+  const activity = feedRows(run.events, 3).map((e) => ({ key: e.seq, time: `${e.time.slice(0, 5)} · ${e.agent}`, line: e.msg, meta: e.meta }))
+  const cutBars = geo ? geo.bars.filter((b) => b.profitable) : []
+  const costBars = geo ? geo.bars.filter((b) => !b.profitable) : []
+  const rowH = rows.length > 3 ? 24 : 33
+  const tableH = rows.length > 3 ? 90 + rows.length * rowH + 12 : 193
+  const pickBar = async (b) => {
+    if (!b.upgradeId) return
+    await run.act('select_bar', { upgrade_id: b.upgradeId }).catch(() => {})
+    navigate('/building')
+  }
 
   return (
     <Page active="plan">
@@ -58,7 +37,7 @@ export default function PlanDetails() {
         What&rsquo;s in your plan
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        18 upgrades · 40% reduction goal
+        {sum ? sum.line : `Plan ${NA}`}
       </p>
       <button
         type="button"
@@ -70,22 +49,20 @@ export default function PlanDetails() {
 
       {/* Plan outcomes metric strip */}
       <div className="absolute left-[56px] top-[230px] w-[1328px] h-[94px]">
-        {METRICS.map((m, i) => (
+        {!metrics.length && <p className="text-muted text-[13px]">Plan metrics not available.</p>}
+        {metrics.map((m, i) => (
           <div key={m.label}>
             {i > 0 && (
-              <div
-                className="absolute top-0 w-px h-[86px] bg-line"
-                style={{ left: `${m.left - 20}px` }}
-              />
+              <div className="absolute top-0 w-px h-[86px] bg-line" style={{ left: `${m.left - 20}px` }} />
             )}
             <p className="absolute top-0 text-muted text-[12px]" style={{ left: `${m.left}px` }}>
               {m.label}
             </p>
             <p
-              className="absolute top-[24px] font-semibold text-ink text-[27px] whitespace-nowrap"
+              className={`absolute whitespace-nowrap ${m.value === NA ? 'top-[30px] text-muted text-[16px]' : 'top-[24px] font-semibold text-ink text-[27px]'}`}
               style={{ left: `${m.left}px` }}
             >
-              {m.value}
+              {m.value}{stub && m.value !== NA && <Stub />}
             </p>
             <p className="absolute top-[65px] text-muted text-[12px]" style={{ left: `${m.left}px` }}>
               {m.sub}
@@ -97,72 +74,78 @@ export default function PlanDetails() {
       {/* Abatement curve card */}
       <section className="absolute left-[56px] top-[365px] w-[880px] h-[290px] rounded-[6px] border border-line bg-white overflow-hidden">
         <p className="absolute left-[21px] top-[18px] font-semibold text-ink text-[16px]">
-          Available carbon cuts
+          Available carbon cuts{stub && <Stub />}
         </p>
         <p className="absolute left-[21px] top-[44px] text-muted text-[12px]">
-          Start below zero: these upgrades cut emissions and earn a return.
+          Below zero: upgrades whose savings exceed their cost over their life.
         </p>
-        <p className="absolute left-[21px] top-[79px] text-muted text-[10px]">Lifetime net cost / tCO₂</p>
-        <p className="absolute left-[475px] top-[253px] text-muted text-[10px]">Annual CO₂ avoided →</p>
+        {!geo && <p className="absolute left-[21px] top-[120px] text-muted text-[13px]">Abatement curve not available.</p>}
+        {geo && (
+          <>
+            <p className="absolute left-[21px] top-[79px] text-muted text-[10px]">Lifetime net cost / tCO₂</p>
+            <p className="absolute left-[475px] top-[253px] text-muted text-[10px]">Annual CO₂ avoided (t) →</p>
 
-        {/* grid lines + axis labels */}
-        <div className="absolute left-[64px] top-[212px] w-[562px] h-px bg-[#e7ebe2]" />
-        <p className="absolute left-[16px] top-[207px] text-muted text-[9px]">−$100</p>
-        <div className="absolute left-[64px] top-[165px] w-[562px] h-px bg-[#9aa68f]" />
-        <p className="absolute left-[16px] top-[160px] text-muted text-[9px]">$0</p>
-        <div className="absolute left-[64px] top-[118px] w-[562px] h-px bg-[#e7ebe2]" />
-        <p className="absolute left-[16px] top-[113px] text-muted text-[9px]">$100</p>
+            {/* grid lines + axis labels (computed from the bars' own scale) */}
+            <div className="absolute left-[64px] top-[212px] w-[562px] h-px bg-[#e7ebe2]" />
+            <p className="absolute left-[16px] top-[207px] text-muted text-[9px]">−${geo.yLabel.toLocaleString('en-US')}</p>
+            <div className="absolute left-[64px] top-[165px] w-[562px] h-px bg-[#9aa68f]" />
+            <p className="absolute left-[16px] top-[160px] text-muted text-[9px]">$0</p>
+            <div className="absolute left-[64px] top-[118px] w-[562px] h-px bg-[#e7ebe2]" />
+            <p className="absolute left-[16px] top-[113px] text-muted text-[9px]">${geo.yLabel.toLocaleString('en-US')}</p>
 
-        {/* profitable (below-zero) bars grow downward from the $0 line */}
-        {CUT_BARS.map((b) => (
-          <div
-            key={b.name}
-            title={b.name}
-            className="absolute bg-brand rounded-[2px]"
-            style={{ left: `${b.left}px`, top: '165px', width: `${b.width}px`, height: `${b.height}px` }}
-          />
-        ))}
-        {/* net-cost opportunity bars */}
-        {COST_BARS.map((b) => (
-          <div
-            key={b.name}
-            title={b.name}
-            className="absolute bg-[#dde4d5] border border-[#b9c5ae] rounded-[2px]"
-            style={{ left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` }}
-          />
-        ))}
-        <div className="absolute left-[472.11px] top-[110px] w-px h-[131px] bg-[#7a693b]" />
-        <p className="absolute left-[442.11px] top-[93px] font-medium text-[#7a693b] text-[10px]">
-          Reference: 40%
-        </p>
-        <p className="absolute left-[59px] top-[237px] text-muted text-[9px]">0</p>
-        <p className="absolute left-[229.05px] top-[237px] text-muted text-[9px]">400</p>
-        <p className="absolute left-[399.09px] top-[237px] text-muted text-[9px]">800</p>
-        <p className="absolute left-[569.14px] top-[237px] text-muted text-[9px]">1200</p>
+            {cutBars.map((b) => (
+              <div
+                key={b.upgradeId}
+                title={b.name}
+                onClick={() => pickBar(b)}
+                className="absolute bg-brand rounded-[2px] cursor-pointer hover:brightness-110"
+                style={{ left: `${b.left}px`, top: '165px', width: `${b.width}px`, height: `${b.height}px` }}
+              />
+            ))}
+            {costBars.map((b) => (
+              <div
+                key={b.upgradeId}
+                title={b.name}
+                onClick={() => pickBar(b)}
+                className="absolute bg-[#dde4d5] border border-[#b9c5ae] rounded-[2px] cursor-pointer hover:brightness-95"
+                style={{ left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` }}
+              />
+            ))}
+            {tm?.tonnesNeeded != null && (
+              <>
+                <div className="absolute top-[110px] w-px h-[131px] bg-[#7a693b]" style={{ left: `${geo.referenceLeft(tm.tonnesNeeded)}px` }} />
+                <p className="absolute top-[93px] font-medium text-[#7a693b] text-[10px]" style={{ left: `${geo.referenceLeft(tm.tonnesNeeded) - 30}px` }}>
+                  Target: {tm.target}%
+                </p>
+              </>
+            )}
+            {geo.xTicks.map((t) => (
+              <p key={t.label} className="absolute top-[237px] text-muted text-[9px]" style={{ left: `${t.left}px` }}>{t.label}</p>
+            ))}
 
-        {/* legend */}
-        <div className="absolute left-[21px] top-[270px] w-[9px] h-[9px] rounded-[2px] bg-[#416b4d]" />
-        <p className="absolute left-[36px] top-[268px] text-muted text-[10px]">Available upgrades</p>
-        <div className="absolute left-[144px] top-[270px] w-[9px] h-[9px] rounded-[2px] bg-[#dde4d5]" />
-        <p className="absolute left-[159px] top-[268px] text-muted text-[10px]">Additional opportunities</p>
+            <div className="absolute left-[21px] top-[270px] w-[9px] h-[9px] rounded-[2px] bg-[#416b4d]" />
+            <p className="absolute left-[36px] top-[268px] text-muted text-[10px]">Pays for itself</p>
+            <div className="absolute left-[144px] top-[270px] w-[9px] h-[9px] rounded-[2px] bg-[#dde4d5]" />
+            <p className="absolute left-[159px] top-[268px] text-muted text-[10px]">Net cost</p>
 
-        {/* right note */}
-        <div className="absolute left-[651px] top-[83px] w-px h-[182px] bg-[#e7ebe2]" />
-        <p className="absolute left-[673px] top-[92px] font-medium text-muted text-[10px] tracking-[0.6px]">
-          PROFITABLE CUTS
-        </p>
-        <p className="absolute left-[673px] top-[113px] font-semibold text-brand text-[31px]">1,032</p>
-        <p className="absolute left-[673px] top-[153px] text-muted text-[10px]">tCO₂ / year</p>
-        <div className="absolute left-[673px] top-[178px] font-medium text-ink text-[12px] leading-[20px]">
-          Below-zero upgrades
-          <br />
-          create net financial value.
-        </div>
-        <div className="absolute left-[673px] top-[240px] text-muted text-[10px] leading-[17px]">
-          Bar width = carbon avoided
-          <br />
-          Bar height = cost per tonne
-        </div>
+            <div className="absolute left-[651px] top-[83px] w-px h-[182px] bg-[#e7ebe2]" />
+            <p className="absolute left-[673px] top-[92px] font-medium text-muted text-[10px] tracking-[0.6px]">
+              PROFITABLE CUTS
+            </p>
+            <p className="absolute left-[673px] top-[113px] font-semibold text-brand text-[31px]">{geo.profitableTonnes.toLocaleString('en-US')}</p>
+            <p className="absolute left-[673px] top-[153px] text-muted text-[10px]">tCO₂ / year</p>
+            <div className="absolute left-[673px] top-[178px] font-medium text-ink text-[12px] leading-[20px]">
+              Below-zero upgrades
+              <br />
+              have a negative net cost.
+            </div>
+            <div className="absolute left-[673px] top-[240px] text-muted text-[10px] leading-[17px]">
+              Bar width = carbon avoided
+              <br />
+              Bar height = cost per tonne
+            </div>
+          </>
+        )}
       </section>
 
       {/* Survey activity card */}
@@ -174,29 +157,29 @@ export default function PlanDetails() {
         >
           Survey activity
         </button>
-        <div className="absolute left-[314px] top-[19px] w-[86px] h-[23px] rounded-[5px] bg-[#edf3e6] flex items-center">
-          <span className="ml-[12px] font-medium text-brand text-[10px]">8 / 8 ready</span>
-        </div>
+        {results.length > 0 && (
+          <div className="absolute left-[300px] top-[19px] w-[100px] h-[23px] rounded-[5px] bg-[#edf3e6] flex items-center">
+            <span className="ml-[12px] font-medium text-brand text-[10px]">{nReady} / {results.length} ready</span>
+          </div>
+        )}
         <p className="absolute left-[21px] top-[44px] text-muted text-[12px]">
-          Latest completed survey events
+          Latest recorded events
         </p>
-        {ACTIVITY.map((a, i) => {
+        {!activity.length && <p className="absolute left-[21px] top-[82px] text-muted text-[12px]">No events loaded.</p>}
+        {activity.map((a, i) => {
           const top = 82 + i * 57
           return (
-            <div key={a.time}>
+            <div key={a.key ?? i}>
               <span
                 className="absolute left-[21px] w-[18px] h-[18px] rounded-full bg-brand text-white text-[11px] flex items-center justify-center"
                 style={{ top: `${top}px` }}
               >
                 ✓
               </span>
-              <p
-                className="absolute left-[48px] font-medium text-ink text-[12px]"
-                style={{ top: `${top}px` }}
-              >
+              <p className="absolute left-[48px] font-medium text-ink text-[12px]" style={{ top: `${top}px` }}>
                 {a.time}
               </p>
-              <p className="absolute left-[48px] text-muted text-[11px]" style={{ top: `${top + 18}px` }}>
+              <p className="absolute left-[48px] w-[360px] truncate text-muted text-[11px]" style={{ top: `${top + 18}px` }}>
                 {a.line}
               </p>
               <p className="absolute left-[48px] text-muted text-[9px]" style={{ top: `${top + 33}px` }}>
@@ -223,15 +206,15 @@ export default function PlanDetails() {
       </section>
 
       {/* Upgrade breakdown table */}
-      <section className="absolute left-[56px] top-[709px] w-[1328px] h-[193px] rounded-[6px] border border-line bg-white overflow-hidden">
+      <section className="absolute left-[56px] top-[709px] w-[1328px] rounded-[6px] border border-line bg-white overflow-hidden" style={{ height: tableH }}>
         <p className="absolute left-[21px] top-[16px] font-semibold text-ink text-[16px]">
           Upgrade breakdown
         </p>
         <p className="absolute left-[237px] top-[21px] text-muted text-[11px]">
-          18 upgrades across 8 buildings
+          {sum ? sum.count : `Upgrades ${NA}`}
         </p>
         <p className="absolute left-[919px] top-[20px] text-muted text-[11px]">
-          Baseline downside: −$94k NPV
+          Worst 5% average: {risk ? `${risk.worst5} NPV` : NA}{stub && risk && <Stub />}
         </p>
         <button
           type="button"
@@ -242,26 +225,22 @@ export default function PlanDetails() {
         </button>
 
         <div className="absolute left-0 top-[54px] w-[1326px] h-[29px] bg-[#f6f7f3]" />
-        {['UPGRADE BUNDLE', 'COVERAGE', 'UPFRONT COST', 'ANNUAL CO₂ CUT', 'EXPECTED NPV'].map(
-          (h, i) => (
-            <p
-              key={h}
-              className="absolute top-[63px] font-medium text-muted text-[9px] tracking-[0.6px]"
-              style={{ left: `${[21, 417, 655, 895, 1135][i]}px` }}
-            >
-              {h}
-            </p>
-          ),
-        )}
-        {ROWS.map((r, i) => {
-          const top = 90 + i * 33
+        {['UPGRADE BUNDLE', 'COVERAGE', 'UPFRONT COST', 'ANNUAL CO₂ CUT', 'EXPECTED NPV'].map((h, i) => (
+          <p
+            key={h}
+            className="absolute top-[63px] font-medium text-muted text-[9px] tracking-[0.6px]"
+            style={{ left: `${[21, 417, 655, 895, 1135][i]}px` }}
+          >
+            {h}
+          </p>
+        ))}
+        {!rows.length && <p className="absolute left-[21px] top-[92px] text-muted text-[12px]">No upgrades in the plan.</p>}
+        {rows.map((r, i) => {
+          const top = 90 + i * rowH
           return (
             <div key={r.name}>
               {i > 0 && (
-                <div
-                  className="absolute left-[21px] w-[1284px] h-px bg-[#e7ebe2]"
-                  style={{ top: `${top - 7}px` }}
-                />
+                <div className="absolute left-[21px] w-[1284px] h-px bg-[#e7ebe2]" style={{ top: `${top - 7}px` }} />
               )}
               <button
                 type="button"
@@ -272,10 +251,10 @@ export default function PlanDetails() {
                 {r.name}
               </button>
               <p className="absolute left-[417px] text-muted text-[12px]" style={{ top: `${top}px` }}>
-                {r.coverage}
+                {r.coverage}{r.unverified ? ` · ${r.unverified} unverified` : ''}
               </p>
               <p className="absolute left-[655px] text-ink text-[12px]" style={{ top: `${top}px` }}>
-                {r.cost}
+                {r.cost}{stub && r.cost !== NA && <Stub />}
               </p>
               <p className="absolute left-[895px] text-ink text-[12px]" style={{ top: `${top}px` }}>
                 {r.co2}
@@ -288,9 +267,7 @@ export default function PlanDetails() {
         })}
       </section>
 
-      <p className="absolute left-[56px] top-[947px] text-muted text-[11px]">
-        Illustrative data · Review assumptions before approval
-      </p>
+      <Sources />
       <button
         type="button"
         onClick={() => go('/risk-and-target')}
