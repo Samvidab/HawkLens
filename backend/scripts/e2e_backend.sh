@@ -12,7 +12,14 @@ cd "$(dirname "$0")/.."
 SRC="${DEMO_DATA_DIR:-$PWD/data}"
 [ -f "$SRC/portfolio.json" ] || { echo "e2e_backend: no portfolio.json in $SRC" >&2; exit 1; }
 CACHE_IN="${CACHE_DIR:-}"  # the caller's cache dir wins over .env
+# Playwright may stop this script with SIGKILL (no trap runs): remove earlier copies whose owner process is gone.
+for old in "${TMPDIR:-/tmp}"/hawklens-e2e.*; do
+  [ -d "$old" ] || continue
+  owner="$(cat "$old/.owner" 2>/dev/null || true)"
+  if [ -z "$owner" ] || ! kill -0 "$owner" 2>/dev/null; then rm -rf -- "$old"; fi
+done
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/hawklens-e2e.XXXXXX")"
+echo $$ > "$TMP/.owner"
 PID=""
 cleanup() { [ -n "$PID" ] && kill "$PID" 2>/dev/null; case "$TMP" in */hawklens-e2e.*) rm -rf -- "$TMP" ;; esac; }
 trap cleanup EXIT
