@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
+import { isPriced, usePlan } from '../lib/plan'
+import { pct, plural, signedUsd, tonnes, usd } from '../lib/format'
 
 const FILTERS = [
   { label: 'All documents', left: 0, width: 95 },
@@ -8,22 +10,27 @@ const FILTERS = [
   { label: 'Financial', left: 338 },
 ]
 
-const DOCS = [
-  { title: 'Investment memo', meta: 'PDF · Houston portfolio · Draft', updated: 'Today, 09:42', highlight: true },
-  { title: 'Portfolio survey', meta: 'PDF · 8 buildings · 3 data layers', updated: 'Today, 09:39' },
-  { title: 'Assumptions & sources', meta: 'CSV · Input ranges and source references', updated: 'Today, 09:38' },
-  { title: 'Upgrade schedule', meta: '18 upgrades across 8 buildings', updated: 'Today, 09:42' },
-  { title: 'Reserve confirmation', meta: 'Available after you approve the plan', updated: 'Not yet available', disabled: true },
-]
-
-const PREVIEW_METRICS = [
-  ['Upfront investment', '$1280k'],
-  ['Expected lifetime net value', '+$486k'],
-  ['Baseline simulation confidence', '87%'],
-]
-
 export default function Documents() {
   const navigate = useNavigate()
+  const { plan } = usePlan()
+  const items = plan?.line_items || []
+  const nBuildings = new Set(items.map((r) => r.building_id)).size
+  const executed = Boolean(plan?.funding?.executed)
+  const nRequested = plan?.coverage?.requested?.length ?? 0
+  const DOCS = [
+    { title: 'Investment memo', meta: `PDF · ${plan ? `Plan ${plan.plan_id}` : 'No plan yet'} · ${executed ? 'Approved' : 'Draft'}`, updated: '', highlight: true },
+    { title: 'Portfolio survey', meta: `PDF · ${plural(nRequested, 'building')}`, updated: '' },
+    { title: 'Assumptions & sources', meta: 'CSV · Input ranges and source references', updated: '' },
+    { title: 'Upgrade schedule', meta: isPriced(plan) ? `${plural(items.length, 'upgrade')} across ${plural(nBuildings, 'building')}` : 'No priced plan yet', updated: '' },
+    executed
+      ? { title: 'Reserve confirmation', meta: plan?.financing?.simulated ? 'Simulated funding record' : 'Nessie funding record', updated: '' }
+      : { title: 'Reserve confirmation', meta: 'Available after you approve the plan', updated: 'Not yet available', disabled: true },
+  ]
+  const PREVIEW_METRICS = [
+    ['Upfront investment', usd(plan?.total_upfront)],
+    ['Expected lifetime net value', signedUsd(plan?.exp_npv)],
+    ['Chance of hitting the target', pct(plan?.p_hit_target)],
+  ]
 
   return (
     <Page active="documents">
@@ -111,9 +118,15 @@ export default function Documents() {
           Recommendation
         </p>
         <p className="absolute left-[29px] top-[243px] w-[444px] text-muted text-[13px] leading-[23px]">
-          Fund 18 upgrades across 8 buildings.
-          <br />
-          Expected annual cut: 1032 tonnes CO₂.
+          {isPriced(plan) ? (
+            <>
+              {plan.status === 'ok' ? 'Fund' : 'Do not fund yet:'} {plural(items.length, 'upgrade')} across {plural(nBuildings, 'building')}.
+              <br />
+              Expected annual cut: {tonnes(plan.tonnes_per_year, ' tonnes CO₂')}.
+            </>
+          ) : (
+            'No priced plan yet.'
+          )}
         </p>
         {PREVIEW_METRICS.map(([label, value], i) => {
           const top = 314 + i * 38
@@ -136,7 +149,7 @@ export default function Documents() {
           Before you commit
         </p>
         <p className="absolute left-[29px] top-[486px] text-muted text-[12px] leading-[21px]">
-          The worst 5% of scenarios average −$94k NPV.
+          The worst 5% of scenarios average {signedUsd(plan?.cvar5)} NPV.
           <br />
           Site checks and contractor quotes are still required.
           <br />

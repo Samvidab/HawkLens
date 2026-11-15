@@ -1,47 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Page from '../components/Page'
 import ShowcaseModal from '../components/ShowcaseModal'
-import { assetUrl, fetchProperties } from '../lib/api'
-import { useGo, useGoal } from '../lib/ui'
-import {
-  BUDGET_K,
-  SLIDER_WIDTH,
-  TARGET_MAX,
-  TARGET_MIN,
-  deriveModel,
-} from '../lib/model'
+import { assetUrl, fetchPortfolio, showcaseSrc } from '../lib/api'
+import { useGo } from '../lib/ui'
+import { isPriced, usePlan } from '../lib/plan'
+import { SLIDER_WIDTH, TARGET_MAX, TARGET_MIN } from '../lib/model'
+import { DASH, budgetLabel, pct, plural, riskLabel, signedUsd, statusHeadline, tonnes, typeLabel, usd } from '../lib/format'
 
 export default function Portfolio() {
   const go = useGo()
-  // Shared, persisted target (survives navigation + reload; drives every page).
-  const { target, setTarget } = useGoal()
-  const model = deriveModel(target)
-  const setTargetClamped = setTarget
+  // The persisted plan (GET /plan). The slider re-plans on the backend; nothing is computed here.
+  const { plan, loaded, loadError: planError, actionError, busy, displayTarget, requestTarget } = usePlan()
 
-  // Real Matterport properties from the backend.
-  const [properties, setProperties] = useState([])
+  // The portfolio's buildings from the backend (data/portfolio.json via GET /portfolio).
+  const [buildings, setBuildings] = useState([])
   const [loadError, setLoadError] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [tourProperty, setTourProperty] = useState(null)
 
   useEffect(() => {
     let alive = true
-    fetchProperties({ limit: 24 })
-      .then((d) => alive && setProperties(d.results || []))
+    fetchPortfolio()
+      .then((d) => alive && setBuildings(d.buildings || []))
       .catch((e) => alive && setLoadError(e.message))
+      .finally(() => alive && setLoading(false))
     return () => {
       alive = false
     }
   }, [])
 
+  const items = plan?.line_items || []
+  const nBuildings = new Set(items.map((r) => r.building_id)).size
+  const city = plan?.goal?.city || 'Houston'
+
   return (
     <Page active="portfolio">
       <h1 className="absolute left-[56px] top-[127px] whitespace-nowrap font-semibold text-ink text-[32px]">
-        Houston portfolio
+        {city} portfolio
       </h1>
       <p className="absolute left-[57px] top-[176px] whitespace-nowrap text-muted text-[14px]">
-        {properties.length
-          ? `${properties.length} buildings · Live Matterport scans`
-          : 'Loading buildings…'}
+        {loading
+          ? 'Loading buildings…'
+          : loadError
+            ? 'Buildings unavailable'
+            : `${plural(buildings.length, 'building')} · Matterport scans where available`}
       </p>
       <LinkArrow className="left-[1055px] top-[154px]" onClick={() => go('/start-survey')}>
         Run survey
@@ -51,7 +53,8 @@ export default function Portfolio() {
       </LinkArrow>
 
       <PortfolioModel
-        properties={properties}
+        buildings={buildings}
+        loading={loading}
         loadError={loadError}
         onOpenTour={(p) => setTourProperty(p)}
       />
@@ -61,12 +64,16 @@ export default function Portfolio() {
       )}
 
       <CarbonGoal
-        target={target}
-        model={model}
-        onChangeTarget={setTargetClamped}
-        onStep={(delta) => setTargetClamped(target + delta)}
+        plan={plan}
+        loaded={loaded}
+        planError={planError}
+        actionError={actionError}
+        busy={busy}
+        target={displayTarget}
+        onChangeTarget={requestTarget}
+        onStep={(delta) => requestTarget(displayTarget + delta)}
         onEdit={() => go('/plan-preferences')}
-        onReview={() => go('/plan')}
+        onReview={() => go(plan ? '/plan' : '/start-survey')}
         onCheckGap={() => go('/risk-and-target')}
       />
 
@@ -74,19 +81,25 @@ export default function Portfolio() {
         Recommended upgrades
       </h2>
       <p className="absolute left-[56px] top-[738px] whitespace-nowrap text-muted text-[13px]">
-        18 upgrades across 8 buildings
+        {isPriced(plan)
+          ? `${plural(items.length, 'upgrade')} across ${plural(nBuildings, 'building')} · ${plural(plan.bundles.length, 'upgrade type')}${plan.bundles.length > 3 ? ' (scroll for more)' : ''}`
+          : plan?.status === 'no_data'
+            ? `Not priced: ${plan.reason}`
+            : 'Run the survey to get recommendations from the quant engine'}
       </p>
       <LinkArrow className="left-[1208px] top-[715px]" onClick={() => go('/plan')}>
         See costs &amp; evidence
       </LinkArrow>
 
-      <UpgradeSummary onOpen={() => go('/plan')} />
+      <UpgradeSummary bundles={plan?.bundles || []} onOpen={() => go('/plan')} />
 
       <p className="absolute left-[56px] top-[947px] whitespace-nowrap text-muted text-[11px]">
-        Interactive demo · Illustrative calculations, not a live optimizer
+        {plan
+          ? `Quant engine${plan.stub ? ' (stub: sample pricing)' : ''} · Plan ${plan.plan_id}${busy ? ' · re-planning…' : ''}`
+          : 'No plan yet · every number here comes from the backend optimizer'}
       </p>
       <p className="absolute left-[1090px] top-[947px] whitespace-nowrap text-muted text-[11px]">
-        Baseline sample: {model.confidence}% target confidence
+        {plan?.p_hit_target != null ? `${pct(plan.p_hit_target)} chance of hitting the target` : ''}
       </p>
     </Page>
   )
@@ -104,7 +117,7 @@ function LinkArrow({ className = '', children, onClick }) {
   )
 }
 
-function PortfolioModel({ properties, loadError, onOpenTour }) {
+function PortfolioModel({ buildings, loading, loadError, onOpenTour }) {
   return (
     <section className="absolute left-[56px] top-[231px] w-[848px] h-[420px] overflow-hidden rounded-[8px] bg-model">
       <p className="absolute left-[23px] top-[21px] whitespace-nowrap font-medium text-ink text-[15px]">
@@ -114,19 +127,19 @@ function PortfolioModel({ properties, loadError, onOpenTour }) {
         Real Matterport scans — expand a building to walk through it.
       </p>
 
-      {/* Scrollable grid of real building cards (replaces the schematic green blocks) */}
       <div className="absolute left-[23px] right-[23px] top-[74px] bottom-[42px] overflow-y-auto pr-1">
         {loadError && (
           <p className="text-[13px] text-[#b4532f]">
-            Couldn&rsquo;t load buildings ({loadError}). Is the backend running on :8000?
+            Couldn&rsquo;t load the portfolio ({loadError}).
           </p>
         )}
-        {!loadError && properties.length === 0 && (
-          <p className="text-muted text-[13px]">Loading buildings…</p>
+        {!loadError && loading && <p className="text-muted text-[13px]">Loading buildings…</p>}
+        {!loadError && !loading && buildings.length === 0 && (
+          <p className="text-muted text-[13px]">The portfolio has no buildings.</p>
         )}
         <div className="grid grid-cols-3 gap-3">
-          {properties.map((p) => (
-            <BuildingCard key={p.id} property={p} onOpenTour={onOpenTour} />
+          {buildings.map((b) => (
+            <BuildingCard key={b.building_id} building={b} onOpenTour={onOpenTour} />
           ))}
         </div>
       </div>
@@ -138,19 +151,26 @@ function PortfolioModel({ properties, loadError, onOpenTour }) {
   )
 }
 
-function BuildingCard({ property, onOpenTour }) {
+function BuildingCard({ building, onOpenTour }) {
+  const modelId = building.matterport_model_id
+  const [imgOk, setImgOk] = useState(Boolean(modelId))
+  const tour = modelId
+    ? { id: modelId, name: building.name, address: building.address, show_url: showcaseSrc(modelId) }
+    : null
   return (
     <button
       type="button"
-      onClick={() => onOpenTour(property)}
-      className="group relative block w-full overflow-hidden rounded-[6px] bg-white text-left shadow-sm hover:shadow-md transition-shadow"
+      disabled={!tour}
+      onClick={() => tour && onOpenTour(tour)}
+      className="group relative block w-full overflow-hidden rounded-[6px] bg-white text-left shadow-sm hover:shadow-md transition-shadow disabled:cursor-default"
     >
       <div className="relative w-full aspect-[4/3] bg-line overflow-hidden">
-        {property.thumbnail_url ? (
+        {imgOk ? (
           <img
-            src={assetUrl(property.thumbnail_url)}
-            alt={property.name || property.id}
+            src={assetUrl(`/properties/${modelId}/thumbnail`)}
+            alt={building.name || building.building_id}
             loading="lazy"
+            onError={() => setImgOk(false)}
             className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
           />
         ) : (
@@ -158,20 +178,34 @@ function BuildingCard({ property, onOpenTour }) {
             no image
           </div>
         )}
-        {/* Expand affordance */}
-        <span className="absolute right-2 top-2 rounded-[4px] bg-white/90 px-2 py-1 text-[11px] font-medium text-brand opacity-0 group-hover:opacity-100 transition-opacity">
-          Expand ↗
-        </span>
+        {tour && (
+          <span className="absolute right-2 top-2 rounded-[4px] bg-white/90 px-2 py-1 text-[11px] font-medium text-brand opacity-0 group-hover:opacity-100 transition-opacity">
+            Expand ↗
+          </span>
+        )}
       </div>
       <div className="px-2.5 py-2">
-        <p className="truncate text-[13px] font-medium text-ink">{property.name || property.id}</p>
-        <p className="truncate text-[11px] text-muted">{property.address || 'Houston, TX'}</p>
+        <p className="truncate text-[13px] font-medium text-ink">{building.name || building.building_id}</p>
+        <p className="truncate text-[11px] text-muted">{building.address || building.city || DASH}</p>
       </div>
     </button>
   )
 }
 
-function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, onCheckGap }) {
+function CarbonGoal({ plan, loaded, planError, actionError, busy, target, onChangeTarget, onStep, onEdit, onReview, onCheckGap }) {
+  const covered = plan?.status === 'ok'
+  const headline = !loaded ? 'Loading plan…' : planError ? 'Plan unavailable' : statusHeadline(plan)
+  const sub = planError
+    ? planError
+    : actionError
+      ? actionError
+      : plan?.status === 'infeasible'
+        ? `${tonnes(plan.shortfall_tonnes, ' t/yr')} short · ${tonnes(plan.tonnes_per_year)}`
+        : plan?.status === 'no_data'
+          ? plan.reason
+          : plan
+            ? tonnes(plan.tonnes_per_year)
+            : 'Run the survey to price a plan'
   return (
     <section className="absolute left-[944px] top-[231px] w-[440px] h-[420px] overflow-hidden">
       <div className="absolute left-0 top-0 w-px h-[420px] bg-line" />
@@ -209,10 +243,10 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
       <TargetSlider target={target} onChange={onChangeTarget} />
 
       <p className="absolute left-[32px] top-[125px] whitespace-nowrap text-muted text-[11px]">0%</p>
-      <p className="absolute left-[384px] top-[125px] whitespace-nowrap text-muted text-[11px]">60%</p>
+      <p className="absolute left-[384px] top-[125px] whitespace-nowrap text-muted text-[11px]">{TARGET_MAX}%</p>
 
       <p className="absolute left-[32px] top-[165px] whitespace-nowrap text-muted text-[13px]">
-        Budget ${BUDGET_K}k · Balanced risk
+        {budgetLabel(plan?.goal?.budget_usd)} · {riskLabel(plan?.goal?.risk_lambda ?? 0.5)} risk
       </p>
       <button
         type="button"
@@ -226,27 +260,32 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
 
       <p
         className={`absolute left-[32px] top-[224px] whitespace-nowrap font-semibold text-[20px] ${
-          model.covered ? 'text-ink' : 'text-[#b4532f]'
+          covered || !plan ? 'text-ink' : 'text-[#b4532f]'
         }`}
       >
-        {model.statusLabel}
+        {busy ? 'Re-planning…' : headline}
       </p>
-      <p className="absolute left-[32px] top-[257px] whitespace-nowrap text-muted text-[13px] tabular-nums">
-        {model.annualLabel}
+      <p
+        title={sub}
+        className={`absolute left-[32px] top-[257px] w-[376px] truncate text-[13px] tabular-nums ${
+          actionError || planError ? 'text-[#b4532f]' : 'text-muted'
+        }`}
+      >
+        {sub}
       </p>
 
       <p className="absolute left-[32px] top-[297px] whitespace-nowrap text-muted text-[12px]">
         Investment
       </p>
       <p className="absolute left-[32px] top-[318px] whitespace-nowrap font-medium text-ink text-[22px] tabular-nums">
-        {model.investmentLabel}
+        {usd(plan?.total_upfront)}
       </p>
 
       <p className="absolute left-[226px] top-[297px] whitespace-nowrap text-muted text-[12px]">
         Lifetime net value
       </p>
       <p className="absolute left-[226px] top-[318px] whitespace-nowrap font-medium text-ink text-[22px] tabular-nums">
-        {model.netValueLabel}
+        {signedUsd(plan?.exp_npv)}
       </p>
 
       <button
@@ -254,7 +293,7 @@ function CarbonGoal({ target, model, onChangeTarget, onStep, onEdit, onReview, o
         onClick={onReview}
         className="absolute left-[32px] top-[369px] w-[376px] h-[47px] rounded-[6px] bg-brand flex items-center justify-center font-medium text-white text-[14px] hover:brightness-110 active:brightness-95 transition"
       >
-        Review plan
+        {plan ? 'Review plan' : 'Run survey'}
       </button>
 
       <button
@@ -317,34 +356,29 @@ function TargetSlider({ target, onChange }) {
   )
 }
 
-const UPGRADES = [
-  { name: 'LED retrofit', detail: '8 buildings · 8 bills', cost: '$120k' },
-  { name: 'Rooftop solar', detail: '6 buildings · 6 bills', cost: '$760k' },
-  { name: 'Heat pump conversion', detail: '4 buildings · 4 bills', cost: '$400k' },
-]
-
-function UpgradeSummary({ onOpen }) {
+function UpgradeSummary({ bundles, onOpen }) {
+  // One row per upgrade type in the optimizer's selection (backend sums; shown as-is).
   return (
-    <section className="absolute left-[56px] top-[783px] w-[1328px] h-[133px] overflow-hidden">
-      {UPGRADES.map((u, i) => {
+    <section className="absolute left-[56px] top-[783px] w-[1328px] h-[133px] overflow-y-auto overflow-x-hidden">
+      {bundles.map((b, i) => {
         const top = i * 44
         return (
-          <div key={u.name}>
+          <div key={b.type}>
             <div className="absolute left-0 w-[1328px] h-px bg-line" style={{ top: `${top}px` }} />
             <button
               type="button"
-              onClick={() => onOpen(u.name)}
+              onClick={() => onOpen(b.type)}
               className="group absolute left-0 w-[1328px] h-[43px] text-left"
               style={{ top: `${top + 1}px` }}
             >
               <span className="absolute left-0 top-[14px] whitespace-nowrap font-medium text-ink text-[14px] group-hover:text-brand">
-                {u.name}
+                {typeLabel(b.type)}
               </span>
               <span className="absolute left-[608px] top-[14px] whitespace-nowrap text-muted text-[13px]">
-                {u.detail}
+                {plural(b.n_buildings, 'building')} · {plural(b.n_upgrades, 'upgrade')}
               </span>
               <span className="absolute left-[1170px] top-[13px] whitespace-nowrap font-medium text-ink text-[14px] tabular-nums">
-                {u.cost}
+                {usd(b.upfront_usd)}
               </span>
               <span className="absolute left-[1312px] top-[10px] whitespace-nowrap text-muted text-[21px] leading-none group-hover:text-brand group-hover:translate-x-1 transition-transform">
                 ›

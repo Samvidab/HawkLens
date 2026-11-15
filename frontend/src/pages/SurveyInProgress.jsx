@@ -1,26 +1,65 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
-import { useGo } from '../lib/ui'
+import { eventsUrl, fetchRunState } from '../lib/api'
+import { usePlan } from '../lib/plan'
+import { plural } from '../lib/format'
 
-const EVENTS = [
-  { time: '09:41:12', agent: 'Records analyst', msg: 'Midtown office profile loaded.', meta: 'CoStar · 96,000 sq ft · 6 floors' },
-  { time: '09:41:36', agent: 'Aerial inspector', msg: 'Found 1,200 m² of usable roof.', meta: 'Vexcel · Overhead + facade images' },
-  { time: '09:42:04', agent: 'Interior inspector', msg: 'Flagged fluorescent ceiling fixtures.', meta: 'Matterport · Level 2 panorama' },
-  { time: '09:42:18', agent: 'Verifier', msg: 'Roof claim verified at 0.91 confidence.', meta: 'Evidence 12 · No additional review loop' },
-  { time: '09:42:31', agent: 'Pricing agent', msg: 'Preparing feasible upgrades for simulation.', meta: 'Engine inputs · Queued' },
-  { time: '09:42:35', agent: 'Orchestrator', msg: 'Waiting for the remaining two buildings.', meta: 'Parallel survey · 3 active inspectors' },
-]
+const hms = (ts) => (ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '')
 
-const PROGRESS = [
-  { label: 'Records', detail: '8 / 8 complete' },
-  { label: 'Aerial inspection', detail: '6 / 8 complete' },
-  { label: 'Interior inspection', detail: 'Hero building pending' },
-  { label: 'Verification', detail: 'In progress' },
-]
+/** Survey progress from GET /state/{run_id}: per-building results written by the survey graph. */
+function summarize(st) {
+  const ids = st?.building_ids || Object.keys(st?.results || {})
+  const res = st?.results || {}
+  const done = ids.filter((b) => res[b]?.status === 'done').length
+  const failed = ids.filter((b) => res[b]?.status === 'error').length
+  const upgrades = ids.reduce((a, b) => a + (res[b]?.upgrades || 0), 0)
+  return { total: ids.length, done, failed, upgrades, status: st?.status }
+}
 
 export default function SurveyInProgress() {
   const navigate = useNavigate()
-  const go = useGo()
+  const { runId, refresh } = usePlan()
+  const [events, setEvents] = useState([])
+  const [state, setState] = useState(null)
+  const [streamError, setStreamError] = useState(null)
+  const [finished, setFinished] = useState(false)
+  const lastPoll = useRef(0)
+
+  useEffect(() => {
+    if (!runId) return undefined
+    const poll = () => fetchRunState(runId).then(setState).catch(() => {})
+    poll()
+    const es = new EventSource(eventsUrl(runId))
+    es.onmessage = (m) => {
+      let ev
+      try {
+        ev = JSON.parse(m.data)
+      } catch {
+        return
+      }
+      setEvents((xs) => (xs.some((x) => x.seq === ev.seq) ? xs : [...xs, ev]))
+      if (Date.now() - lastPoll.current > 1000) {
+        lastPoll.current = Date.now()
+        poll()
+      }
+      if (ev.kind === 'done') {
+        es.close()
+        setFinished(true)
+        poll()
+        refresh().then(() => navigate('/survey-complete'))
+      }
+    }
+    es.onerror = () => {
+      // The stream closes normally after `done`; anything else is a lost connection.
+      if (es.readyState === EventSource.CLOSED) setStreamError('Lost the live event stream; reload to reconnect.')
+    }
+    return () => es.close()
+  }, [runId, refresh, navigate])
+
+  const sum = summarize(state)
+  const shown = events.slice(-6)
+  const progressPx = sum.total ? Math.round(((sum.done + sum.failed) / sum.total) * 392) : 0
 
   return (
     <Page active="portfolio">
@@ -35,7 +74,7 @@ export default function SurveyInProgress() {
         Surveying your portfolio
       </h1>
       <p className="absolute left-[56px] top-[202px] text-muted text-[14px] leading-[1.45]">
-        Pulling evidence, checking feasibility and verifying claims.
+        {runId ? `Run ${runId} · pulling evidence, checking feasibility and verifying claims.` : 'No survey running. Start one from the survey screen.'}
       </p>
 
       {/* Activity feed */}
@@ -44,44 +83,54 @@ export default function SurveyInProgress() {
           Survey activity
         </p>
         <p className="absolute left-[19px] top-[46px] text-muted text-[11px] leading-[1.45]">
-          6 of 8 buildings inspected · Example event stream
+          {sum.total ? `${sum.done + sum.failed} of ${plural(sum.total, 'building')} inspected` : 'Waiting for the first event…'}
         </p>
-        <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">In progress</p>
-        {EVENTS.map((e, i) => {
+        <p className="absolute left-[726px] top-[21px] text-brand text-[11px] leading-[1.45]">
+          {finished ? 'Complete' : 'In progress'}
+        </p>
+        {shown.map((e, i) => {
           const top = 86 + i * 48
           return (
-            <div key={e.time}>
+            <div key={e.seq}>
               {i > 0 && (
                 <div className="absolute left-[19px] w-[808px] h-px bg-line" style={{ top: `${top - 7}px` }} />
               )}
               <p className="absolute left-[19px] text-muted text-[11px] leading-[1.45]" style={{ top: `${top}px` }}>
-                {e.time}
+                {hms(e.ts)}
               </p>
-              <p className="absolute left-[109px] font-medium text-brand text-[13px] leading-[1.45]" style={{ top: `${top}px` }}>
+              <p className="absolute left-[109px] w-[160px] truncate font-medium text-brand text-[13px] leading-[1.45]" style={{ top: `${top}px` }}>
                 {e.agent}
               </p>
-              <p className="absolute left-[277px] text-ink text-[14px] leading-[1.45]" style={{ top: `${top}px` }}>
-                {e.msg}
+              <p
+                className={`absolute left-[277px] w-[540px] truncate text-[14px] leading-[1.45] ${e.kind === 'error' ? 'text-[#b4532f]' : 'text-ink'}`}
+                style={{ top: `${top}px` }}
+              >
+                {e.message}
               </p>
               <p className="absolute left-[277px] text-muted text-[11px] leading-[1.45]" style={{ top: `${top + 22}px` }}>
-                {e.meta}
+                {[e.building_name, e.kind].filter(Boolean).join(' · ')}
               </p>
             </div>
           )
         })}
         <p className="absolute left-[19px] top-[409px] text-muted text-[11px] leading-[1.45]">
-          Structured events · Illustrative sequence, not a live server feed
+          {streamError || 'Live server events (GET /events)'}
         </p>
       </section>
 
       {/* Survey progress */}
       <section className="absolute left-[944px] top-[265px] w-[440px] h-[440px] rounded-[8px] bg-[#f5f7f2] overflow-hidden">
         <p className="absolute left-[24px] top-[21px] font-semibold text-ink text-[20px] leading-[1.45]">
-          6 of 8 buildings inspected
+          {sum.total ? `${sum.done} of ${plural(sum.total, 'building')} surveyed` : 'Starting…'}
         </p>
         <div className="absolute left-[24px] top-[81px] w-[392px] h-[6px] rounded-[3px] bg-model" />
-        <div className="absolute left-[24px] top-[81px] w-[294px] h-[6px] rounded-[3px] bg-brand" />
-        {PROGRESS.map((p, i) => {
+        <div className="absolute left-[24px] top-[81px] h-[6px] rounded-[3px] bg-brand" style={{ width: `${progressPx}px` }} />
+        {[
+          { label: 'Surveyed', detail: `${sum.done} / ${sum.total}` },
+          { label: 'Failed', detail: String(sum.failed) },
+          { label: 'Feasible upgrades', detail: String(sum.upgrades) },
+          { label: 'Pricing', detail: finished ? 'Done' : sum.status === 'surveyed' ? 'Running the quant engine' : 'After the survey' },
+        ].map((p, i) => {
           const top = 128 + i * 49
           return (
             <div key={p.label}>
@@ -97,17 +146,10 @@ export default function SurveyInProgress() {
         <p className="absolute left-[24px] top-[343px] text-muted text-[11px] leading-[1.45]">
           Keep the workspace open while the survey runs.
         </p>
-        <button
-          type="button"
-          onClick={() => navigate('/survey-complete')}
-          className="absolute left-[24px] top-[388px] font-medium text-brand text-[13px] leading-[1.45] hover:underline"
-        >
-          Interior connection details&nbsp;&nbsp;→
-        </button>
       </section>
 
       <p className="absolute left-[56px] top-[947px] text-muted text-[11px] leading-[1.45]">
-        Prototype survey sequence · Example buildings and findings, not live data
+        Live survey · events and results from the backend run
       </p>
     </Page>
   )

@@ -1,14 +1,21 @@
 import { useNavigate } from 'react-router-dom'
 import Page from '../components/Page'
-
-const METRICS = [
-  ['Upfront investment', '$1280k'],
-  ['Expected lifetime net value', '+$486k'],
-  ['Baseline simulation confidence', '87%'],
-]
+import { isPriced, usePlan } from '../lib/plan'
+import { pct, plural, signedUsd, tonnes, usd } from '../lib/format'
 
 export default function InvestmentMemo() {
   const navigate = useNavigate()
+  // Same persisted plan as every other page: GET /plan.
+  const { plan, loaded } = usePlan()
+  const priced = isPriced(plan)
+  const items = plan?.line_items || []
+  const nBuildings = new Set(items.map((r) => r.building_id)).size
+  const executed = Boolean(plan?.funding?.executed)
+  const METRICS = [
+    ['Upfront investment', usd(plan?.total_upfront)],
+    ['Expected lifetime net value', signedUsd(plan?.exp_npv)],
+    ['Chance of hitting the target', pct(plan?.p_hit_target)],
+  ]
 
   return (
     <Page nav={false}>
@@ -35,16 +42,28 @@ export default function InvestmentMemo() {
           Investment memo
         </p>
         <p className="absolute left-[35.38px] top-[185.44px] text-muted text-[14.64px]">
-          Houston portfolio · Draft for owner review
+          {plan?.goal?.city || 'Houston'} portfolio · {plan ? `Plan ${plan.plan_id}` : 'No plan yet'}
         </p>
         <div className="absolute left-[35.38px] top-[225.7px] w-[541.68px] h-[1.22px] bg-line" />
         <p className="absolute left-[35.38px] top-[257.42px] font-semibold text-ink text-[19.52px]">
           Recommendation
         </p>
         <p className="absolute left-[35.38px] top-[296.46px] w-[541.68px] text-muted text-[13px] leading-[28.06px]">
-          Fund 18 upgrades across 8 buildings.
-          <br />
-          Expected annual cut: 1032 tonnes CO₂.
+          {!loaded ? (
+            'Loading plan…'
+          ) : !plan ? (
+            'No plan yet. Run the survey to price one.'
+          ) : !priced ? (
+            `Not priced: ${plan.reason}`
+          ) : (
+            <>
+              {plan.status === 'ok' ? 'Fund' : 'Do not fund yet:'} {plural(items.length, 'upgrade')} across{' '}
+              {plural(nBuildings, 'building')} for a {plan.goal?.target_pct}% CO₂ target.
+              <br />
+              Expected annual cut: {tonnes(plan.tonnes_per_year, ' tonnes CO₂')}
+              {plan.status === 'infeasible' ? ` (${tonnes(plan.shortfall_tonnes, ' t/yr')} short).` : '.'}
+            </>
+          )}
         </p>
         {METRICS.map(([label, value], i) => {
           const top = 383.08 + i * 46.36
@@ -67,7 +86,7 @@ export default function InvestmentMemo() {
           Before you commit
         </p>
         <p className="absolute left-[35.38px] top-[592.92px] text-muted text-[14.64px] leading-[25.62px]">
-          The worst 5% of scenarios average −$94k NPV.
+          The worst 5% of scenarios average {signedUsd(plan?.cvar5)} NPV; chance of a loss {pct(plan?.p_loss, 1)}.
           <br />
           Site checks and contractor quotes are still required.
           <br />
@@ -81,7 +100,7 @@ export default function InvestmentMemo() {
           Download memo&nbsp;&nbsp;↓
         </button>
         <p className="absolute left-[425.78px] top-[713.7px] text-muted text-[13.42px]">
-          Draft · Not approved
+          {executed ? 'Approved · funded' : 'Draft · Not approved'}
         </p>
       </section>
     </Page>

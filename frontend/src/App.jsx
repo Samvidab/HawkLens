@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { GoalProvider, ToastProvider } from './lib/ui'
+import { ToastProvider } from './lib/ui'
+import { PlanProvider } from './lib/plan'
 import Portfolio from './pages/Portfolio'
 import PlanDetails from './pages/PlanDetails'
 import BuildingDetails from './pages/BuildingDetails'
@@ -28,7 +29,7 @@ import MissionControl from './components/MissionControl'
 export default function App() {
   return (
     <BrowserRouter>
-      <GoalProvider>
+      <PlanProvider>
       <ToastProvider>
         <MissionControl />
         
@@ -57,7 +58,7 @@ export default function App() {
           <Route path="*" element={<Placeholder title="Not found" />} />
         </Routes>
       </ToastProvider>
-      </GoalProvider>
+      </PlanProvider>
     </BrowserRouter>
   )
 }
