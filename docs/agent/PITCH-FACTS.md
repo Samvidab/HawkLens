@@ -31,6 +31,31 @@ For each building, a Gemini agent sees the owner's goal, the CoStar record and t
 
 Totals: 8 different sequences, 4 to 9 feed lines per building. ⚠ Wider context was pulled on 2 buildings, both after a "shading partial" reading. The interior was skipped on 1 building (7900 Fannin). If the investigator fails, the fixed pipeline runs instead (`graph.inspect_node`).
 
+## 3D: verified equipment positions (branch `emissions-3d`, flag `EMISSIONS_3D`) (new)
+
+| Say | Value | Source |
+|---|---|---|
+| Verified equipment in 3D | **27 positions on 7 buildings**: lighting and HVAC pins, each with equipment type, claim ID, verifier result and panorama ID | `data/buildings/*/emissions_3d.json` |
+| Only verified claims are placed | A pin appears only if its lighting or HVAC claim is verified. Positions are the scan position of the panorama where the equipment was seen, not the fixture's exact spot | `backend/app/agents/emissions_3d.py` (`positions`) |
+| Panorama IDs | All 27 matched exactly to a panorama in the claim's own evidence; no match would show "unknown" | `emissions_3d.json` (`pano_id`) |
+| **Southwest Center: lighting only** | Its HVAC claim was **rejected** by the verifier: "The marked region on the wall is empty wall space and does not show a wall thermostat in a plastic lock box." Rejected claims are never placed | `data/buildings/239618/verification.json` (`interior.hvac`) |
+| **7900 Fannin: none** | The investigator listed its scan and stopped ("finished: more evidence won't change an upgrade, given built 2004; 1 scan linked"), so there are no interior claims to place. It shows "unknown", not invented pins | `data/buildings/6550930/investigation.json`, `emissions_3d.json` |
+| Tours | All 8 buildings' Matterport tours are public, so the tour can open on each | `data/buildings/*/tour.json` |
+
+## End-use research agent (branch `emissions-3d`) (new)
+
+| Say | Value | Source |
+|---|---|---|
+| What it did | Gemini chose the official source (EIA CBECS 2018 Table E5, row "Office"). Code fetched the PDF and cached its text. Gemini quoted the title, unit, headers, row and values. **Code verified 20 of 20 checks verbatim** against the fetched text | `backend/app/agents/end_use_research.py`; `backend/app/agents/sources/houston_office_end_use.json` (`verification`) |
+| The row | `Office 227 13 23 63 2 38 1 6 4 25 52` (billion kWh of electricity); measures: electricity | same file (`row_quote`, `unit`, `measures`) |
+| Scope | All U.S. office buildings: Table E5 has no office × census-region cross-tabulation, so the South region isn't broken out for offices | same file (`scope`) |
+| Safety | A value that isn't in the source text is rejected and nothing is saved | `backend/tests/test_end_use_research.py::test_number_not_in_source_is_rejected` |
+| **On screen** | **The shares are not shown on screen.** The 3D view shows only verified equipment positions; the shares exist only in the research files | `emissions_3d.py` (`load` reads `emissions_3d.json` only); `tests/test_emissions_3d.py::test_ui_payload_has_no_shares_and_needs_no_source` |
+
+**Don't quote end-use shares or tonnes by end use on stage.** They aren't in the product's UI. If asked, say the research agent found and verified the EIA source, and that we chose to show only what we observed.
+
+**Don't say the positions appear in the app yet** unless Lane B has wired `emissions_3d` into the 3D widget (requested in STATUS-A). Until then they're in the data files and the API loader.
+
 ## Headline: 40% target
 
 | Say | Value | Source |
@@ -90,6 +115,10 @@ What the table says:
 **Don't quote model-written reasons.** The feed lines are composed by code from tool results. Quote them as they appear.
 
 ## Likely judge questions
+
+**0. What's in the 3D view?**
+Only verified equipment: 27 lighting and HVAC positions on 7 buildings, each tied to a claim the verifier accepted and the panorama it was seen in. Southwest Center shows lighting only because the verifier rejected its HVAC claim. 7900 Fannin shows none because the agent chose not to inspect its interior. We researched and verified an EIA end-use split too, but we don't show shares on screen.
+
 
 **1. Where does the data come from, and how do the layers connect? (CoStar)**
 CoStar records (from the hackathon kit) give each building's type, size, stories and year built. Vexcel gives an orthophoto of each roof (7.5 cm/px native; 6–10 cm/px as cropped for most buildings, 25 cm/px for the largest), plus a 3× wider view when the investigator asks for shading context. Matterport gives panoramas and rooms. They join on CoStar's property ID, which the kit maps to Matterport model IDs (every building in the portfolio has scans linked), and on the building's latitude and longitude, which is what Vexcel takes.
