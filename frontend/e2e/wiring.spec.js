@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import fs from 'node:fs'
+import { E2E_API } from './guard.js'
 import { ROUTES, inventedIn } from '../src/test/forbidden.js'
 
-const API = process.env.E2E_API_URL || 'http://localhost:8000'
+const API = E2E_API // the e2e sandbox backend (temp data copy, cache read-only); see playwright.config.js
 const SHOTS = 'e2e/screens'
 fs.mkdirSync(SHOTS, { recursive: true })
 const shot = (page, name) => page.screenshot({ path: `${SHOTS}/${name}.png` })

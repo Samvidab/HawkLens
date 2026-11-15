@@ -95,7 +95,7 @@ export default function BuildingDetails() {
         {emissions3dOn() // behind VITE_EMISSIONS_3D: the tour via the Showcase SDK, tags on verified CO2-emitting equipment
           ? <Co2Tour key={bm.id} buildingId={bm.id} />
           : <div className="absolute inset-0"><BuildingPicture layout={run.layout} height={250} /></div>}
-        {solar && (
+        {solar && !emissions3dOn() && ( // with the tour on, the list of verified CO2 sources uses this side
           <div className="absolute left-[555px] top-[98px] w-[260px] h-[58px] rounded-[6px] bg-white overflow-hidden shadow-sm">
             <p className="absolute left-[13px] top-[11px] w-[240px] truncate font-medium text-brand text-[14px]">
               {solar.name}

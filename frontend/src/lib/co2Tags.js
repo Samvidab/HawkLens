@@ -12,7 +12,7 @@ export const sdkKey = () => import.meta.env.VITE_MATTERPORT_SDK_KEY || ''
 export const NO_SOURCES = 'No verified CO₂ sources located in this scan'
 export const KIND = {
   lighting: { name: 'Lighting', css: '#e0a800', rgb: { r: 0.88, g: 0.66, b: 0 }, stem: 0.6 },
-  hvac: { name: 'Ventilation / HVAC', css: '#2f7fd1', rgb: { r: 0.18, g: 0.5, b: 0.82 }, stem: 0.35 },
+  hvac: { name: 'Ventilation / HVAC', css: '#2f7fd1', rgb: { r: 0.18, g: 0.5, b: 0.82 }, stem: 0.45 },
 }
 
 /** Showcase model id from a showcase_url (".../show/?m=ID..."), else null. */
@@ -40,19 +40,24 @@ export function sweepFor(sweeps, panoId) {
   return sweeps.find((s) => s && (s.id === panoId || s.sid === panoId || s.uuid === panoId)) || null
 }
 
-/** Tag.add descriptors for the items whose panorama is a sweep of the tour; returns { descriptors, placed: Set(index) }. */
+/** Tag.add descriptors for the items whose panorama is a sweep of the tour. Returns { descriptors, placed: Set(index),
+ *  targets: [{ index, sweepId }] } with targets[k] belonging to descriptors[k] (so Tag.add's ids map back to items). */
 export function tagPlan(items, sweeps, apiBase) {
   const descriptors = []
   const placed = new Set()
+  const targets = []
   items.forEach((it, i) => {
     const s = sweepFor(sweeps, it.pano_id)
     const k = KIND[it.kind]
     if (!s?.position || !k) return
     placed.add(i)
+    // the tag stands on the floor under the panorama (its puck), so it is in view from that panorama when the camera
+    // looks down; anchored at the camera position itself it would be behind the lens
+    targets.push({ index: i, sweepId: s.id, heading: s.rotation?.y ?? null })
     descriptors.push({
       label: tagLabel(it), description: tagDescription(it, apiBase), color: k.rgb,
-      anchorPosition: { ...s.position }, stemVector: { x: 0, y: k.stem, z: 0 },
+      anchorPosition: { ...(s.puckPosition || s.position) }, stemVector: { x: 0, y: k.stem, z: 0 },
     })
   })
-  return { descriptors, placed }
+  return { descriptors, placed, targets }
 }

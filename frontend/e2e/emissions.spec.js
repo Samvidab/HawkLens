@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test'
 import fs from 'node:fs'
+import { E2E_API } from './guard.js'
 
 // Opens every building page with VITE_EMISSIONS_3D on. Each page embeds the building's Matterport tour (Showcase SDK)
 // and tags the verified CO2-emitting equipment the survey saw (GET /co2_equipment). Tags are never more than the verified
 // items located in the tour; a building without items shows "No verified CO2 sources located in this scan".
 // Writes e2e/screens/co2-tags-report.json.
-const API = process.env.E2E_API_URL || 'http://localhost:8000'
+const API = E2E_API // the e2e sandbox backend (temp data copy, cache read-only)
 const SHOTS = 'e2e/screens'
 fs.mkdirSync(SHOTS, { recursive: true })
 
@@ -51,12 +52,32 @@ test('every building page: tour via the SDK, one tag per verified CO2 source loc
     if (!co2.items.length) await expect(page.getByTestId('co2-none')).toHaveText('No verified CO₂ sources located in this scan')
     await expect(page.getByText(/seen \(verified\)/)).toHaveCount(co2.items.length)
 
-    await page.waitForTimeout(4000) // let the 3D view draw for the screenshot
+    // click every tagged item in the list: the tour moves to its panorama (the tour itself reports the sweep) and opens its tag
+    let visited = 0
+    if (status === 'ready') {
+      for (let i = 0; i < co2.items.length; i++) {
+        const btn = page.getByTestId(`co2-item-${i}`)
+        if (await btn.isDisabled()) continue
+        await btn.click()
+        await expect(box).toHaveAttribute('data-focus-index', String(i))
+        await expect(box).toHaveAttribute('data-focus-state', /open|failed/, { timeout: 30_000 })
+        expect(await box.getAttribute('data-focus-state')).toBe('open')
+        const sweep = await box.getAttribute('data-focus-sweep')
+        const tag = await box.getAttribute('data-focus-tag')
+        await expect(box).toHaveAttribute('data-current-sweep', sweep, { timeout: 15_000 })
+        await expect(box).toHaveAttribute('data-docked-tag', tag, { timeout: 15_000 })
+        visited++
+        if (visited === 1) { await page.waitForTimeout(2500); await page.screenshot({ path: `${SHOTS}/co2-${b.building_id}-item.png` }) }
+      }
+      expect(visited).toBe(tags)
+    }
+
+    await page.waitForTimeout(1500)
     await page.screenshot({ path: `${SHOTS}/co2-${b.building_id}.png` })
     report.push({
       building: b.name, building_id: b.building_id, scan: co2.model_id, tour: co2.tour_url ? co2.tour_model_id : null, status,
       verified_items: co2.items.length, lighting: co2.items.filter((i) => i.kind === 'lighting').length,
-      hvac: co2.items.filter((i) => i.kind === 'hvac').length, tags,
+      hvac: co2.items.filter((i) => i.kind === 'hvac').length, tags, visited,
     })
   }
   fs.writeFileSync(`${SHOTS}/co2-tags-report.json`, JSON.stringify(report, null, 2))

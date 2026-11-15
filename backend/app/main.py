@@ -52,6 +52,8 @@ def health() -> dict:
         "engine_mode": s.engine_mode,
         "nessie_mode": s.nessie_mode,
         "demo_city": s.demo_city,
+        # true only for the Playwright backend (scripts/e2e_backend.sh: temp copy of the data, cache read-only)
+        "sandbox": env_value("E2E_SANDBOX") in ("1", "true"),
     }
 
 
