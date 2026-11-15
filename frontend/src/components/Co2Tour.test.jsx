@@ -12,7 +12,7 @@ import { AppRoutes } from '../App'
 import { RunProvider } from '../lib/store'
 import Co2Tour from './Co2Tour'
 
-const m = vi.hoisted(() => ({ setupSdk: vi.fn(), tagAdd: vi.fn(), getCo2: vi.fn(), moveTo: vi.fn(), dock: vi.fn(), open: vi.fn() }))
+const m = vi.hoisted(() => ({ setupSdk: vi.fn(), tagAdd: vi.fn(), getCo2: vi.fn(), moveTo: vi.fn(), dock: vi.fn(), open: vi.fn(), tagState: null, setRotation: vi.fn() }))
 vi.mock('@matterport/sdk', () => ({ setupSdk: m.setupSdk }))
 vi.mock('../lib/api', async (orig) => ({ ...(await orig()), API_BASE: 'http://api', getCo2Equipment: m.getCo2 }))
 
@@ -28,14 +28,16 @@ const DATA = {
 const SWEEPS = { s1: { id: 'pA', position: { x: 1, y: 1.5, z: -2 } }, s2: { sid: 'pB', position: { x: 3, y: 1.5, z: 0 } } }
 
 beforeEach(() => {
-  for (const f of [m.setupSdk, m.tagAdd, m.getCo2, m.moveTo, m.dock, m.open]) f.mockReset()
+  for (const f of [m.setupSdk, m.tagAdd, m.getCo2, m.moveTo, m.dock, m.open, m.setRotation]) f.mockReset()
   m.tagAdd.mockImplementation(async (...d) => d.map((_, i) => `t${i}`))
   m.moveTo.mockImplementation(async (id) => id)
   m.dock.mockResolvedValue(undefined)
   m.open.mockResolvedValue(undefined)
+  m.setRotation.mockResolvedValue(undefined)
   const obs = () => ({ subscribe: () => ({ cancel() {} }) })
   m.setupSdk.mockImplementation(async () => ({
-    Tag: { add: m.tagAdd, dock: m.dock, open: m.open, openTags: obs() },
+    Camera: { setRotation: m.setRotation },
+    Tag: { add: m.tagAdd, dock: m.dock, open: m.open, openTags: { subscribe: (cb) => { m.tagState = cb; return { cancel() {} } } } },
     Sweep: { moveTo: m.moveTo, current: obs(), Transition: { FLY: 'transition.fly' },
       data: { subscribe: ({ onCollectionUpdated }) => { setTimeout(() => onCollectionUpdated(SWEEPS), 0); return { cancel() {} } } } },
   }))
@@ -63,7 +65,9 @@ describe('tag text and placement', () => {
     const { descriptors, placed } = tagPlan(DATA.items, Object.values(SWEEPS), 'http://api')
     expect([...placed]).toEqual([0, 1])
     expect(descriptors.map((d) => d.anchorPosition)).toEqual([{ x: 1, y: 1.5, z: -2 }, { x: 1, y: 1.5, z: -2 }])
-    expect(descriptors[1].label).toBe('ceiling supply diffuser seen (verified): CO₂ source')
+    expect(descriptors[1].label).toBe('Photo taken here')
+    expect(descriptors[1].stemVector).toEqual({ x: 0, y: 0, z: 0 })
+    expect(descriptors[1].description).toContain('Fixture position has not been established')
   })
 })
 
@@ -84,10 +88,26 @@ describe('Co2Tour', () => {
     await waitFor(() => expect(status()).toBe('ready'))
     screen.getByTestId('co2-item-1').click()
     await waitFor(() => expect(screen.getByTestId('co2-tour').getAttribute('data-focus-state')).toBe('open'), { timeout: 3000 })
-    expect(m.moveTo).toHaveBeenCalledWith('pA', expect.objectContaining({ transition: 'transition.fly', rotation: { x: -70, y: 0 } }))
+    expect(m.moveTo).toHaveBeenCalledWith('pA', expect.objectContaining({ transition: 'transition.fly', rotation: { x: 0, y: 0 } }))
     expect(m.open).toHaveBeenCalledWith('t1', { force: true })
+    expect(m.setRotation).toHaveBeenCalledWith({ x: 0, y: 0 })
     expect(screen.getByTestId('co2-tour').getAttribute('data-focus-tag')).toBe('t1')
     expect(screen.getByTestId('co2-item-2').disabled).toBe(true) // its panorama is not in the tour: no tag, no move
+  })
+
+  it('tour tag selection jumps to its panorama without aiming down', async () => {
+    render(<Co2Tour buildingId="b1" />)
+    await waitFor(() => expect(status()).toBe('ready'))
+    m.tagState({ selected: new Set(['t1']) })
+    await waitFor(() => expect(m.moveTo).toHaveBeenCalledWith('pA', expect.objectContaining({ rotation: { x: 0, y: 0 } })))
+    expect(m.open).toHaveBeenCalledWith('t1', { force: true })
+  })
+
+  it('image boxes and recorded xyz cannot establish a fixture anchor', () => {
+    const plan = tagPlan([{ ...DATA.items[0], xyz: [99, 99, 99], image_marks: [{ image_id: DATA.items[0].image_id, bbox: [0, 0, 1, 1] }] }], Object.values(SWEEPS), '')
+    expect(plan.descriptors[0].anchorPosition).toEqual(SWEEPS.s1.position)
+    expect(plan.descriptors[0].label).toBe('Photo taken here')
+    expect(plan.targets[0].rotation.x).toBe(90)
   })
 
   it('open unavailable -> the tag is docked instead', async () => {

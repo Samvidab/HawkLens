@@ -1,0 +1,761 @@
+{
+  "verified_fixture_anchors": 0,
+  "observation_fallbacks": 23,
+  "basis": "Read-only audit of Lane A recorded claims, interior pins and cached panorama lists. No skybox extrinsics or verified fixture surface coordinates are recorded. Counts are evidence classifications, not live SDK placement confirmations.",
+  "buildings": [
+    {
+      "building_id": "234648",
+      "items": 2,
+      "matched_panoramas": 2,
+      "marks": 3,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "fluorescent troffer fixture",
+          "pano_id": "6hafi74u5z6k8z5g704yhs0sa",
+          "image_id": "mpp_qcdyTgY98qu_6hafi74u5z6k8z5g704yhs0sa_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_qcdyTgY98qu_6hafi74u5z6k8z5g704yhs0sa_0",
+              "label": "fluorescent troffer fixture",
+              "bbox": [
+                0.0,
+                0.693,
+                0.224,
+                1.0
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "fluorescent parabolic troffer",
+          "pano_id": "b4prukqb1smtnkwdnz6empa5b",
+          "image_id": "mpp_qcdyTgY98qu_b4prukqb1smtnkwdnz6empa5b_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_qcdyTgY98qu_b4prukqb1smtnkwdnz6empa5b_0",
+              "label": "fluorescent parabolic troffer",
+              "bbox": [
+                0.592,
+                0.0,
+                1.0,
+                0.198
+              ],
+              "polygon": null
+            },
+            {
+              "image_id": "mpp_qcdyTgY98qu_b4prukqb1smtnkwdnz6empa5b_1",
+              "label": "suspended fluorescent troffer fixture",
+              "bbox": [
+                0.474,
+                0.138,
+                0.748,
+                0.257
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "23551",
+      "items": 5,
+      "matched_panoramas": 5,
+      "marks": 5,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "fluorescent troffer fixture",
+          "pano_id": "9pg5fmp3d0dtfm2yprq5twabd",
+          "image_id": "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_hu9LX64osUN_9pg5fmp3d0dtfm2yprq5twabd_0",
+              "label": "fluorescent troffer fixture",
+              "bbox": [
+                0.0,
+                0.443,
+                0.318,
+                0.911
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "fluorescent troffer fixture",
+          "pano_id": "rq4gxp25tny7usyxp0dub650d",
+          "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_0",
+              "label": "fluorescent troffer fixture",
+              "bbox": [
+                0.165,
+                0.0,
+                0.672,
+                0.17
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "fluorescent troffer fixture",
+          "pano_id": "tbncc5zkiykq1838c9ppbc5md",
+          "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+              "label": "fluorescent troffer fixture",
+              "bbox": [
+                0.244,
+                0.0,
+                0.691,
+                0.385
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "ceiling air vent grille",
+          "pano_id": "rq4gxp25tny7usyxp0dub650d",
+          "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_3",
+          "image_marks": [
+            {
+              "image_id": "mpp_hu9LX64osUN_rq4gxp25tny7usyxp0dub650d_3",
+              "label": "ceiling air vent grille",
+              "bbox": [
+                0.589,
+                0.076,
+                0.793,
+                0.208
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "perforated ceiling air vent",
+          "pano_id": "tbncc5zkiykq1838c9ppbc5md",
+          "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_hu9LX64osUN_tbncc5zkiykq1838c9ppbc5md_0",
+              "label": "perforated ceiling air vent",
+              "bbox": [
+                0.628,
+                0.485,
+                0.835,
+                0.742
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "239601",
+      "items": 3,
+      "matched_panoramas": 3,
+      "marks": 5,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "fluorescent troffer",
+          "pano_id": "t6dykpfszh58r4d3kgqfe8h9a",
+          "image_id": "mpp_FTkFHSZ4isL_t6dykpfszh58r4d3kgqfe8h9a_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_FTkFHSZ4isL_t6dykpfszh58r4d3kgqfe8h9a_0",
+              "label": "fluorescent troffer",
+              "bbox": [
+                0.37,
+                0.7,
+                0.57,
+                0.85
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "parabolic louver fluorescent troffer",
+          "pano_id": "uzpe2t8y4m2pyc2988nrrtykb",
+          "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+              "label": "parabolic louver fluorescent troffer",
+              "bbox": [
+                0.61,
+                0.24,
+                0.85,
+                0.59
+              ],
+              "polygon": null
+            },
+            {
+              "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+              "label": "parabolic louver fluorescent troffer",
+              "bbox": [
+                0.0,
+                0.47,
+                0.22,
+                0.84
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "ceiling supply diffuser",
+          "pano_id": "uzpe2t8y4m2pyc2988nrrtykb",
+          "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+              "label": "ceiling supply diffuser",
+              "bbox": [
+                0.29,
+                0.27,
+                0.34,
+                0.32
+              ],
+              "polygon": null
+            },
+            {
+              "image_id": "mpp_FTkFHSZ4isL_uzpe2t8y4m2pyc2988nrrtykb_0",
+              "label": "ceiling supply diffuser",
+              "bbox": [
+                0.47,
+                0.74,
+                0.52,
+                0.79
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "239618",
+      "items": 2,
+      "matched_panoramas": 2,
+      "marks": 3,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "2x4 fluorescent troffer",
+          "pano_id": "crt5wz6u5hu8m775cyqcaband",
+          "image_id": "mpp_BfYuPVALqi5_crt5wz6u5hu8m775cyqcaband_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_BfYuPVALqi5_crt5wz6u5hu8m775cyqcaband_0",
+              "label": "2x4 fluorescent troffer",
+              "bbox": [
+                0.11,
+                0.44,
+                0.27,
+                0.72
+              ],
+              "polygon": null
+            },
+            {
+              "image_id": "mpp_BfYuPVALqi5_crt5wz6u5hu8m775cyqcaband_0",
+              "label": "2x4 fluorescent troffer",
+              "bbox": [
+                0.66,
+                0.49,
+                0.8,
+                0.75
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "2x4 fluorescent troffer with parabolic louvers",
+          "pano_id": "een4c2rgshhsmcp691q3b0y3b",
+          "image_id": "mpp_BfYuPVALqi5_een4c2rgshhsmcp691q3b0y3b_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_BfYuPVALqi5_een4c2rgshhsmcp691q3b0y3b_0",
+              "label": "2x4 fluorescent troffer with parabolic louvers",
+              "bbox": [
+                0.59,
+                0.26,
+                0.85,
+                0.39
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "239731",
+      "items": 2,
+      "matched_panoramas": 2,
+      "marks": 2,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "2x4 fluorescent troffer",
+          "pano_id": "87yde4gc5x7h5swzdwib72cfa",
+          "image_id": "mpp_BfjYay5KMPo_87yde4gc5x7h5swzdwib72cfa_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_BfjYay5KMPo_87yde4gc5x7h5swzdwib72cfa_0",
+              "label": "2x4 fluorescent troffer",
+              "bbox": [
+                0.26,
+                0.081,
+                0.7,
+                0.334
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "ceiling return grille",
+          "pano_id": "swez0c9h7ub0hs6mx5xwe58qa",
+          "image_id": "mpp_BfjYay5KMPo_swez0c9h7ub0hs6mx5xwe58qa_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_BfjYay5KMPo_swez0c9h7ub0hs6mx5xwe58qa_0",
+              "label": "ceiling return grille",
+              "bbox": [
+                0.61,
+                0.505,
+                0.86,
+                0.767
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "239890",
+      "items": 4,
+      "matched_panoramas": 4,
+      "marks": 4,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "fluorescent troffer",
+          "pano_id": "gi9zpdc2d7a1p7f7uyee0ny4b",
+          "image_id": "mpp_4z2y8ayqrWs_gi9zpdc2d7a1p7f7uyee0ny4b_3",
+          "image_marks": [
+            {
+              "image_id": "mpp_4z2y8ayqrWs_gi9zpdc2d7a1p7f7uyee0ny4b_3",
+              "label": "fluorescent troffer",
+              "bbox": [
+                0.537,
+                0.197,
+                0.789,
+                0.312
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "fluorescent troffer",
+          "pano_id": "mznacqssg7rgm263ir1uc2a1a",
+          "image_id": "mpp_4z2y8ayqrWs_mznacqssg7rgm263ir1uc2a1a_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_4z2y8ayqrWs_mznacqssg7rgm263ir1uc2a1a_0",
+              "label": "fluorescent troffer",
+              "bbox": [
+                0.612,
+                0.378,
+                0.842,
+                0.85
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "perforated ceiling grille",
+          "pano_id": "7t6gybstm0hcynd6qgufx0ryc",
+          "image_id": "mpp_4z2y8ayqrWs_7t6gybstm0hcynd6qgufx0ryc_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_4z2y8ayqrWs_7t6gybstm0hcynd6qgufx0ryc_0",
+              "label": "perforated ceiling grille",
+              "bbox": [
+                0.375,
+                0.0,
+                0.595,
+                0.138
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "perforated ceiling grille",
+          "pano_id": "f3w6rsf88wfmyktsyhne6mf1c",
+          "image_id": "mpp_4z2y8ayqrWs_f3w6rsf88wfmyktsyhne6mf1c_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_4z2y8ayqrWs_f3w6rsf88wfmyktsyhne6mf1c_0",
+              "label": "perforated ceiling grille",
+              "bbox": [
+                0.373,
+                0.0,
+                0.597,
+                0.138
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "362982",
+      "items": 5,
+      "matched_panoramas": 5,
+      "marks": 5,
+      "tags_in_tour": true,
+      "observations": [
+        {
+          "equipment": "fluorescent troffer",
+          "pano_id": "2e2ns4efqhq5z11efebehq7qd",
+          "image_id": "mpp_FNC3RNdVtoP_2e2ns4efqhq5z11efebehq7qd_1",
+          "image_marks": [
+            {
+              "image_id": "mpp_FNC3RNdVtoP_2e2ns4efqhq5z11efebehq7qd_1",
+              "label": "fluorescent troffer",
+              "bbox": [
+                0.32,
+                0.14,
+                0.52,
+                0.28
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "fluorescent troffer",
+          "pano_id": "sakxq450z2cq8px6bfai7irtd",
+          "image_id": "mpp_FNC3RNdVtoP_sakxq450z2cq8px6bfai7irtd_1",
+          "image_marks": [
+            {
+              "image_id": "mpp_FNC3RNdVtoP_sakxq450z2cq8px6bfai7irtd_1",
+              "label": "fluorescent troffer",
+              "bbox": [
+                0.69,
+                0.016,
+                0.91,
+                0.19
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "vav diffuser",
+          "pano_id": "c2imx9e9feimyn9nahcpnwb4b",
+          "image_id": "mpp_FNC3RNdVtoP_c2imx9e9feimyn9nahcpnwb4b_1",
+          "image_marks": [
+            {
+              "image_id": "mpp_FNC3RNdVtoP_c2imx9e9feimyn9nahcpnwb4b_1",
+              "label": "vav diffuser",
+              "bbox": [
+                0.46,
+                0.21,
+                0.54,
+                0.26
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "vav diffuser",
+          "pano_id": "sakxq450z2cq8px6bfai7irtd",
+          "image_id": "mpp_FNC3RNdVtoP_sakxq450z2cq8px6bfai7irtd_0",
+          "image_marks": [
+            {
+              "image_id": "mpp_FNC3RNdVtoP_sakxq450z2cq8px6bfai7irtd_0",
+              "label": "vav diffuser",
+              "bbox": [
+                0.35,
+                0.57,
+                0.46,
+                0.67
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        },
+        {
+          "equipment": "vav diffuser",
+          "pano_id": "u7u4zbb1zbzf3rwy28tpp51rb",
+          "image_id": "mpp_FNC3RNdVtoP_u7u4zbb1zbzf3rwy28tpp51rb_3",
+          "image_marks": [
+            {
+              "image_id": "mpp_FNC3RNdVtoP_u7u4zbb1zbzf3rwy28tpp51rb_3",
+              "label": "vav diffuser",
+              "bbox": [
+                0.6,
+                0.0,
+                0.83,
+                0.17
+              ],
+              "polygon": null
+            }
+          ],
+          "placement": {
+            "type": "observation",
+            "label": "Photo taken here",
+            "reason": "No calibrated panorama-to-Showcase direction or verified fixture surface position recorded."
+          }
+        }
+      ]
+    },
+    {
+      "building_id": "6550930",
+      "items": 0,
+      "matched_panoramas": 0,
+      "marks": 0,
+      "tags_in_tour": false,
+      "observations": []
+    }
+  ],
+  "browser_verification": {
+    "result": "passed",
+    "scope": "All eight live tours; 23 SDK tags and 23 successful list-to-panorama/tag jumps. Does not verify exact equipment framing or Camera.pose.",
+    "buildings": [
+      {
+        "building": "Paragon Center I",
+        "building_id": "239601",
+        "scan": "FTkFHSZ4isL",
+        "tour": "FTkFHSZ4isL",
+        "status": "ready",
+        "verified_items": 3,
+        "lighting": 2,
+        "hvac": 1,
+        "tags": 3,
+        "visited": 3,
+        "trace_steps": 8
+      },
+      {
+        "building": "Southwest Center",
+        "building_id": "239618",
+        "scan": "BfYuPVALqi5",
+        "tour": "BfYuPVALqi5",
+        "status": "ready",
+        "verified_items": 2,
+        "lighting": 2,
+        "hvac": 0,
+        "tags": 2,
+        "visited": 2,
+        "trace_steps": 7
+      },
+      {
+        "building": "CityNorth 6",
+        "building_id": "234648",
+        "scan": "qcdyTgY98qu",
+        "tour": "qcdyTgY98qu",
+        "status": "ready",
+        "verified_items": 2,
+        "lighting": 2,
+        "hvac": 0,
+        "tags": 2,
+        "visited": 2,
+        "trace_steps": 8
+      },
+      {
+        "building": "Denmark House",
+        "building_id": "239890",
+        "scan": "4z2y8ayqrWs",
+        "tour": "4z2y8ayqrWs",
+        "status": "ready",
+        "verified_items": 4,
+        "lighting": 2,
+        "hvac": 2,
+        "tags": 4,
+        "visited": 4,
+        "trace_steps": 7
+      },
+      {
+        "building": "Harwin Plaza II Bldg",
+        "building_id": "23551",
+        "scan": "hu9LX64osUN",
+        "tour": "hu9LX64osUN",
+        "status": "ready",
+        "verified_items": 5,
+        "lighting": 3,
+        "hvac": 2,
+        "tags": 5,
+        "visited": 5,
+        "trace_steps": 6
+      },
+      {
+        "building": "Brookhollow Two",
+        "building_id": "239731",
+        "scan": "BfjYay5KMPo",
+        "tour": "BfjYay5KMPo",
+        "status": "ready",
+        "verified_items": 2,
+        "lighting": 1,
+        "hvac": 1,
+        "tags": 2,
+        "visited": 2,
+        "trace_steps": 6
+      },
+      {
+        "building": "Legacy Pointe",
+        "building_id": "362982",
+        "scan": "FNC3RNdVtoP",
+        "tour": "FNC3RNdVtoP",
+        "status": "ready",
+        "verified_items": 5,
+        "lighting": 2,
+        "hvac": 3,
+        "tags": 5,
+        "visited": 5,
+        "trace_steps": 7
+      },
+      {
+        "building": "7900 Fannin",
+        "building_id": "6550930",
+        "scan": null,
+        "tour": "YJLLXyw1xbf",
+        "status": "ready",
+        "verified_items": 0,
+        "lighting": 0,
+        "hvac": 0,
+        "tags": 0,
+        "visited": 0,
+        "trace_steps": 4
+      }
+    ]
+  }
+}

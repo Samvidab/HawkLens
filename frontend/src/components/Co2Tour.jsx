@@ -45,7 +45,7 @@ export function Co2List({ data, placed, focus, onPick, note, canMove }) {
                   <span>
                     <span className="text-ink">{it.equipment} seen (verified)</span>
                     <span className="block text-muted">
-                      {KIND[it.kind]?.name} · {placed?.has(i) ? 'tagged in the tour' : 'not located in the tour'}
+                      {KIND[it.kind]?.name} · {placed?.has(i) ? 'Photo taken here' : 'not located in the tour'}
                       {active && focus.state === 'moving' ? ' · moving…' : ''}
                     </span>
                   </span>
@@ -74,6 +74,8 @@ export default function Co2Tour({ buildingId }) {
   const sdkRef = useRef(null)
   const targetsRef = useRef(new Map()) // item index -> { sweepId, tagId }
   const currentRef = useRef(null) // the sweep the tour reports
+  const pickRef = useRef(null)
+  const movingRef = useRef(false)
   const key = sdkKey()
 
   useEffect(() => {
@@ -120,12 +122,21 @@ export default function Co2Tour({ buildingId }) {
           // opening a tag must not fly the camera elsewhere: the list click has already moved to where it was seen
           await Promise.all(ids.map((id) => sdk.Tag.allowAction?.(id, { opening: true, navigating: false, docking: true, sharing: false })?.catch?.(() => {})))
           done = p
-          if (ids.length === targets.length) targets.forEach((t, k) => targetsRef.current.set(t.index, { sweepId: t.sweepId, heading: t.heading, tagId: ids[k] }))
+          if (ids.length === targets.length) targets.forEach((t, k) => targetsRef.current.set(t.index, { sweepId: t.sweepId, rotation: t.rotation, tagId: ids[k] }))
         }
         if (cancelled) return
         try { // what the tour itself reports, so the page (and tests) see the move and the open tag
           subs.push(sdk.Sweep.current.subscribe((s) => { if (s?.id || s?.sid) { currentRef.current = s.id || s.sid; setView((v) => ({ ...v, sweep: s.id || s.sid })) } }))
-          subs.push(sdk.Tag.openTags.subscribe((o) => setView((v) => ({ ...v, docked: o?.docked || [...(o?.selected || [])][0] || null }))))
+          let selected = null
+          subs.push(sdk.Tag.openTags.subscribe((o) => {
+            const id = o?.docked || [...(o?.selected || [])][0] || null
+            setView((v) => ({ ...v, docked: id }))
+            if (id && id !== selected && !movingRef.current) {
+              const entry = [...targetsRef.current].find(([, t]) => t.tagId === id)
+              if (entry) pickRef.current?.(entry[0])
+            }
+            selected = id
+          }))
         } catch { /* observables unavailable: the move still works */ }
         sdkRef.current = sdk
         setPlaced(ids.length === done.size ? done : new Set()); setTagIds(ids.length); setStatus('ready')
@@ -142,24 +153,28 @@ export default function Co2Tour({ buildingId }) {
   const pick = async (i) => {
     const sdk = sdkRef.current
     const t = targetsRef.current.get(i)
-    if (!sdk || !t) return
+    if (!sdk || !t || movingRef.current) return
+    movingRef.current = true
     setFocus({ index: i, state: 'moving' })
     try {
-      // arrive looking down at the floor under the panorama, where the item's tag stands
+      // Return to the observation panorama; never aim at its floor marker.
       const go = () => sdk.Sweep.moveTo(t.sweepId, { transition: sdk.Sweep.Transition?.FLY ?? 'transition.fly', transitionTime: 1500,
-        rotation: { x: -70, y: t.heading ?? 0 } })
+        rotation: t.rotation })
       await go()
       // open the tag's billboard in place (docking it makes the tour fly to a viewpoint of the tag, away from the panorama)
       try { await sdk.Tag.open(t.tagId, { force: true }) } catch { await sdk.Tag.dock(t.tagId, { force: true }) }
       // if the tour still moved away from where the item was seen, come back
       await new Promise((r) => setTimeout(r, 1200))
       if (currentRef.current && currentRef.current !== t.sweepId) await go()
+      // Opening a billboard can also change orientation without changing sweeps.
+      if (sdk.Camera?.setRotation) await sdk.Camera.setRotation(t.rotation)
       setFocus({ index: i, state: 'open' })
     } catch (e) {
       console.warn('Matterport move failed:', e?.message || e)
       setFocus({ index: i, state: 'failed' })
-    }
+    } finally { movingRef.current = false }
   }
+  pickRef.current = pick
 
   const note = {
     'loading-data': '',
@@ -169,7 +184,7 @@ export default function Co2Tour({ buildingId }) {
     loading: 'Loading the 3D tour…',
     failed: 'The 3D tour could not be loaded.',
     ready: data?.items?.length
-      ? (data.tags_in_tour ? `${tagIds} tag${tagIds === 1 ? '' : 's'} in the tour, each at the panorama where it was seen.` : 'This tour is a different scan from the one surveyed, so no tags are placed.')
+      ? (data.tags_in_tour ? `${tagIds} tag${tagIds === 1 ? '' : 's'} in the tour, Photo taken here markers; fixture positions are unverified.` : 'This tour is a different scan from the one surveyed, so no tags are placed.')
       : '',
   }[status]
   const showTour = status === 'loading' || status === 'ready'
